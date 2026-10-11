@@ -1,0 +1,10 @@
+# Use LF line endings everywhere, on every platform.
+* text=auto eol=lf
+
+# Binary assets (never touch their bytes).
+*.png binary
+*.jpg binary
+*.gif binary
+*.ico binary
+*.woff binary
+*.woff2 binary

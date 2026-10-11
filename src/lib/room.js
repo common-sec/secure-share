@@ -21,6 +21,9 @@ import { bytesToB64url } from './encoding.js';
 export const MAX_FILE_BYTES = 512 * 1024 ** 2;
 export const MAX_TEXT = 100_000;
 const MAX_FAILURES = 5;
+// Public Nostr relays used for discovery. Fewer relays = fewer third parties seeing that a room
+// exists; 3 keeps some redundancy if one is down. Peers of the same app pick the same subset.
+const RELAY_REDUNDANCY = 3;
 
 export const DENY_REASONS = {
   passphrase: 'Wrong passphrase.',
@@ -43,10 +46,10 @@ export class SecureRoom extends EventTarget {
    * Creates a room, or resumes one after a page reload when `restore` holds the saved host state
    * ({roomId, secret, identity, keys, approved}). See snapshot().
    */
-  static async host({ app, passphrase, nick, maxGuests = 7, autoAccept = false, restore = null }) {
+  static async host({ app, passphrase, nick, maxGuests = 7, autoAccept = false, restore = null, transport = null }) {
     const room = new SecureRoom({
       app, roomId: restore?.roomId ?? C.randomId(16), secret: restore?.secret ?? C.randomId(32),
-      passphrase, nick: restore?.nick ?? nick, maxGuests, autoAccept,
+      passphrase, nick: restore?.nick ?? nick, maxGuests, autoAccept, transport,
     });
     room.isHost = true;
     room.identity = restore?.identity ?? await C.newIdentity();
@@ -58,8 +61,8 @@ export class SecureRoom extends EventTarget {
     return room;
   }
 
-  static async join({ app, roomId, secret, hostFp, passphrase, nick }) {
-    const room = new SecureRoom({ app, roomId, secret, passphrase, nick });
+  static async join({ app, roomId, secret, hostFp, passphrase, nick, transport = null }) {
+    const room = new SecureRoom({ app, roomId, secret, passphrase, nick, transport });
     room.isHost = false;
     room.identity = await C.newIdentity();
     room.hostFp = hostFp;
@@ -67,9 +70,10 @@ export class SecureRoom extends EventTarget {
     return room;
   }
 
-  constructor({ app, roomId, secret, passphrase, nick, maxGuests = 0, autoAccept = false }) {
+  /** `transport` defaults to Trystero; tests inject an in-memory implementation of the same API. */
+  constructor({ app, roomId, secret, passphrase, nick, maxGuests = 0, autoAccept = false, transport = null }) {
     super();
-    Object.assign(this, { app, roomId, secret, passphrase, maxGuests, autoAccept });
+    Object.assign(this, { app, roomId, secret, passphrase, maxGuests, autoAccept, transport });
     this.nick = cleanNick(nick);
     this.members = new Map(); // memberId -> {id, nick, pub, host, peerId?}
     this.guests = new Map(); // host only: peerId -> {id, nick, pub, code, state: 'pending' | 'member'}
@@ -79,6 +83,7 @@ export class SecureRoom extends EventTarget {
     this.seen = new Set();
     this.fileMeta = new Map();
     this.locked = false;
+    this.discoverable = true;
     this.failures = 0;
     this.accepted = false;
     this.closed = false;
@@ -102,13 +107,20 @@ export class SecureRoom extends EventTarget {
   }
 
   async #connect() {
-    const [{ joinRoom }, keys] = await Promise.all([
-      loadTrystero(), this.keys ?? C.deriveRoomKeys(this.roomId, this.secret, this.passphrase),
+    const [trystero, keys] = await Promise.all([
+      this.transport ?? loadTrystero(), this.keys ?? C.deriveRoomKeys(this.roomId, this.secret, this.passphrase),
     ]);
     this.keys = keys;
     this.passphrase = null;
-    this.room = joinRoom(
-      { appId: `user-sec-tools.${this.app}.v2`, password: keys.signalingPassword, maxReceiveBytes: MAX_FILE_BYTES + 4096 },
+    this.trystero = trystero;
+    this.room = trystero.joinRoom(
+      {
+        appId: `user-sec-tools.${this.app}.v2`,
+        password: keys.signalingPassword,
+        maxReceiveBytes: MAX_FILE_BYTES + 4096,
+        // We decide when to reconnect to relays (see #syncDiscovery), not the browser's online events.
+        relayConfig: { redundancy: RELAY_REDUNDANCY, manualReconnection: true, warnOnRelayFailure: false },
+      },
       this.roomId,
       {
         onPeerHandshake: (peerId, send, receive) => (this.isHost
@@ -120,6 +132,9 @@ export class SecureRoom extends EventTarget {
         handshakeTimeoutMs: 15000,
       },
     );
+
+    // Reconnection pausing is global to the page; a previous room may have paused it.
+    trystero.resumeRelayReconnection?.();
 
     this.ctlAction = this.room.makeAction('ctl');
     this.msgAction = this.room.makeAction('msg');
@@ -204,6 +219,7 @@ export class SecureRoom extends EventTarget {
       this.guests.set(peerId, { ...info, code, state: 'pending' });
       if (this.autoAccept || this.approved.get(info.pub) === info.nick) this.accept(peerId);
       else this.#emit('request', { peerId, nick: info.nick, code });
+      this.#syncDiscovery();
     } else if (peerId === this.hostPeerId) {
       this.hostCode = code;
       this.#emit('connected', { code });
@@ -222,10 +238,12 @@ export class SecureRoom extends EventTarget {
       } else {
         this.#emit('request-cancelled', { peerId });
       }
+      this.#syncDiscovery();
     } else if (peerId === this.hostPeerId && !this.closed) {
       // The host may just be reloading; keep listening and re-handshake when they're back.
       this.hostPeerId = null;
       this.accepted = false;
+      this.#syncDiscovery();
       this.#emit('host-lost');
     }
   }
@@ -240,6 +258,31 @@ export class SecureRoom extends EventTarget {
 
   #drop(peerId) {
     setTimeout(() => this.room?.getPeers()[peerId]?.close(), 400);
+  }
+
+  /**
+   * Relays are only needed so that new peers can find the room. Once nobody new can (or needs
+   * to) join, we disconnect from them: established WebRTC connections don't use the relays, and
+   * staying connected would keep telling relay operators our IP address and that the room is
+   * still alive.
+   *   host:  discoverable while the room is open (not locked, not full)
+   *   guest: discoverable only while looking for the host (before acceptance / after host loss)
+   */
+  #syncDiscovery() {
+    const T = this.trystero;
+    if (!T?.getRelaySockets) return;
+    const wanted = !this.closed && (this.isHost
+      ? !this.locked && this.guests.size < this.maxGuests
+      : !this.accepted);
+    if (wanted === this.discoverable) return;
+    this.discoverable = wanted;
+    if (wanted) {
+      T.resumeRelayReconnection();
+    } else {
+      T.pauseRelayReconnection();
+      for (const socket of Object.values(T.getRelaySockets())) socket?.close();
+    }
+    this.#emit('discovery', { on: wanted });
   }
 
   // ---- host controls ----
@@ -263,6 +306,7 @@ export class SecureRoom extends EventTarget {
     if (this.approved.delete(g.pub)) this.#emit('persist');
     await this.#sendCtl({ t: 'bye', reason: 'rejected' }, [peerId]).catch(() => {});
     this.#drop(peerId);
+    this.#syncDiscovery();
   }
 
   async kick(memberId) {
@@ -275,12 +319,14 @@ export class SecureRoom extends EventTarget {
     this.members.delete(memberId);
     this.#drop(m.peerId);
     await this.#broadcastRoster();
+    this.#syncDiscovery();
     this.#emit('left', { member: m, kicked: true });
   }
 
   setLocked(locked, auto = false) {
     this.locked = locked;
     if (!locked) this.failures = 0;
+    this.#syncDiscovery();
     this.#emit('lock', { locked, auto });
   }
 
@@ -302,6 +348,7 @@ export class SecureRoom extends EventTarget {
     const msg = await C.openJson(this.keys.groupKey, data);
     if (msg.t === 'welcome') {
       this.accepted = true;
+      this.#syncDiscovery();
       this.#emit('accepted');
     } else if (msg.t === 'roster' && Array.isArray(msg.members)) {
       const hostEntry = msg.members.find((m) => m.host);
@@ -409,6 +456,7 @@ export class SecureRoom extends EventTarget {
     if (this.closed) return;
     this.closed = true;
     this.room?.leave();
+    this.#syncDiscovery();
     this.#emit('closed', { reason });
   }
 

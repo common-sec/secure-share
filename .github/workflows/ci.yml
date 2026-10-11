@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install test runner (CI only, not a runtime dependency)
+        run: |
+          npm i --no-save playwright@1.48.2
+          npx playwright install --with-deps chromium firefox
+
+      - name: Run browser tests
+        run: node tests/run-headless.mjs chromium firefox
+
+  static-checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Only allow-listed external origins in the app
+        run: |
+          # Any new external URL in shipped code must be reviewed and added here on purpose.
+          allowed='https://cdn\.jsdelivr\.net(/npm/trystero@0\.26\.0/\+esm)?;?$|https://github\.com/dmotz/trystero$'
+          if grep -rnoE "https?://[^'\" )>]+" index.html src | grep -vE "$allowed"; then
+            echo "::error::Unexpected external URL in shipped code (see above)"
+            exit 1
+          fi
+
+      - name: No innerHTML / eval in shipped code
+        run: |
+          if grep -rnE "innerHTML|outerHTML|insertAdjacentHTML|eval\(|new Function\(" src | grep -vE ':[0-9]+:\s*//'; then
+            echo "::error::Unsafe DOM/code API used"
+            exit 1
+          fi

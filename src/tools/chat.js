@@ -291,6 +291,13 @@ async function startChat(root, { invite, nick, passphrase, restore, release, onR
       system(`Connected to the host. Your safety code is ${code}. Waiting for the host to accept you…`);
       renderMembers();
     })
+    .on('discovery', ({ on }) => {
+      if (room.isHost && !room.closed) {
+        system(on
+          ? 'Open for new join requests (connected to discovery relays).'
+          : 'Closed to new join requests: disconnected from the discovery relays. Unlock the room to invite more people.');
+      }
+    })
     .on('host-lost', () => {
       setEnabled(false);
       badge.textContent = 'Host disconnected';

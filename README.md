@@ -1,84 +1,67 @@
 # User Sec Tools
 
-Small client-side security tools in a single static page app. There is no backend and no build step. The only
-third-party dependency is [Trystero](https://github.com/dmotz/trystero) (WebRTC signaling), and everything
-cryptographic uses the browser's native Web Crypto API.
+**Share files and secrets directly between browsers, without storing them on anyone's server.**
 
-## Tools
+Most ways of sending a password, a key or a confidential file to someone leave a copy behind: in a
+chat history, an email server, a cloud drive, or a "one-time secret" service that stores it until
+it's read. User Sec Tools moves the data **straight from one browser to the other**, encrypted end to
+end, and keeps nothing afterwards. It's a static web page with no backend, no accounts, and no
+tracking. You can read all of it, run it locally, or host it yourself.
 
-### Password generator (`#/password`)
-- **Passphrase mode (default):** easy to remember, but never just dictionary words.
-  - Default style mixes real words with *modified* words: common words with one small, sayable change
-    (`cactus → Kaktus`, `lemon → Lemmon`, `rocket → Rocketix`). There is always at least one modified word,
-    and a modification that happens to spell a listed word is discarded.
-  - Other styles: modified words only, *blends* (gar·den + pick·le → `garle`), *invented* pronounceable words.
-  - Capitals and a number are on by default, e.g. `Karrot-Stone57-Pencilo-Quail`.
-- **Random characters mode:** sets, custom symbols, look-alike exclusion, and at least one character from each set.
-- Uses `crypto.getRandomValues` with rejection sampling, so there is no modulo bias. Strength is the
-  entropy of the generator's actual choices. For blends it is measured over the real output distribution, so it is
-  never overstated.
-- Settings are saved in the URL (`#/password?w=5&cap=random`). Passwords never go in the URL.
+| Tool | What it does |
+|---|---|
+| **Secure Share** (`#/share`) | Send text and/or files once to one person. They need the link **and** a passphrase. Once delivered, the link is dead. |
+| **Secure Chat** (`#/chat`) | Group chat with file sharing. The host approves every member, messages are signed and encrypted, and the room disappears when the host closes it. |
+| **Password Generator** (`#/password`) | Memorable passphrases that are not just dictionary words (`Karrotish~Behind~Stoneness~Pencils~Over~Quailing42`), or random-character passwords. |
 
-### Secure Chat (`#/chat`)
-Group chat with file sharing. The host approves every member. The room link stays in the address bar. If the host
-reloads, the room resumes and approved members reconnect automatically. The host's non-extractable keys are kept in
-IndexedDB until the room is closed, for at most 24 h. A Web Lock ensures only one tab can act as host. Message
-history is not kept.
+## How it works, in short
 
-### Secure Share (`#/share`)
-One-way, one-time delivery of text and/or files, like onetimesecret but with no server storage. The sender's tab
-stays open until the recipient has received everything, then the room closes and the link stops working.
+1. The sender opens a room. The link carries a random 256-bit secret **after the `#`**, the part of
+   a URL that browsers never send to any server. A separate passphrase is shared another way, for
+   example read aloud on a call.
+2. Both browsers find each other through a few **public Nostr relays** (via
+   [Trystero](https://github.com/dmotz/trystero)). Only encrypted connection offers pass through
+   them, and the browsers disconnect from the relays as soon as they're no longer needed.
+3. The browsers connect **directly** with WebRTC, using public STUN servers to get through NATs.
+   Data is encrypted twice: by WebRTC (DTLS) and by the app (AES-256-GCM, keyed from the link
+   secret and the passphrase).
+4. The host proves its identity, the guest proves the passphrase, the host approves, and both
+   screens show a **safety code** to compare, which detects a man-in-the-middle.
 
-## Security model (Chat and Share)
+There's no relay server for data (TURN), so if both sides are behind strict NATs or firewalls a
+direct connection may be impossible. This is a deliberate trade-off: no third party ever carries
+your data.
 
-```
-link:  #/<tool>?r=<room id>&k=<256-bit link secret>&h=<host key fingerprint>   (fragment: never sent to servers)
-passphrase: shared separately (auto-generated, editable)
+## Documentation
 
-link secret                          --HKDF-->  Trystero signaling password (encrypts offers on public relays)
-link secret + PBKDF2(passphrase)     --HKDF-->  group key (AES-256-GCM)  +  auth key (HMAC)
-```
+| Document | For |
+|---|---|
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Components, data flow, **network connections and ports**, third parties |
+| [docs/PROTOCOL.md](docs/PROTOCOL.md) | Exact key derivation, handshake and message formats (for auditors) |
+| [docs/THREAT_MODEL.md](docs/THREAT_MODEL.md) | What is protected, against whom, and the known limits |
+| [docs/TESTING.md](docs/TESTING.md) | How the test suite works and how to run it |
+| [SECURITY.md](SECURITY.md) | Reporting vulnerabilities, audit scope |
+| [docs/IDEAS.md](docs/IDEAS.md) | Ideas under consideration (analytics, monetisation, roadmap) |
 
-- **Discovery and NAT traversal:** Trystero publishes encrypted WebRTC offers on public Nostr relays, and ICE/STUN
-  punch through NATs. Data then flows directly over WebRTC (DTLS). No TURN relay is used.
-- **Star topology:** guests connect only to the host, who relays. Guests never learn each other's IP addresses.
-- **The host can't be impersonated:** the host signs each guest's nonce with an ECDSA key whose fingerprint is in
-  the link.
-- **The passphrase can only be guessed online:** guests prove it with an HMAC challenge-response, and nothing
-  derived from it is published or sent before the guest proves it. Every wrong attempt is reported to the host, and
-  the room locks after 5.
-- **Approval:** the host sees "*name* wants to join · safety code …" and accepts or declines. A declined guest is
-  banned for the rest of the session.
-- **Safety codes:** derived from both ends' DTLS certificate fingerprints. Matching codes, compared over a call or in
-  person, rule out a man-in-the-middle.
-- **Messages and files:** encrypted with the group key and signed with the sender's per-session ECDSA key. The
-  host publishes the roster (nickname ↔ key), so members, including the relaying host, can't forge each other's
-  messages. Files are also checked against a signed SHA-256 hash.
+## Run it
 
-Limits: files are capped at 512 MB and held in memory. Groups are capped at 8 people. Peers that are both behind
-strict symmetric NATs may not connect. The room ends when the host closes the tab.
-
-## Run locally
-
-Web Crypto needs a secure context (HTTPS or `localhost`).
+The Web Crypto API needs a secure context (HTTPS or `localhost`).
 
 ```bash
 python tools/serve.py 8080
 ```
 
-Any static host (GitHub Pages, Cloudflare Pages, Netlify) works for deployment.
+Open http://localhost:8080 for the app and http://localhost:8080/tests/ for the test suite. Any
+static host works for deployment (GitHub Pages, Cloudflare Pages, Netlify).
 
-## Layout
+## Design principles
 
-```
-index.html               shell + CSP
-assets/styles.css
-src/main.js              hash router
-src/lib/random.js        unbiased CSPRNG helpers
-src/lib/passphrase.js    blended / invented word generator (+ words.js raw material)
-src/lib/crypto.js        key derivation, AES-GCM, ECDSA, HMAC proofs, safety codes
-src/lib/room.js          SecureRoom: handshake, approvals, signed relay, files
-src/lib/hoststore.js     resume hosting after a reload (IndexedDB + Web Locks)
-src/tools/               home, password, chat, share UIs
-src/vendor/trystero.js   the single, version-pinned third-party import
-```
+- **No backend, no storage.** Nothing is uploaded, and nothing outlives the browser tab, except
+  the host's non-extractable keys while a chat room is open (to survive a reload).
+- **No hand-rolled cryptographic primitives.** All of them come from the browser's Web Crypto
+  API: AES-GCM, ECDSA P-256, HKDF, PBKDF2, HMAC, SHA-256 and the CSPRNG. The protocol that combines
+  them is documented in [PROTOCOL.md](docs/PROTOCOL.md) and covered by adversarial tests.
+- **Minimal dependencies.** One runtime dependency (Trystero, pinned), no build step, no
+  framework. Every line that runs is in this repository or in the pinned library.
+- **Readable and auditable.** Plain JavaScript modules and a strict Content Security Policy. CI
+  checks block `innerHTML`/`eval` and any unreviewed external origin.

@@ -1,0 +1,7 @@
+body { font: 14px/1.5 system-ui, sans-serif; margin: 24px; background: #fff; color: #16181d; }
+@media (prefers-color-scheme: dark) { body { background: #0f1115; color: #e7e9ee; } }
+#results { padding-left: 1.4rem; }
+.pass { color: #1f8a4c; }
+.fail { color: #c4302b; }
+.file { color: #888; }
+pre { white-space: pre-wrap; font-size: 12px; margin: 4px 0 12px; }

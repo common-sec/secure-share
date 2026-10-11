@@ -1,6 +1,6 @@
 import { h, copyText } from '../lib/dom.js';
 import { pick, shuffle } from '../lib/random.js';
-import { generatePhrase, phraseEntropy, PHRASE_DEFAULTS, SEPARATORS, KINDS } from '../lib/passphrase.js';
+import { generatePhrase, phraseEntropy, PHRASE_DEFAULTS, STYLES, SEPARATOR_OPTIONS, CAPS } from '../lib/passphrase.js';
 
 const SETS = {
   lower: 'abcdefghijklmnopqrstuvwxyz',
@@ -11,18 +11,19 @@ const DEFAULT_SYMBOLS = '!@#$%^&*()-_=+[]{};:,.<>/?~';
 const AMBIGUOUS = 'Il1|O0o';
 
 // Settings <-> URL params. Only settings ever go in the link, never a password.
-const DEFAULTS = {
+export const DEFAULTS = {
   mode: 'phrase',
   len: 20, lower: true, upper: true, digits: true, symbols: true,
   sym: DEFAULT_SYMBOLS, amb: false, req: true, ex: '', n: 1,
-  w: PHRASE_DEFAULTS.w, kinds: PHRASE_DEFAULTS.kinds, sep: PHRASE_DEFAULTS.sep, cap: PHRASE_DEFAULTS.cap, num: PHRASE_DEFAULTS.num,
+  w: PHRASE_DEFAULTS.w, style: PHRASE_DEFAULTS.style, link: PHRASE_DEFAULTS.link,
+  sep: PHRASE_DEFAULTS.sep, cap: PHRASE_DEFAULTS.cap, num: PHRASE_DEFAULTS.num,
 };
 const LIMITS = { len: [4, 256], n: [1, 50], w: [2, 12] };
 const CHOICES = {
   mode: ['chars', 'phrase'],
-  kinds: Object.keys(KINDS),
-  sep: Object.keys(SEPARATORS),
-  cap: ['none', 'first', 'random'],
+  style: Object.keys(STYLES),
+  sep: Object.keys(SEPARATOR_OPTIONS),
+  cap: Object.keys(CAPS),
 };
 
 function readSettings(params) {
@@ -62,7 +63,7 @@ function buildSets(s) {
   return sets.filter((x) => x.length > 0);
 }
 
-function generateChars(s) {
+export function generateChars(s) {
   const sets = buildSets(s);
   const pool = [...new Set(sets.join(''))].join('');
   if (!pool) throw new Error('Select at least one character set.');
@@ -76,7 +77,7 @@ function generateChars(s) {
 }
 
 const phraseOptions = (s) => ({
-  w: s.w, kinds: s.kinds, sep: s.sep, cap: s.cap, num: s.num,
+  w: s.w, style: s.style, link: s.link, sep: s.sep, cap: s.cap, num: s.num,
 });
 
 function generateOne(s) {
@@ -148,13 +149,15 @@ export function mount(root, params) {
   const phrasePanel = h('div', null,
     h('div', { class: 'grid2' },
       field('Words', number('w', LIMITS.w[0], LIMITS.w[1])),
-      field('Word style', select('kinds', Object.entries(KINDS))),
-      field('Separator', select('sep', [['-', 'Dash  -'], ['.', 'Dot  .'], ['_', 'Underscore  _'], ['space', 'Space'], ['none', 'None'], ['rand', 'Random symbols']])),
-      field('Capitals', select('cap', [['none', 'none'], ['first', 'Capitalize each word'], ['random', 'Random words']])),
+      field('Word style', select('style', Object.entries(STYLES))),
+      field('Separator', select('sep', Object.entries(SEPARATOR_OPTIONS))),
+      field('Capitals', select('cap', Object.entries(CAPS))),
     ),
-    h('div', { class: 'grid2' }, check('num', 'Add a number', 'two random digits on a random word')),
+    h('div', { class: 'grid2' },
+      check('link', 'Linking words', 'behind, over, within… between word pairs'),
+      check('num', 'Add a number', 'two random digits on a random word')),
     h('p', { class: 'hint' },
-      'Modified words are common words with one small change (cactus → Kaktus, lemon → Lemmon, rocket → Rocketix): easy to remember, but not dictionary words. The default mixes real and modified words, always with at least one modified.'),
+      'Common words bent the way people do when speaking a foreign language (carrot → Carrotish, stone → Stoneness), at least one with a sound-alike spelling (Karrot, Skwirrel, Lemmon), linked like a short sentence. Easy to remember, never just dictionary words.'),
   );
 
   const tabs = h('div', { class: 'tabs', role: 'tablist' });
