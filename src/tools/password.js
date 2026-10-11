@@ -1,0 +1,226 @@
+import { h, copyText } from '../lib/dom.js';
+import { pick, shuffle } from '../lib/random.js';
+import { generatePhrase, phraseEntropy, PHRASE_DEFAULTS, SEPARATORS, KINDS } from '../lib/passphrase.js';
+
+const SETS = {
+  lower: 'abcdefghijklmnopqrstuvwxyz',
+  upper: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ',
+  digits: '0123456789',
+};
+const DEFAULT_SYMBOLS = '!@#$%^&*()-_=+[]{};:,.<>/?~';
+const AMBIGUOUS = 'Il1|O0o';
+
+// Settings <-> URL params. Only settings ever go in the link, never a password.
+const DEFAULTS = {
+  mode: 'phrase',
+  len: 20, lower: true, upper: true, digits: true, symbols: true,
+  sym: DEFAULT_SYMBOLS, amb: false, req: true, ex: '', n: 1,
+  w: PHRASE_DEFAULTS.w, kinds: PHRASE_DEFAULTS.kinds, sep: PHRASE_DEFAULTS.sep, cap: PHRASE_DEFAULTS.cap, num: PHRASE_DEFAULTS.num,
+};
+const LIMITS = { len: [4, 256], n: [1, 50], w: [2, 12] };
+const CHOICES = {
+  mode: ['chars', 'phrase'],
+  kinds: Object.keys(KINDS),
+  sep: Object.keys(SEPARATORS),
+  cap: ['none', 'first', 'random'],
+};
+
+function readSettings(params) {
+  const s = { ...DEFAULTS };
+  for (const [k, def] of Object.entries(DEFAULTS)) {
+    if (!params.has(k)) continue;
+    const v = params.get(k);
+    if (typeof def === 'boolean') s[k] = v === '1';
+    else if (typeof def === 'number') {
+      const n = parseInt(v, 10);
+      if (Number.isFinite(n)) s[k] = Math.min(LIMITS[k][1], Math.max(LIMITS[k][0], n));
+    } else if (CHOICES[k]) {
+      if (CHOICES[k].includes(v)) s[k] = v;
+    } else s[k] = v.slice(0, 64);
+  }
+  return s;
+}
+
+function writeParams(s) {
+  const p = new URLSearchParams();
+  for (const [k, v] of Object.entries(s)) {
+    if (v === DEFAULTS[k]) continue;
+    p.set(k, typeof v === 'boolean' ? (v ? '1' : '0') : String(v));
+  }
+  return p.toString();
+}
+
+// ---- character passwords ----
+function buildSets(s) {
+  const remove = new Set([...s.ex, ...(s.amb ? AMBIGUOUS : '')]);
+  const clean = (chars) => [...new Set(chars)].filter((c) => !remove.has(c)).join('');
+  const sets = [];
+  if (s.lower) sets.push(clean(SETS.lower));
+  if (s.upper) sets.push(clean(SETS.upper));
+  if (s.digits) sets.push(clean(SETS.digits));
+  if (s.symbols) sets.push(clean(s.sym));
+  return sets.filter((x) => x.length > 0);
+}
+
+function generateChars(s) {
+  const sets = buildSets(s);
+  const pool = [...new Set(sets.join(''))].join('');
+  if (!pool) throw new Error('Select at least one character set.');
+  const chars = [];
+  if (s.req) {
+    if (sets.length > s.len) throw new Error('Length is shorter than the number of required sets.');
+    for (const set of sets) chars.push(pick(set));
+  }
+  while (chars.length < s.len) chars.push(pick(pool));
+  return { value: shuffle(chars).join(''), bits: s.len * Math.log2(pool.length) };
+}
+
+const phraseOptions = (s) => ({
+  w: s.w, kinds: s.kinds, sep: s.sep, cap: s.cap, num: s.num,
+});
+
+function generateOne(s) {
+  if (s.mode === 'chars') return generateChars(s);
+  const o = phraseOptions(s);
+  return { value: generatePhrase(o), bits: phraseEntropy(o) };
+}
+
+function strength(bits) {
+  if (bits < 40) return ['Weak', 'weak'];
+  if (bits < 60) return ['Fair', 'fair'];
+  if (bits < 80) return ['Good', 'good'];
+  if (bits < 128) return ['Strong', 'strong'];
+  return ['Excellent', 'excellent'];
+}
+
+export function mount(root, params) {
+  const s = readSettings(params);
+
+  const output = h('ul', { class: 'pw-list' });
+  const meterFill = h('div', { class: 'meter-fill' });
+  const meterLabel = h('span', { class: 'meter-label' });
+  const error = h('p', { class: 'error', hidden: true });
+
+  // ---- controls ----
+  const number = (key, min, max) => {
+    const el = h('input', { type: 'number', min, max, value: s[key], class: 'num' });
+    el.addEventListener('change', () => {
+      s[key] = Math.min(LIMITS[key][1], Math.max(LIMITS[key][0], parseInt(el.value, 10) || DEFAULTS[key]));
+      el.value = s[key];
+      update();
+    });
+    return el;
+  };
+  const check = (key, label, hint) => h('label', { class: 'check' },
+    h('input', { type: 'checkbox', checked: s[key], onchange: (e) => { s[key] = e.target.checked; symInput.disabled = !s.symbols; update(); } }),
+    h('span', null, label, hint ? h('small', null, hint) : null),
+  );
+  const select = (key, options) => {
+    const el = h('select', null, ...options.map(([v, label]) => h('option', { value: v, selected: s[key] === v }, label)));
+    el.addEventListener('change', () => { s[key] = el.value; update(); });
+    return el;
+  };
+  const field = (label, control) => h('div', { class: 'field' }, h('label', null, label), control);
+
+  const lenRange = h('input', { type: 'range', min: LIMITS.len[0], max: 64, value: Math.min(s.len, 64), 'aria-label': 'Length' });
+  const lenNum = number('len', LIMITS.len[0], LIMITS.len[1]);
+  lenRange.addEventListener('input', () => { lenNum.value = lenRange.value; lenNum.dispatchEvent(new Event('change')); });
+  lenNum.addEventListener('change', () => { lenRange.value = Math.min(s.len, 64); });
+  const symInput = h('input', { type: 'text', value: s.sym, spellcheck: 'false', class: 'mono', disabled: !s.symbols });
+  symInput.addEventListener('input', () => { s.sym = symInput.value || DEFAULT_SYMBOLS; update(); });
+  const exInput = h('input', { type: 'text', value: s.ex, spellcheck: 'false', class: 'mono', placeholder: 'e.g. {}[]' });
+  exInput.addEventListener('input', () => { s.ex = exInput.value; update(); });
+
+  const charsPanel = h('div', null,
+    field('Length', h('div', { class: 'row grow tight' }, lenRange, lenNum)),
+    h('div', { class: 'grid2' },
+      check('lower', 'Lowercase', 'a–z'),
+      check('upper', 'Uppercase', 'A–Z'),
+      check('digits', 'Digits', '0–9'),
+      check('symbols', 'Symbols'),
+      check('amb', 'Exclude look-alikes', AMBIGUOUS),
+      check('req', 'At least one of each set'),
+    ),
+    field('Symbol set', symInput),
+    field('Never use these characters', exInput),
+  );
+
+  const phrasePanel = h('div', null,
+    h('div', { class: 'grid2' },
+      field('Words', number('w', LIMITS.w[0], LIMITS.w[1])),
+      field('Word style', select('kinds', Object.entries(KINDS))),
+      field('Separator', select('sep', [['-', 'Dash  -'], ['.', 'Dot  .'], ['_', 'Underscore  _'], ['space', 'Space'], ['none', 'None'], ['rand', 'Random symbols']])),
+      field('Capitals', select('cap', [['none', 'none'], ['first', 'Capitalize each word'], ['random', 'Random words']])),
+    ),
+    h('div', { class: 'grid2' }, check('num', 'Add a number', 'two random digits on a random word')),
+    h('p', { class: 'hint' },
+      'Modified words are common words with one small change (cactus → Kaktus, lemon → Lemmon, rocket → Rocketix): easy to remember, but not dictionary words. The default mixes real and modified words, always with at least one modified.'),
+  );
+
+  const tabs = h('div', { class: 'tabs', role: 'tablist' });
+  const tab = (mode, label) => {
+    const b = h('button', { role: 'tab', class: 'tab', onclick: () => { s.mode = mode; update(); } }, label);
+    b.dataset.mode = mode;
+    return b;
+  };
+  tabs.append(tab('phrase', 'Passphrase'), tab('chars', 'Random characters'));
+
+  function regenerate() {
+    output.replaceChildren();
+    try {
+      let bits = 0;
+      for (let i = 0; i < s.n; i++) {
+        const r = generateOne(s);
+        bits = r.bits;
+        const copyBtn = h('button', { class: 'btn btn-small', onclick: () => copyText(r.value, copyBtn) }, 'Copy');
+        output.append(h('li', null, h('code', { class: 'pw' }, r.value), copyBtn));
+      }
+      const [label, cls] = strength(bits);
+      meterFill.className = `meter-fill ${cls}`;
+      meterFill.style.width = `${Math.min(100, (bits / 128) * 100)}%`;
+      meterLabel.textContent = `${label} · ≈${Math.floor(bits)} bits of entropy`;
+      error.hidden = true;
+    } catch (e) {
+      error.textContent = e.message;
+      error.hidden = false;
+      meterFill.style.width = '0%';
+      meterLabel.textContent = '';
+    }
+  }
+
+  function update() {
+    for (const b of tabs.children) b.setAttribute('aria-selected', String(b.dataset.mode === s.mode));
+    charsPanel.hidden = s.mode !== 'chars';
+    phrasePanel.hidden = s.mode !== 'phrase';
+    const q = writeParams(s);
+    history.replaceState(null, '', `#/password${q ? `?${q}` : ''}`);
+    regenerate();
+  }
+
+  const linkBtn = h('button', { class: 'btn', onclick: () => copyText(location.href, linkBtn) }, 'Copy settings link');
+  const resetBtn = h('button', { class: 'btn btn-ghost', onclick: () => { location.hash = '#/password?'; } }, 'Reset');
+
+  root.append(
+    h('section', { class: 'page-head' },
+      h('h1', null, 'Password Generator'),
+      h('p', { class: 'lead' }, 'Generated locally with ', h('code', null, 'crypto.getRandomValues'), '. Nothing leaves your browser.'),
+    ),
+    tabs,
+    h('div', { class: 'card' },
+      output,
+      error,
+      h('div', { class: 'meter' }, h('div', { class: 'meter-track' }, meterFill), meterLabel),
+      h('div', { class: 'row' }, h('button', { class: 'btn btn-primary', onclick: regenerate }, '↻ Regenerate')),
+    ),
+    h('div', { class: 'card' },
+      h('h2', null, 'Settings'),
+      charsPanel,
+      phrasePanel,
+      field('How many', number('n', LIMITS.n[0], LIMITS.n[1])),
+      h('div', { class: 'row' }, linkBtn, resetBtn),
+      h('p', { class: 'hint' }, 'The link stores only these settings. Passwords are never put in the URL.'),
+    ),
+  );
+
+  update();
+}
