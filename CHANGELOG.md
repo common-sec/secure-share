@@ -4,6 +4,17 @@ All notable changes, one section per version. See [docs/ROADMAP.md](docs/ROADMAP
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-11
+
+### Added
+- `python tests/run_headless.py`: one command that runs the browser test suite headlessly, on a
+  developer machine and in CI alike (Chromium, Firefox, or an installed Edge/Chrome; `--filter`).
+- `tests/requirements.txt` pins the test tooling (Playwright).
+
+### Changed
+- CI runs the same Python command instead of a separate Node script (removed `tests/run-headless.mjs`).
+- `tools/serve.py` can be imported by the test runner (port parsing moved under `__main__`).
+
 ## [0.1.0] - 2026-10-11
 
 ### Added

@@ -14,17 +14,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-python@v5
         with:
-          node-version: 22
+          python-version: "3.12"
 
-      - name: Install test runner (CI only, not a runtime dependency)
+      - name: Install test runner (test tooling only, not a runtime dependency)
         run: |
-          npm i --no-save playwright@1.48.2
-          npx playwright install --with-deps chromium firefox
+          python -m pip install -r tests/requirements.txt
+          python -m playwright install --with-deps chromium firefox
 
+      # Same command as on a developer machine (see docs/TESTING.md).
       - name: Run browser tests
-        run: node tests/run-headless.mjs chromium firefox
+        run: python tests/run_headless.py chromium firefox
 
   static-checks:
     runs-on: ubuntu-latest

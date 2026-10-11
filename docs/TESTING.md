@@ -5,20 +5,37 @@ implementations, not mocks. It needs no dependencies and makes no network connec
 
 ## Run it
 
-```bash
-python tools/serve.py 8080
-```
-
-Open http://localhost:8080/tests/. Add `?filter=room` to run a subset, matched against the file and
-test name.
-
-Headless (what CI runs, needs Node):
+**One command, the same everywhere** (your machine and CI):
 
 ```bash
-npm i --no-save playwright@1.48.2
-npx playwright install chromium firefox
-node tests/run-headless.mjs chromium firefox
+python tests/run_headless.py
 ```
+
+It serves the repository on a free local port, runs the suite headlessly in Chromium and Firefox,
+prints every result, and exits non-zero on any failure.
+
+One-time setup (Python 3.10+). The virtual environment keeps the test tooling out of your system Python:
+
+```bash
+python -m venv .venv
+.venv/Scripts/python -m pip install -r tests/requirements.txt    # macOS/Linux: .venv/bin/python
+.venv/Scripts/python -m playwright install chromium firefox
+```
+
+Then `.venv/Scripts/python tests/run_headless.py` (or `.venv/bin/python …`). Options:
+
+| Command | Runs |
+|---|---|
+| `run_headless.py` | Chromium + Firefox (what CI runs) |
+| `run_headless.py chromium` | One browser |
+| `run_headless.py msedge` / `chrome` | Your installed Edge or Chrome, no browser download needed |
+| `run_headless.py --filter room` | Tests whose file or name contains "room" |
+
+**In a normal browser** (no setup): `python tools/serve.py 8080` and open
+http://localhost:8080/tests/ (`?filter=room` works there too).
+
+Playwright and its browsers are test tooling only. The app itself has no Python or npm
+dependencies. The Playwright version is pinned in `tests/requirements.txt`.
 
 ## What is covered
 
@@ -48,7 +65,7 @@ member"* fail. Run such mutation checks by hand when changing the protocol.
 ## CI
 
 `.github/workflows/ci.yml` runs on every push and pull request:
-1. The browser suite in headless Chromium and Firefox.
+1. `python tests/run_headless.py chromium firefox`, the same command as locally.
 2. Static checks: no external URLs other than the reviewed ones, and no `innerHTML`, `eval` or `new Function` in shipped code.
 
 ## Not yet covered

@@ -35,7 +35,7 @@ Template for a new idea:
 ---
 
 ## Tests run anywhere
-**Status:** ✅ Accepted → 0.2.0
+**Status:** ✅ Accepted → 0.2.0 (done)
 **Problem:** the headless runner needs Node, which isn't on every developer machine.
 **Proposal:** a Python runner (Python already serves the app) using Playwright, used both locally and in CI.
 

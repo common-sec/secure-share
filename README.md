@@ -55,7 +55,9 @@ The Web Crypto API needs a secure context (HTTPS or `localhost`).
 python tools/serve.py 8080
 ```
 
-Open http://localhost:8080 for the app and http://localhost:8080/tests/ for the test suite. Any
+Open http://localhost:8080 for the app and http://localhost:8080/tests/ for the test suite. To run
+the tests headlessly in Chromium and Firefox, the same way CI does: `python tests/run_headless.py`
+(one-time setup in [docs/TESTING.md](docs/TESTING.md)). Any
 static host works for deployment (GitHub Pages, Cloudflare Pages, Netlify).
 
 ## Design principles

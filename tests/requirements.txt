@@ -1,0 +1,2 @@
+# Test tooling only. The app itself has no Python or npm dependencies.
+playwright==1.48.0

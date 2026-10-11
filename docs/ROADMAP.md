@@ -29,14 +29,14 @@ here once chosen.
 | Version | Feature | Status |
 |---|---|---|
 | 0.1.0 | **Baseline**: password/passphrase generator, Secure Chat, Secure Share, docs, browser test suite | ✅ Done |
-| 0.2.0 | **Tests run anywhere**: one headless test command that works on a developer machine and in CI | 🔨 In progress |
+| 0.2.0 | **Tests run anywhere**: one headless test command that works on a developer machine and in CI | ✅ Done |
 | 0.3.0 | **No runtime CDN**: vendor Trystero into the repo, remove jsDelivr from the CSP | Planned |
 | 0.4.0 | **Type checking**: JSDoc types for protocol messages and public APIs, `tsc --checkJs` in CI | Planned |
 | 0.5.0 | **Support & feedback links**: GitHub star, donations, "+1" rating; short privacy note | Planned |
 | 0.6.0 | **AI-assisted memorable passphrases** (on-device model, entropy kept by the CSPRNG) | Planned |
 | 1.0.0 | **Public release**: license, production deployment with security headers, release checklist, external protocol review | Planned |
 
-### 0.2.0: Tests run anywhere 🔨
+### 0.2.0: Tests run anywhere ✅
 
 **Goal:** `python tests/run_headless.py` runs the whole suite headlessly on any machine with
 Python, and CI runs the exact same command.
