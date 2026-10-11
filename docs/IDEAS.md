@@ -40,17 +40,17 @@ Template for a new idea:
 **Proposal:** a Python runner (Python already serves the app) using Playwright, used both locally and in CI.
 
 ## No runtime CDN (vendor Trystero)
-**Status:** ✅ Accepted → 0.3.0
+**Status:** ✅ Accepted → 0.3.0, as part of the reproducible TypeScript build
 **Problem:** jsDelivr serves the P2P library at runtime. Whoever serves the JS controls the app.
 **Proposal:** commit a pinned build of Trystero to `src/vendor/`, record its checksum, and drop the CDN from the CSP.
 
 ## Type checking with JSDoc
-**Status:** ✅ Accepted → 0.4.0
-**Problem:** protocol message shapes are implicit, so typos only show up at runtime.
-**Proposal:** JSDoc types plus `tsc --checkJs` in CI. No build step, so the served code is still the reviewed code.
+**Status:** ❌ Rejected, superseded by full TypeScript with a reproducible build (0.3.0). Once
+there's a build system for pinned dependencies anyway, TypeScript gives the same checks with less
+noise. Reproducible builds keep "served code = reviewed code" verifiable.
 
 ## Support & feedback links
-**Status:** ✅ Accepted → 0.5.0
+**Status:** ✅ Accepted → 0.4.0
 **Problem:** there's no way for people to support or rate the project, and no visibility for the portfolio.
 **Proposal:** plain links only (no embedded widgets, buttons, badges or counters loaded from third parties):
 - **Developers:** "★ Star on GitHub" link to the repository. Not GitHub's button script.
@@ -63,7 +63,7 @@ Template for a new idea:
 **Trade-offs:** none for security. Clicking a link is the user's choice and leaves the app.
 
 ## AI-assisted memorable passphrases
-**Status:** ✅ Accepted → 0.6.0
+**Status:** ✅ Accepted → 0.5.0
 **Problem:** random words are secure but hard to remember as a list. A sentence is easier.
 **Proposal:**
 1. **JS (CSPRNG) chooses** the words from the word list and a number.
@@ -101,15 +101,28 @@ Template for a new idea:
 code in the app, and the URL fragment holding secrets is never sent to the host. Optionally, a
 self-hosted, opt-in event counter that stores no IP and no identifier.
 
-## Split into three apps and an embeddable passphrase widget
-**Status:** 💡 Proposed (natural after 1.0)
-**Proposal:** `packages/core` (crypto, room protocol), `packages/passphrase` (generator plus a
-`<passphrase-generator>` web component), and `apps/share`, `apps/chat`, `apps/password`, possibly
-on separate origins so their storage is isolated.
-**Trade-offs:** needs a small build step (esbuild or Vite library mode) for npm and the widget.
+## Split into three apps
+**Status:** ❌ Rejected. Share and Chat tell the same story, sharing data securely and easily, so
+they stay in one app. See *Extract reusable libraries* instead.
 
-## Full TypeScript
-**Status:** 🅿️ Parked. Revisit with the app split; JSDoc type checking (0.4.0) covers most of the benefit without a build step.
+## Extract reusable libraries (passphrase generator, room protocol)
+**Status:** 💡 Proposed. Only when a library proves useful outside this app.
+**Proposal:** move just that library into its own package (e.g. the passphrase generator as a
+`<passphrase-generator>` web component), keeping the app itself whole.
+
+## Full TypeScript with a reproducible build
+**Status:** ✅ Accepted → 0.3.0
+**Problem:** dependencies are fetched from a CDN at runtime, and nothing checks types.
+**Proposal:** TypeScript plus a build that installs pinned, locked dependencies, bundles them, and
+produces byte-identical output on every rebuild, so releases can be verified against the source.
+
+## Plain-language "how it works" guide
+**Status:** 💡 Proposed
+**Problem:** the security design is hard to follow without a cryptography background, even for
+the maintainer.
+**Proposal:** a guided explanation, started in a dedicated learning session: what each primitive
+does, why the protocol is shaped this way, and what the alternatives (PAKE, Noise, age, MLS,
+Argon2) would change. Its outcome could become `docs/HOW_IT_WORKS.md` for users and contributors.
 
 ## Encrypt Share payloads in the `age` format
 **Status:** 💡 Proposed
