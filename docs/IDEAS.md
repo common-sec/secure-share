@@ -1,103 +1,139 @@
-# Ideas under consideration
+# Ideas
 
-Nothing here is implemented. Each idea is recorded with its trade-offs so that decisions are
-explicit and reviewable.
+Ideas live here until they are chosen for the [roadmap](ROADMAP.md). Anyone can add one.
+Nothing here is being worked on unless the roadmap says so.
 
-## 1. Usage statistics without cookies, trackers or new risks
+## Process
 
-**Hard constraint:** no third-party JavaScript may ever run on the app's pages. Any script running
-there can read `location.hash`, which contains room secrets. This rules out Google Analytics,
-Plausible's script, Cloudflare Web Analytics' beacon, and similar tools. The CSP blocks them anyway.
+| Status | Meaning |
+|---|---|
+| 💡 Proposed | Written down, not decided |
+| ✅ Accepted → vX.Y | Chosen; it now lives on the roadmap under that version |
+| 🅿️ Parked | Good idea, not now (reason given) |
+| ❌ Rejected | Won't do (reason given, so it isn't re-proposed) |
 
-Options that keep that guarantee, from least to most invasive:
+Template for a new idea:
 
-| Option | What you learn | Privacy cost | Notes |
-|---|---|---|---|
-| **Static host access logs** | Page loads per day and module loads per tool (`/src/tools/chat.js` = someone opened Chat) | None beyond what the host already sees. The fragment is never sent | Zero code. Cloudflare and Netlify show aggregate counts. **Recommended first step.** |
-| **Count module loads on our own origin** | Per-tool usage (`chat.js`, `share.js`, `password.js`) | Same as above | Works because the router lazily loads per-tool code (needs the split described in §4) |
-| **Anonymous event counter** | e.g. "room created", "share delivered" | One request per event to an endpoint we run (e.g. a Cloudflare Worker that only increments a counter: no IP, no body, no identifier) | Must be **opt-in** or at least documented in a privacy note. The CSP needs `connect-src` for that one origin. Use `navigator.sendBeacon` with an empty body |
-| **"+1 / This was useful" button** | Explicit appreciation, a portfolio signal | One request when clicked, by choice | Can live **outside** the app (README badge, project page), e.g. a GitHub star or a counter image on the landing page. Nothing changes in the app |
-
-Recommendation: start with access logs and a "+1" on the project or landing page, not inside the
-tools. Add the anonymous counter later only if needed, behind a clear privacy note.
-
-## 2. Monetisation and visibility
-
-- **Portfolio / visibility:** a public repository with this documentation, a short write-up of
-  the threat model and protocol (blog post), a demo video, a GitHub star counter.
-- **Donations:** GitHub Sponsors or Ko-fi links in the README and footer. These are links only,
-  with no embedded widgets.
-- **Paid add-ons that don't weaken the model:**
-  - an optional **TURN relay** service for users behind strict NATs (it only carries
-    already-encrypted data);
-  - **self-hosted / white-label** deployments for companies (own domain, own relays, own STUN/TURN);
-  - support and security-review packages.
-- Never: ads, trackers, or a "pro" tier that changes the security properties.
-
-## 3. Local AI to make passphrases more memorable
-
-The idea: give a local model the randomly chosen words and ask for a memorable phrase or for word
-variations.
-
-Assessment:
-- **Where the entropy comes from is what matters.** A language model's output is predictable and
-  biased. If the model *chooses* or *changes* the words that make up the password, the strength
-  becomes "whatever the model tends to write", which is much lower and impossible to measure.
-- **Safe use:** the CSPRNG chooses everything that ends up in the password, words and variations
-  alike. The model only writes a **memory aid**, such as a one-line story using those exact words,
-  shown next to the password and never part of it. Strength stays exactly what we compute.
-- **Leakage:** only a **local** model is acceptable, e.g. Chrome's built-in Prompt API (Gemini
-  Nano) or a local Ollama. A cloud API would receive the password. Local runtimes may keep caches
-  or logs: Chrome's built-in model doesn't persist prompts, while Ollama keeps none by default but
-  third-party front-ends might. Exploiting a local cache requires access to the device, which is
-  already out of scope.
-- **Verdict:** reasonable as an optional "help me remember" button that uses on-device models only
-  and never modifies the password. Low priority.
-
-## 4. Product structure: three apps and a shared library
-
-Proposed layout once a build step is accepted:
-
-```
-packages/
-  core/         random, encoding, crypto, room protocol (no DOM)
-  passphrase/   generator + <passphrase-generator> web component (embeddable widget)
-apps/
-  share/        Secure Share
-  chat/         Secure Chat
-  password/     Password generator page (uses the widget)
+```markdown
+## Title
+**Status:** 💡 Proposed
+**Problem:** what hurts today, and for whom.
+**Proposal:** what we'd build.
+**Trade-offs / risks:** security, privacy, complexity, dependencies.
 ```
 
-- The passphrase generator as a **web component** can be embedded anywhere with one `<script>`
-  plus one tag, without exposing the other tools.
-- Separate apps mean separate origins are possible (e.g. `share.example`, `chat.example`), which
-  isolates storage and limits the impact of a bug in one app.
-- Can be done without a bundler by publishing ES modules, but npm publishing and the widget
-  benefit from a small build step (esbuild or Vite library mode).
+## Product principles (filter for every idea)
 
-## 5. TypeScript
+- **The story is one: share information securely and easily between browsers.** One-way Share
+  and Chat are two shapes of that story.
+- **Privacy by default, not invisibility.** No third-party scripts or cookies, because they would
+  weaken security (any script can read the room secret in the URL) and we don't need them. The
+  goal is *not* anonymity or untraceability.
+- **Keep it simple and auditable.** Few dependencies, proven libraries for hard problems, no
+  hand-rolled cryptographic primitives.
 
-| Option | Pros | Cons |
-|---|---|---|
-| Plain JS (today) | No build; served code is the reviewed code | No type checking; protocol message shapes are implicit |
-| **JS + JSDoc types + `tsc --checkJs` in CI** | Type safety and editor help, **still no build step**, served code unchanged | Types written in comments, slightly verbose |
-| Full TypeScript | Best tooling, explicit protocol types | Build step, so served code ≠ reviewed code (source maps help); needs Node locally |
+---
 
-Recommendation: **JSDoc + `checkJs` now**, especially to type the protocol messages in
-`room.js`. Move to full TypeScript if and when the project is split into packages (§4), since that
-step introduces a build anyway.
+## Tests run anywhere
+**Status:** ✅ Accepted → 0.2.0
+**Problem:** the headless runner needs Node, which isn't on every developer machine.
+**Proposal:** a Python runner (Python already serves the app) using Playwright, used both locally and in CI.
 
-## 6. Cryptographic construction review (protocol, not primitives)
+## No runtime CDN (vendor Trystero)
+**Status:** ✅ Accepted → 0.3.0
+**Problem:** jsDelivr serves the P2P library at runtime. Whoever serves the JS controls the app.
+**Proposal:** commit a pinned build of Trystero to `src/vendor/`, record its checksum, and drop the CDN from the CSP.
 
-Primitives are all Web Crypto. Possible ways to lean even more on vetted constructions:
+## Type checking with JSDoc
+**Status:** ✅ Accepted → 0.4.0
+**Problem:** protocol message shapes are implicit, so typos only show up at runtime.
+**Proposal:** JSDoc types plus `tsc --checkJs` in CI. No build step, so the served code is still the reviewed code.
 
-| Area | Current | Vetted alternative | Trade-off |
-|---|---|---|---|
-| Passphrase authentication | PBKDF2 + HMAC challenge-response (online-only guessing) | A **PAKE** (CPace, SPAKE2, OPAQUE) | Stronger against weak passphrases, but no mature, maintained browser library today; would add a dependency |
-| Channel / handshake | Custom handshake inside DTLS | **Noise** pattern (e.g. `XXpsk3`) | Well analysed, but needs a library and duplicates DTLS's encryption |
-| Share payload format | AES-GCM blobs | **age** format (`typage`) | Standard, interoperable, audited format; adds a dependency |
-| Group messaging | Static group key + signatures | **MLS** (RFC 9420) | Forward secrecy, post-compromise security, member authentication without trusting the host. Heavy (WASM) |
-| Key stretching | PBKDF2 600k | **Argon2id** (`hash-wasm`) | Memory-hard, so it resists GPU attacks better. Only matters if an offline attack becomes possible, which the design avoids |
+## Support & feedback links
+**Status:** ✅ Accepted → 0.5.0
+**Problem:** there's no way for people to support or rate the project, and no visibility for the portfolio.
+**Proposal:** plain links only (no embedded widgets, buttons, badges or counters loaded from third parties):
+- **Developers:** "★ Star on GitHub" link to the repository. Not GitHub's button script.
+- **Donations:** Patreon and/or Buy Me a Coffee links.
+- **Non-developer users:** "+1 / rate us" link to a public rating page (e.g. AlternativeTo,
+  Product Hunt or Trustpilot, to be chosen).
+- **Where:** footer, and once after a successful share or delivery ("Did this help?"), never as a popup.
+- **Privacy note:** a short page stating what the app sends where (links to ARCHITECTURE.md) and that it uses no cookies or trackers.
 
-Recommendation: keep Web Crypto primitives; get an external review of `PROTOCOL.md`; consider
-`age` for Share (small, clear win) and MLS only if group chat becomes a primary feature.
+**Trade-offs:** none for security. Clicking a link is the user's choice and leaves the app.
+
+## AI-assisted memorable passphrases
+**Status:** ✅ Accepted → 0.6.0
+**Problem:** random words are secure but hard to remember as a list. A sentence is easier.
+**Proposal:**
+1. **JS (CSPRNG) chooses** the words from the word list and a number.
+2. An **on-device** model (e.g. Chrome's built-in Prompt API) builds a short, memorable sentence
+   with **all** those words and the number, placing the number anywhere it fits. It may change
+   word forms (plurals, adjectives, adverbs) and add small linking words.
+3. **JS validates** the sentence: every chosen word is present (some form of it), the number
+   is present, and only letters, digits and spaces are used. Otherwise it retries, and after 3
+   tries falls back to the normal generator.
+4. **JS (CSPRNG) applies variation rules** on top: one capital at a syllable start per word, at
+   least one sound-alike or look-alike character replacement (`c→k`, `s→z`, `o→0`, `a→@`…), and one
+   random separator character instead of spaces.
+
+**Entropy accounting (what makes this safe):**
+- The model's output is predictable, so **anything the model decides counts as 0 bits**: word
+  order, added words, word-form changes.
+- Counted: the *set* of chosen words, `log2(C(N, w))` (order doesn't count because the model may
+  reorder), plus the number, plus the CSPRNG variation rules.
+- Example: 877 words, w = 4: about 34.5 bits for the set, 6.6 for a 0–99 number, about 9 for
+  syllable capitals, 5 for a replacement and 3 for the separator, so about 58 bits. **w = 6 gives
+  about 75 bits**, which suggests a default of 6 words.
+
+**Trade-offs / risks:**
+- **On-device only.** A cloud model would receive the password. The model must run locally, e.g.
+  the Prompt API (no network) or a local Ollama.
+- **Caches and logs:** Chrome's built-in model doesn't persist prompts. Exploiting a local cache
+  needs access to the device, which is already out of scope in the threat model.
+- **Availability:** Chromium-based browsers only, so the option is hidden when unsupported.
+- **The model can't weaken the password:** if it drops a word, validation fails and we retry.
+
+## Usage statistics from access logs
+**Status:** 💡 Proposed
+**Problem:** we don't know whether anyone uses the tools.
+**Proposal:** read the static host's aggregate access logs (page and module loads). There's no
+code in the app, and the URL fragment holding secrets is never sent to the host. Optionally, a
+self-hosted, opt-in event counter that stores no IP and no identifier.
+
+## Split into three apps and an embeddable passphrase widget
+**Status:** 💡 Proposed (natural after 1.0)
+**Proposal:** `packages/core` (crypto, room protocol), `packages/passphrase` (generator plus a
+`<passphrase-generator>` web component), and `apps/share`, `apps/chat`, `apps/password`, possibly
+on separate origins so their storage is isolated.
+**Trade-offs:** needs a small build step (esbuild or Vite library mode) for npm and the widget.
+
+## Full TypeScript
+**Status:** 🅿️ Parked. Revisit with the app split; JSDoc type checking (0.4.0) covers most of the benefit without a build step.
+
+## Encrypt Share payloads in the `age` format
+**Status:** 💡 Proposed
+**Proposal:** use the audited, standard `age` format (`typage`) for Share payloads instead of our
+AES-GCM framing. One more dependency, but a standard and interoperable format.
+
+## Group chat on MLS (RFC 9420)
+**Status:** 🅿️ Parked: heavy (WASM). Only worth it if Chat becomes the primary product. It would
+remove trust in the host for membership and add forward secrecy.
+
+## PAKE for passphrase authentication (CPace / SPAKE2 / OPAQUE)
+**Status:** 🅿️ Parked: no mature, maintained browser library today. The current design already
+prevents offline guessing.
+
+## Optional TURN relay
+**Status:** 💡 Proposed
+**Problem:** peers behind strict NATs or firewalls can't connect.
+**Proposal:** an opt-in TURN server (self-hosted, or a paid service as a sustainability option). It
+only carries data that is already end-to-end encrypted.
+
+## End-to-end tests with real WebRTC
+**Status:** 💡 Proposed
+**Proposal:** Playwright with two browser contexts and a local Nostr relay in CI, so real WebRTC
+and Trystero are exercised without public relays.
+
+## Self-hosted / white-label deployments
+**Status:** 💡 Proposed. A sustainability option: own domain, relays and STUN/TURN for organisations.

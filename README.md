@@ -8,6 +8,8 @@ it's read. User Sec Tools moves the data **straight from one browser to the othe
 end, and keeps nothing afterwards. It's a static web page with no backend, no accounts, and no
 tracking. You can read all of it, run it locally, or host it yourself.
 
+The aim is to make secure sharing easy for anyone: **privacy by default, not anonymity**.
+
 | Tool | What it does |
 |---|---|
 | **Secure Share** (`#/share`) | Send text and/or files once to one person. They need the link **and** a passphrase. Once delivered, the link is dead. |
@@ -41,7 +43,9 @@ your data.
 | [docs/THREAT_MODEL.md](docs/THREAT_MODEL.md) | What is protected, against whom, and the known limits |
 | [docs/TESTING.md](docs/TESTING.md) | How the test suite works and how to run it |
 | [SECURITY.md](SECURITY.md) | Reporting vulnerabilities, audit scope |
-| [docs/IDEAS.md](docs/IDEAS.md) | Ideas under consideration (analytics, monetisation, roadmap) |
+| [docs/ROADMAP.md](docs/ROADMAP.md) | What we're working on (one feature per version) and what's next |
+| [docs/IDEAS.md](docs/IDEAS.md) | Ideas waiting to be chosen for the roadmap |
+| [CHANGELOG.md](CHANGELOG.md) | What changed in each version |
 
 ## Run it
 
