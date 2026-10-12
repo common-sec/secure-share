@@ -22,6 +22,18 @@ jobs:
       - name: Unit tests (Chromium + Firefox, no network)
         run: docker compose run --rm test-unit
 
+  test-e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          persist-credentials: false
+      - name: Build the test image
+        run: docker compose build test-e2e
+      - name: End-to-end tests (real UI, real WebRTC, local relay)
+        run: docker compose run --rm test-e2e
+
   scan:
     runs-on: ubuntu-latest
     timeout-minutes: 20

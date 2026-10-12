@@ -5,6 +5,8 @@
 #   docker compose run --rm dev               shell in the Node dev image (npm, scripts)
 #   docker compose up web                     serve the app on http://127.0.0.1:8080
 #   docker compose run --rm test-unit         unit tests in Chromium + Firefox (no network)
+#   docker compose run --rm test-e2e          end-to-end tests, local relay, host-only ICE
+#   docker compose run --rm test-e2e-public   end-to-end tests over the real public relays and STUN
 #   docker compose run --rm trufflehog        secrets in the working tree and all of git history
 #   docker compose run --rm semgrep           static analysis
 #   docker compose run --rm trivy             vulnerable dependencies, misconfigurations, secrets
@@ -55,6 +57,29 @@ services:
     shm_size: 1gb                      # Chromium uses /dev/shm heavily
     command: ["python", "tests/unit/run.py", "chromium", "firefox"]
 
+  # End-to-end: users' flows through the real UI over real WebRTC (see docs/TESTING.md).
+  # Discovery uses the local relay in the test server and ICE uses host candidates only. The one
+  # outside dependency is the app loading Trystero from jsDelivr; once it's bundled (roadmap
+  # 0.10.0), this service moves to the internal `offline` network below.
+  test-e2e:
+    build: { context: ., target: test }
+    image: user-sec-tools/test:local
+    <<: *hardening
+    working_dir: /work
+    volumes: *source-ro
+    shm_size: 1gb
+    command: ["python", "tests/e2e/run.py"]
+
+  # Online: same scenarios against the live public relays and STUN servers (real-world networking).
+  test-e2e-public:
+    build: { context: ., target: test }
+    image: user-sec-tools/test:local
+    <<: *hardening
+    working_dir: /work
+    volumes: *source-ro
+    shm_size: 1gb
+    command: ["python", "tests/e2e/run.py", "--public"]
+
   trufflehog:
     image: trufflesecurity/trufflehog:3.97.9@sha256:52e67fef4d054ecff5c2ce4b4ae376626d1ef54aa0898b53cac19c25e92e14db
     <<: *hardening
@@ -102,3 +127,8 @@ services:
               "--exit-code", "1", "--severity", "HIGH,CRITICAL",
               "--scanners", "vuln,misconfig,secret", "--skip-dirs", "/work/.venv",
               "--skip-dirs", "/work/node_modules", "--skip-dirs", "/work/.cache", "/work"]
+
+networks:
+  # For test-e2e once the app has no runtime CDN dependency (roadmap 0.10.0).
+  offline:
+    internal: true

@@ -1,0 +1,23 @@
+{
+  "_note": "Known axe-core findings, accepted until roadmap 0.7.0 (Sending and receiving UX: accessibility basics). Any finding not listed here fails the end-to-end tests. Remove entries as they're fixed; never add one without a roadmap reference.",
+  "chat-form": [],
+  "chat-room-guest": [
+    "color-contrast",
+    "heading-order"
+  ],
+  "chat-room-host": [
+    "color-contrast",
+    "heading-order"
+  ],
+  "passwords": [
+    "label",
+    "select-name"
+  ],
+  "share-form": [
+    "color-contrast"
+  ],
+  "share-received": [],
+  "share-waiting": [
+    "color-contrast"
+  ]
+}

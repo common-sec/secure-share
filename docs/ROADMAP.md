@@ -33,7 +33,7 @@ here once chosen.
 | 0.3.0 | **Sandboxed development environment**: all dev, tests and scans in pinned, hardened containers; npm/pip/Dependabot supply-chain rules | ✅ Done |
 | 0.3.1 | **Dev environment refinements**: TruffleHog for secrets, a built test image, unit tests in `tests/unit/`, preview via compose | ✅ Done |
 | 0.4.0 | **First real-world test feedback**: Secure Share as the home page, clearer naming, stronger and masked room passphrases with a strength meter | ✅ Done |
-| 0.5.0 | **End-to-end tests**: real UI flows across several browsers over real WebRTC, with Playwright | 🔨 In progress |
+| 0.5.0 | **End-to-end tests**: real UI flows across several browsers over real WebRTC, with Playwright | ✅ Done |
 | 0.6.0 | **Name, logo and organisation**: a distinctive name, logo and favicon; move the repository to a dedicated GitHub organisation with a clean `<org>.github.io` address | Next |
 | 0.7.0 | **Sending and receiving UX**: phone-friendly flows, recipient trust, masked received secrets, share sheet / QR, plain language, accessibility basics | Planned |
 | 0.8.0 | **Share a generated password**: a button on the password generator opens a one-way Secure Share with it, passphrase and link ready | Planned |
@@ -91,7 +91,7 @@ both Secure Chat and Secure Share working across NAT.
   estimate for typed or edited ones);
 - passphrases are **masked by default**, with a show/hide toggle, wherever they're entered or displayed.
 
-### 0.5.0: End-to-end tests 🔨
+### 0.5.0: End-to-end tests ✅
 **Goal:** test what users actually do, through the real UI, in real browsers, over real WebRTC.
 **Done when:**
 - a `test-e2e` service (Playwright) drives several isolated browser contexts as host and guests,

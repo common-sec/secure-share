@@ -27,6 +27,8 @@ Run from the repository root (in WSL on Windows):
 | `docker compose up web` | Serve the app at http://127.0.0.1:8080 |
 | `docker compose run --rm dev` | Shell in the Node dev image (npm, scripts) |
 | `docker compose run --rm test-unit` | Unit tests in Chromium + Firefox, **no network** (see [TESTING.md](TESTING.md)) |
+| `docker compose run --rm test-e2e` | End-to-end tests through the real UI, local relay, host-only ICE |
+| `docker compose run --rm test-e2e-public` | End-to-end tests over the real public relays and STUN |
 | `docker compose run --rm trufflehog` | Secrets in the working tree and in every commit of git history |
 | `docker compose run --rm semgrep` | Static analysis (JavaScript, Python, Dockerfile, security audit) |
 | `docker compose run --rm trivy` | Vulnerable dependencies, misconfigurations, secrets |
@@ -63,7 +65,7 @@ CI (`.github/workflows/ci.yml`) runs exactly these commands.
 | Test base image | Tag + digest in `Dockerfile` | Non-root (`pwuser`) | Dependabot (`docker`) |
 | Tool images | Tag + digest in `compose.yaml` | Non-root, no caps, read-only | Dependabot (`docker-compose`) |
 | Python test packages | Exact version + SHA-256 of every file, the whole tree (`tests/requirements.txt`), installed when the `test` image is built | `pip.conf`: `require-hashes`, wheels only (no build code runs), uploaded ≥ 7 days ago | Dependabot (`pip`) |
-| npm packages (from 0.4.0) | `package-lock.json`, exact versions | `.npmrc`: `ignore-scripts`, `min-release-age=7`, `save-exact` | Dependabot (`npm`) |
+| npm packages (from 0.10.0) | `package-lock.json`, exact versions | `.npmrc`: `ignore-scripts`, `min-release-age=7`, `save-exact` | Dependabot (`npm`) |
 | GitHub Actions | Commit SHA | `persist-credentials: false`, read-only token | Dependabot (`github-actions`) |
 
 All of these use a **7-day minimum age**: npm `min-release-age=7`, pip

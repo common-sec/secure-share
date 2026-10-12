@@ -111,6 +111,14 @@ prove the passphrase, approve members and authenticate messages. That's the part
 review. It's specified in [PROTOCOL.md](PROTOCOL.md) and exercised by adversarial tests (forgery,
 replay, impostor host, wrong passphrase, tampered files) in `tests/unit/room.test.js`.
 
+## Test-only hooks
+
+`SecureRoom` reads two globals, used only by the end-to-end tests: `__USS_TEST_RELAYS__` (relay
+URLs, replacing Trystero's public list) and `__USS_TEST_ICE_SERVERS__` (ICE servers, replacing the
+public STUN servers). Only a script running in the page before the app can set them, and such a
+script already controls the page completely, so they grant nothing new. Links, URL parameters
+and user input can't set them.
+
 ## Browser storage
 
 | Store | What | Lifetime |

@@ -4,6 +4,26 @@ All notable changes, one section per version. See [docs/ROADMAP.md](docs/ROADMAP
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-10-12
+
+### Added
+- **End-to-end tests** (`tests/e2e/`): Playwright acts as several people in isolated browser
+  contexts, through the real UI, over real WebRTC with the real Trystero. They cover Share
+  (delivery of text and a file, dead link afterwards, wrong passphrase, approval) and Chat (approve
+  guests, relayed messages and files, remove, decline, wrong passphrase, locked room), in Chromium,
+  Firefox and **across the two**.
+- `test-e2e`: a local Nostr relay built into the test server (same origin, CSP untouched) with
+  host-only ICE; fast and deterministic. `test-e2e-public`: the same scenarios against the real
+  public relays and STUN servers.
+- **Accessibility checks** with axe-core (`axe-playwright-python`, hash-pinned) on every main page
+  state; known findings listed in `tests/e2e/axe-baseline.json` until roadmap 0.7.0, new ones fail.
+- Test-only hooks in `SecureRoom` for relay URLs and ICE servers (documented in ARCHITECTURE.md).
+- CI runs the end-to-end tests.
+
+### Changed
+- Roadmap order: E2E tests first, then name and organisation (0.6.0), sending and receiving UX
+  (0.7.0), and the new one-step password sharing (0.8.0).
+
 ## [0.4.1] - 2026-10-12
 
 ### Changed

@@ -12,7 +12,7 @@ Playwright plays two roles:
 | Level | What runs where | Playwright's role | Network |
 |---|---|---|---|
 | **Unit** (`tests/unit/`) | The tests are JavaScript modules **inside the page** (`tests/unit/index.html`). They import the app's modules directly and exercise them, including the full protocol between several in-page "peers" over an in-memory transport. | Starts each browser, opens the test page, waits, and collects the results the page reports | **None**, the container has no network |
-| **End-to-end** (`tests/e2e/`, roadmap 0.4.0) | The tests are Python scripts **outside the page**. They act as users: several isolated browser contexts (host, guests) click through the real UI. | Drives the browsers: opens pages, types, clicks, uploads files, reads what's on screen | **Yes**: real WebRTC, Trystero, a Nostr relay, STUN |
+| **End-to-end** (`tests/e2e/`) | The tests are Python scripts **outside the page**. They act as users: several isolated browser contexts (host, guests, sender, recipient) click through the real UI. | Drives the browsers: opens pages, types, clicks, uploads and downloads files, reads what's on screen, runs accessibility checks | **Yes**: real WebRTC, real Trystero, a Nostr relay (local by default, public with `test-e2e-public`) |
 
 So unit tests check the code's guarantees precisely and quickly, without depending on anything
 outside the container. End-to-end tests check that real users in real browsers can actually do
@@ -23,10 +23,12 @@ the things the app promises, over the real network stack.
 Everything runs in containers (setup: [DEVELOPMENT.md](DEVELOPMENT.md)):
 
 ```bash
-docker compose run --rm test-unit
+docker compose run --rm test-unit          # unit tests (no network)
+docker compose run --rm test-e2e           # end-to-end, local relay (what CI runs)
+docker compose run --rm test-e2e-public    # end-to-end over the real public relays and STUN
 ```
 
-This runs `python tests/unit/run.py chromium firefox` in the `test` image, which is Microsoft's
+`test-unit` runs `python tests/unit/run.py chromium firefox` in the `test` image, which is Microsoft's
 pinned Playwright image plus the hash-pinned Python packages, baked in at build time (see
 `Dockerfile`). It serves the repository on a loopback port, runs the suite in each browser,
 prints every result and exits non-zero on any failure. Options go after the service name:
@@ -67,17 +69,49 @@ http://127.0.0.1:8080/tests/unit/ (`?filter=room` works there too).
 Security tests must fail when the protection they guard is removed. For example, deleting the
 signature check in `#verifyEnvelope` (src/lib/room.js) makes *"a member cannot forge messages as
 another member"* fail. Do such mutation checks by hand when changing the protocol. Systematic
-fuzzing is planned for roadmap 0.6.0.
+fuzzing is planned for roadmap 0.11.0.
 
-## End-to-end tests (planned, roadmap 0.4.0)
+## End-to-end tests
 
-A `test-e2e` service, with network, will drive several browser contexts through real flows:
-- create a chat room, join with the passphrase, approve, exchange messages and files, remove a member;
-- a Secure Share delivery, after which the link is dead;
-- wrong passphrase, declined guest, locked room.
+`tests/e2e/run.py` acts out what people do with the app. Each person is a separate, isolated
+browser context: own storage, own WebRTC identity, possibly a different browser. Playwright
+clicks, types, uploads and downloads files exactly as a user would, and the peers connect over
+**real WebRTC with the real Trystero**.
 
-In CI, discovery uses a pinned local Nostr relay container on an isolated network, so runs are
-deterministic and don't depend on public relays. An optional run uses the real public relays.
+| Scenario | Browsers |
+|---|---|
+| Share: text **and a file** delivered (byte-for-byte), then the one-time link is dead | Chromium, Firefox |
+| Share: a wrong passphrase is refused, and the sender is told | Chromium |
+| Share: with "Ask me before delivering", nothing is sent until the sender clicks Deliver | Chromium |
+| Chat: host approves two guests; messages and a **file** relay guest → host → guest; a member is removed | Chromium, Firefox |
+| Chat: a declined guest is told and gets nothing | Chromium |
+| Chat: a wrong passphrase is refused, and the host is told | Chromium |
+| Chat: a locked room can't be joined | Chromium |
+| Chat **across browsers**: Chromium host, Firefox guest | Chromium + Firefox |
+| Accessibility (axe-core) on the share form, waiting and received states, the chat form and room (host and guest), and the password page | Chromium, Firefox |
+
+### Two modes
+
+- **`test-e2e` (default, CI): local relay.** `tests/e2e/server.py` serves the app and a minimal
+  Nostr relay (RFC 6455 WebSocket plus the part of NIP-01 that Trystero uses, standard library
+  only) on **the same origin**, so the app's Content Security Policy applies unchanged. The test
+  injects two **test-only hooks** before the page loads: `__USS_TEST_RELAYS__` (relay URLs) and
+  `__USS_TEST_ICE_SERVERS__` (empty, so host candidates only and no STUN). They can only be set
+  by a script already running in the page, which has full control anyway, so links and user
+  input can't reach them. Runs are fast and deterministic. The one outside dependency left is
+  the app loading Trystero from jsDelivr; once it's bundled (roadmap 0.10.0), this mode moves to
+  an internal network with no internet at all.
+- **`test-e2e-public`: real world.** Nothing is injected: the app uses the real public Nostr
+  relays and STUN servers, exactly as on the live site. It tests real-world networking, and
+  depends on those third parties being up, so it isn't a CI gate.
+
+### Accessibility
+
+Every audited page state runs **axe-core** (via `axe-playwright-python`, hash-pinned).
+`tests/e2e/axe-baseline.json` lists the findings that are known and accepted until roadmap 0.7.0
+fixes them (colour contrast, heading order, unlabelled fields on the password page). Any finding
+not in that list fails the run. To review the current findings:
+`docker compose run --rm -e E2E_AXE_RECORD=1 test-e2e` prints them instead of failing.
 
 ## CI
 

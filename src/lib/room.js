@@ -113,13 +113,23 @@ export class SecureRoom extends EventTarget {
     this.keys = keys;
     this.passphrase = null;
     this.trystero = trystero;
+    // Test-only hooks: the end-to-end tests point discovery at a local relay and skip STUN. They
+    // can only be set by a script that runs in the page before the app, which already has full
+    // control of the page, so they add no capability. Links and user input can't set them.
+    const testRelays = globalThis.__USS_TEST_RELAYS__;
+    const testIceServers = globalThis.__USS_TEST_ICE_SERVERS__;
     this.room = trystero.joinRoom(
       {
         appId: `user-sec-tools.${this.app}.v2`,
         password: keys.signalingPassword,
         maxReceiveBytes: MAX_FILE_BYTES + 4096,
         // We decide when to reconnect to relays (see #syncDiscovery), not the browser's online events.
-        relayConfig: { redundancy: RELAY_REDUNDANCY, manualReconnection: true, warnOnRelayFailure: false },
+        relayConfig: {
+          ...(Array.isArray(testRelays) ? { urls: testRelays } : { redundancy: RELAY_REDUNDANCY }),
+          manualReconnection: true,
+          warnOnRelayFailure: false,
+        },
+        ...(Array.isArray(testIceServers) ? { rtcConfig: { iceServers: testIceServers } } : {}),
       },
       this.roomId,
       {
