@@ -3,7 +3,7 @@
 # digests are multi-platform indexes, so the same pin works on amd64 and arm64 (e.g. Apple Silicon).
 
 # ---- dev: Node.js + npm, for working on the app ------------------------------------------------
-FROM node:24.20.0-bookworm-slim@sha256:ba849c60be29959425b8734d57b8b4b7d56f98edd9504c9af091d5281095a71e AS dev
+FROM node:26.9.0-bookworm-slim@sha256:582460f614631b59b824ac6020533b9bf339c7fdf3a6d7db31abb6b4065f0212 AS dev
 ENV NPM_CONFIG_UPDATE_NOTIFIER=false
 WORKDIR /work
 USER node
