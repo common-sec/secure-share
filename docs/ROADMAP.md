@@ -31,13 +31,14 @@ here once chosen.
 | 0.1.0 | **Baseline**: password/passphrase generator, Secure Chat, Secure Share, docs, browser test suite | ✅ Done |
 | 0.2.0 | **Tests run anywhere**: one headless test command that works on a developer machine and in CI | ✅ Done |
 | 0.3.0 | **Sandboxed development environment**: all dev, tests and scans in pinned, hardened containers; npm/pip/Dependabot supply-chain rules | ✅ Done |
-| 0.3.1 | **Dev environment refinements**: TruffleHog for secrets, a pinned test image, unit tests in `tests/unit/`, project rules as Semgrep rules, preview via compose | Next |
+| 0.3.1 | **Dev environment refinements**: TruffleHog for secrets, a built test image, unit tests in `tests/unit/`, preview via compose | ✅ Done |
 | 0.4.0 | **End-to-end tests**: real UI flows across several browsers over real WebRTC, with Playwright | Planned |
 | 0.5.0 | **Reproducible TypeScript build**: pinned, locked dependencies bundled at build time, no runtime CDN | Planned |
 | 0.6.0 | **DAST and fuzzing**: dynamic scanning of the served app, plus fuzzing of host and client (protocol and UI inputs) | Planned |
 | 0.7.0 | **OpenSSF Scorecard**: publish the repository and clear the Scorecard checks | Planned |
-| 0.8.0 | **Support & feedback links**: GitHub star, donations, "+1" rating; short privacy note | Planned |
-| 0.9.0 | **AI-assisted memorable passphrases** (on-device model, entropy kept by the CSPRNG) | Planned |
+| 0.8.0 | **Security posture management**: track every security check and repository setting continuously, in one place | Planned |
+| 0.9.0 | **Support & feedback links**: GitHub star, donations, "+1" rating; short privacy note | Planned |
+| 0.10.0 | **AI-assisted memorable passphrases** (on-device model, entropy kept by the CSPRNG) | Planned |
 | 1.0.0 | **Public release**: license, production deployment with security headers, release checklist, external protocol review | Planned |
 
 ### 0.2.0: Tests run anywhere ✅
@@ -56,16 +57,16 @@ of the machine.
 SHA or hash); `.npmrc` and `pip.conf` enforce no install scripts and a 7-day minimum age, matched
 by the Dependabot cooldown; CI runs the same containers; docs/DEVELOPMENT.md explains it all.
 
-### 0.3.1: Dev environment refinements
+### 0.3.1: Dev environment refinements ✅
 **Goal:** tidy up the 0.3.0 tooling based on review.
 **Done when:**
-- secret scanning uses **TruffleHog** (working tree and full git history, no outbound
-  verification calls) instead of Gitleaks;
+- secret scanning uses **TruffleHog** (working tree and full git history, no network, no
+  outbound verification calls) instead of Gitleaks;
 - the Playwright test image is **built from the Dockerfile** (`test` target) with the hash-pinned
   Python packages baked in under `pip.conf` rules, replacing the `test-deps` install step;
 - unit tests live in `tests/unit/` and run as the `test-unit` service (no network);
-- the project rules in `scripts/static-checks.sh` become **custom Semgrep rules**, and the script
-  and `checks` service are removed;
+- `scripts/static-checks.sh` and the `checks` service are removed: the repository hardening they
+  re-checked is done, and ongoing tracking moves to posture management (0.8.0);
 - the Claude Code preview (`.claude/launch.json`) starts the app through `docker compose up web`;
 - docs/TESTING.md explains how Playwright runs both the unit tests (inside the browser, where Web
   Crypto, WebRTC and IndexedDB live) and the end-to-end tests.
@@ -123,14 +124,33 @@ as a visible, independent signal of supply-chain hygiene.
   CI-Tests, Vulnerabilities, Dangerous-Workflow, Binary-Artifacts, Maintained;
 - the OpenSSF Best Practices badge is started.
 
-### 0.8.0: Support & feedback links
+### 0.8.0: Security posture management
+**Goal:** know at any time which security checks run, which pass, and which repository settings
+protect the project, without re-checking hardening by hand on every commit.
+**Done when:**
+- the tools are evaluated and chosen, preferring existing checks over custom rules:
+  - OpenSSF Scorecard and Allstar (repository policy enforcement);
+  - zizmor and actionlint (GitHub Actions security);
+  - Checkov or Trivy config (Dockerfile, compose, workflows);
+  - OSV-Scanner (dependencies, alongside Trivy);
+  - legitify (GitHub repository and organisation settings);
+  - custom Semgrep rules, only for what nothing else covers;
+- scanner results (Semgrep, Trivy, TruffleHog, …) are uploaded as SARIF to GitHub code scanning,
+  so findings are tracked, triaged and visible in one place;
+- GitHub's built-in protections are enabled and documented: secret scanning with push
+  protection, Dependabot alerts, private vulnerability reporting, branch rulesets;
+- a scheduled workflow re-runs the posture checks, and docs/SECURITY_POSTURE.md lists each control,
+  the tool that checks it, and its status;
+- pre-commit automation is decided (see [IDEAS.md](IDEAS.md#pre-commit-checks)).
+
+### 0.9.0: Support & feedback links
 **Goal:** let developers star the project, users donate or leave a rating, without any embedded
 third-party script, image or cookie.
 **Done when:** plain links (GitHub, Patreon / Buy Me a Coffee, a rating site) appear in the footer
 and after a successful share, and a short "privacy by default" note explains what the app does
 and doesn't collect.
 
-### 0.9.0: AI-assisted memorable passphrases
+### 0.10.0: AI-assisted memorable passphrases
 **Goal:** an optional "make it a sentence" mode in which an on-device model turns CSPRNG-chosen
 words and a number into a memorable phrase, before the usual random variation rules.
 **Done when:** the design in [IDEAS.md](IDEAS.md#ai-assisted-memorable-passphrases) is

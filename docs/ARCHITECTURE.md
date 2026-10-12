@@ -107,7 +107,7 @@ CoreCrypto in Safari):
 What **is** ours is the *protocol*: how these primitives are combined to authenticate the host,
 prove the passphrase, approve members and authenticate messages. That's the part that deserves
 review. It's specified in [PROTOCOL.md](PROTOCOL.md) and exercised by adversarial tests (forgery,
-replay, impostor host, wrong passphrase, tampered files) in `tests/room.test.js`.
+replay, impostor host, wrong passphrase, tampered files) in `tests/unit/room.test.js`.
 
 ## Browser storage
 

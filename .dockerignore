@@ -1,3 +1,5 @@
-# The dev image COPYs nothing: source code is mounted at run time, never baked into images.
-# So nothing (including .git, .venv or secrets) is sent to the builder.
+# Images COPY only the pinned test-package list and pip's hardening config. Source code is mounted
+# at run time, never baked into images, so nothing else (.git, .venv, secrets…) reaches the builder.
 **
+!pip.conf
+!tests/requirements.txt

@@ -54,8 +54,8 @@ Everything runs in containers (Docker + Compose; see [docs/DEVELOPMENT.md](docs/
 
 ```bash
 docker compose up web                                                 # app at http://127.0.0.1:8080
-docker compose run --rm test-deps && docker compose run --rm test     # browser tests
-docker compose run --rm semgrep                                       # or trivy, gitleaks, checks
+docker compose run --rm test-unit                                     # unit tests (Chromium + Firefox)
+docker compose run --rm semgrep                                       # or trivy, trufflehog
 ```
 
 The app itself is static files: any static host works for deployment (GitHub Pages, Cloudflare

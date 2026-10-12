@@ -1,16 +1,18 @@
-"""Run the browser test suite headlessly.
+"""Run the unit test suite headlessly in real browsers.
 
-Normally run inside the pinned Playwright container (see docs/TESTING.md):
-    docker compose run --rm test-deps    # hash-pinned Python packages, once
-    docker compose run --rm test         # = python tests/run_headless.py chromium firefox
+The unit tests are JavaScript modules that run *inside* the browser (tests/unit/index.html),
+because the code under test depends on browser APIs: Web Crypto, IndexedDB, Web Locks. Playwright
+starts the browsers, opens that page and collects the results.
+
+Normally run in the pinned test container (see docs/TESTING.md):
+    docker compose run --rm test-unit          # = python tests/unit/run.py chromium firefox
 
 Options:
-    python tests/run_headless.py chromium        # one browser
-    python tests/run_headless.py --filter room   # subset (matches file and test name)
-    python tests/run_headless.py msedge          # an installed Edge/Chrome (outside containers only)
+    python tests/unit/run.py chromium          # one browser
+    python tests/unit/run.py --filter room     # subset (matches file and test name)
 
-Serves the repository on a free loopback port with tools/serve.py's handler, opens /tests/ in each
-browser, prints every result and exits non-zero if anything fails.
+Serves the repository on a free loopback port with tools/serve.py's handler, prints every result
+and exits non-zero if anything fails.
 """
 import argparse
 import functools
@@ -20,16 +22,15 @@ import threading
 import urllib.parse
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent
+ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "tools"))
 from serve import Handler  # noqa: E402  (same MIME types and headers as the dev server)
 
 try:
     from playwright.sync_api import sync_playwright
 except ImportError:
-    sys.exit("Playwright is not installed. Run:\n"
-             "  python -m pip install -r tests/requirements.txt\n"
-             "  python -m playwright install chromium firefox")
+    sys.exit("Playwright is not installed: run the tests in the test container "
+             "(docker compose run --rm test-unit), see docs/TESTING.md")
 
 TIMEOUT_MS = 300_000
 
@@ -46,15 +47,8 @@ def serve():
     return server
 
 
-# Installed, branded browsers driven through Playwright's Chromium engine.
-CHANNELS = {"msedge": "msedge", "chrome": "chrome"}
-
-
 def run_browser(playwright, name, url):
-    if name in CHANNELS:
-        browser = playwright.chromium.launch(channel=CHANNELS[name])
-    else:
-        browser = getattr(playwright, name).launch()
+    browser = getattr(playwright, name).launch()
     try:
         page = browser.new_page()
         page.on("pageerror", lambda e: print(f"  [{name}] page error: {e}"))
@@ -77,7 +71,7 @@ def run_browser(playwright, name, url):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("browsers", nargs="*", default=["chromium", "firefox"], choices=["chromium", "firefox", "webkit", *CHANNELS])
+    parser.add_argument("browsers", nargs="*", default=["chromium", "firefox"], choices=["chromium", "firefox", "webkit"])
     parser.add_argument("--filter", default="")
     args = parser.parse_args()
 
@@ -87,7 +81,7 @@ def main():
 
     server = serve()
     query = f"?filter={urllib.parse.quote(args.filter)}" if args.filter else ""
-    url = f"http://127.0.0.1:{server.server_address[1]}/tests/index.html{query}"
+    url = f"http://127.0.0.1:{server.server_address[1]}/tests/unit/index.html{query}"
     ok = True
     try:
         with sync_playwright() as p:

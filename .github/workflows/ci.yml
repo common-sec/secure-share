@@ -10,19 +10,17 @@ permissions:
   contents: read
 
 jobs:
-  test:
+  test-unit:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         with:
           persist-credentials: false
-      - name: Prepare cache folder (containers run as uid 1000, the runner as another uid)
-        run: mkdir -p .cache && chmod a+rwX .cache
-      - name: Install hash-pinned test packages (pip.conf rules)
-        run: docker compose run --rm test-deps
-      - name: Browser tests (Chromium + Firefox, no network)
-        run: docker compose run --rm test
+      - name: Build the test image (pinned base, hash-pinned packages under pip.conf rules)
+        run: docker compose build test-unit
+      - name: Unit tests (Chromium + Firefox, no network)
+        run: docker compose run --rm test-unit
 
   scan:
     runs-on: ubuntu-latest
@@ -30,12 +28,12 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        tool: [checks, gitleaks, semgrep, trivy]
+        tool: [trufflehog, semgrep, trivy]
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         with:
           persist-credentials: false
-          fetch-depth: 0   # full history, so gitleaks can scan every commit
+          fetch-depth: 0   # full history, so trufflehog can scan every commit
       - name: Prepare cache folder (containers run as uid 1000, the runner as another uid)
         run: mkdir -p .cache/trivy && chmod -R a+rwX .cache
       - name: ${{ matrix.tool }}

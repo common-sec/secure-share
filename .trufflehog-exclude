@@ -1,0 +1,4 @@
+^/work/\.git/
+^/work/\.venv/
+^/work/\.cache/
+^/work/node_modules/

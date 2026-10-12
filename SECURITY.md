@@ -24,6 +24,6 @@ browser extensions.
 - Start with [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), then [docs/PROTOCOL.md](docs/PROTOCOL.md).
 - All cryptographic primitives are Web Crypto. The code to review is the composition in
   `src/lib/crypto.js` (about 120 lines) and `src/lib/room.js` (about 470 lines).
-- `tests/room.test.js` shows the intended security properties as executable tests. Adversarial
-  peers are built with `tests/fake-transport.js`.
+- `tests/unit/room.test.js` shows the intended security properties as executable tests. Adversarial
+  peers are built with `tests/unit/fake-transport.js`.
 - The only runtime dependency is `trystero@0.26.0` (MIT), loaded from `src/vendor/trystero.js`.

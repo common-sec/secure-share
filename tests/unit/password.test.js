@@ -1,5 +1,5 @@
 import { test, assert } from './harness.js';
-import { generateChars, DEFAULTS } from '../src/tools/password.js';
+import { generateChars, DEFAULTS } from '../../src/tools/password.js';
 
 const base = { ...DEFAULTS, mode: 'chars' };
 

@@ -4,6 +4,23 @@ All notable changes, one section per version. See [docs/ROADMAP.md](docs/ROADMAP
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-10-12
+
+### Changed
+- Secret scanning uses **TruffleHog** (git history + working tree, no network, no verification
+  calls) instead of Gitleaks.
+- The test image is built from the Dockerfile (`test` target): Microsoft's pinned Playwright image
+  plus the hash-pinned Python packages, installed at build time under `pip.conf`. This replaces
+  the `test-deps` step; test runs need no network.
+- Unit tests moved to `tests/unit/` and run as the `test-unit` service
+  (`tests/unit/run.py`, formerly `tests/run_headless.py`).
+- The Claude Code preview starts the app with `docker compose up web`.
+- docs/TESTING.md explains how Playwright runs unit tests (in the page) and e2e tests (driving the UI).
+
+### Removed
+- `scripts/static-checks.sh` and the `checks` service: the hardening they re-checked is in place;
+  ongoing tracking is planned as posture management (0.8.0).
+
 ## [0.3.0] - 2026-10-12
 
 ### Added

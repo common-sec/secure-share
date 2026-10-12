@@ -50,7 +50,7 @@ there's a build system for pinned dependencies anyway, TypeScript gives the same
 noise. Reproducible builds keep "served code = reviewed code" verifiable.
 
 ## Support & feedback links
-**Status:** ✅ Accepted → 0.8.0
+**Status:** ✅ Accepted → 0.9.0
 **Problem:** there's no way for people to support or rate the project, and no visibility for the portfolio.
 **Proposal:** plain links only (no embedded widgets, buttons, badges or counters loaded from third parties):
 - **Developers:** "★ Star on GitHub" link to the repository. Not GitHub's button script.
@@ -63,7 +63,7 @@ noise. Reproducible builds keep "served code = reviewed code" verifiable.
 **Trade-offs:** none for security. Clicking a link is the user's choice and leaves the app.
 
 ## AI-assisted memorable passphrases
-**Status:** ✅ Accepted → 0.9.0
+**Status:** ✅ Accepted → 0.10.0
 **Problem:** random words are secure but hard to remember as a list. A sentence is easier.
 **Proposal:**
 1. **JS (CSPRNG) chooses** the words from the word list and a number.
@@ -174,6 +174,30 @@ parameters, nicknames. Every crash becomes a regression test.
 **Proposal:** publish the repository, run the Scorecard action, and clear its checks (branch
 protection, signed releases, fuzzing, pinned dependencies, token permissions, and so on). It's an
 independent, visible signal for auditors and users.
+
+## Security posture management
+**Status:** ✅ Accepted → 0.8.0
+**Problem:** security checks are spread over several tools and repository settings. Re-verifying
+hardening that's already done on every commit (the old `static-checks.sh`) is noise, but
+regressions must still be noticed.
+**Proposal:** one place that tracks every control: scanner results as SARIF in GitHub code
+scanning, Scorecard and Allstar for repository policy, specialised linters for GitHub Actions and
+container configs, and a short posture document. Custom Semgrep rules only where no existing
+check fits.
+
+## Pre-commit checks
+**Status:** 💡 Proposed (to decide in 0.8.0)
+**Problem:** some mistakes are cheaper to stop before they're committed. Above all secrets: once
+pushed, a secret is in history and must be rotated.
+**Options:**
+- **The `pre-commit` framework**: popular, but it's a Python tool installed on the host and runs
+  hooks fetched from other repositories on the host. That conflicts with "nothing runs on the
+  host" unless every hook is pinned by commit and runs in a container.
+- **A small versioned git hook** (`.githooks/pre-commit`, enabled with
+  `git config core.hooksPath .githooks`) that runs only fast container checks on the staged files,
+  e.g. `docker compose run --rm trufflehog` on the staged diff. Heavier scans stay in CI.
+
+**Leaning:** the second, limited to secret scanning, since that's what's irreversible after a push.
 
 ## Hosting: GitHub Pages and alternatives
 **Status:** 💡 Proposed (context for 1.0.0)

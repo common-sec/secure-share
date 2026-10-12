@@ -26,10 +26,8 @@ Run from the repository root (in WSL on Windows):
 |---|---|
 | `docker compose up web` | Serve the app at http://127.0.0.1:8080 |
 | `docker compose run --rm dev` | Shell in the Node dev image (npm, scripts) |
-| `docker compose run --rm test-deps` | Install the hash-pinned test packages into `.cache/pydeps` (once, and after updates) |
-| `docker compose run --rm test` | Browser test suite, Chromium + Firefox, **no network** |
-| `docker compose run --rm checks` | Project rules (`scripts/static-checks.sh`) |
-| `docker compose run --rm gitleaks` | Secrets anywhere in git history |
+| `docker compose run --rm test-unit` | Unit tests in Chromium + Firefox, **no network** (see [TESTING.md](TESTING.md)) |
+| `docker compose run --rm trufflehog` | Secrets in the working tree and in every commit of git history |
 | `docker compose run --rm semgrep` | Static analysis (JavaScript, Python, Dockerfile, security audit) |
 | `docker compose run --rm trivy` | Vulnerable dependencies, misconfigurations, secrets |
 
@@ -37,17 +35,23 @@ CI (`.github/workflows/ci.yml`) runs exactly these commands.
 
 ## How it's put together
 
-- **One image is built:** `Dockerfile` = the official Node image (pinned by digest) and its
-  non-root `node` user. It's used for npm and project scripts.
+- **Two small images are built** from `Dockerfile`:
+  - `dev`: the official Node image and its non-root `node` user, for npm and scripts;
+  - `test`: Microsoft's Playwright image (browsers) plus the hash-pinned Python test packages,
+    installed **at build time** under `pip.conf`'s rules. Test runs then need no install step and
+    no network, and the image is rebuilt only when the pins change.
 - **Everything else is an official image used as-is**, declared in `compose.yaml` and pinned
-  there by tag and digest: Python (serves the app, runs the checks), Microsoft's Playwright image
-  (browsers), Gitleaks, Semgrep, Trivy. Each tool runs in its own container.
+  there by tag and digest: Python (serves the app), TruffleHog, Semgrep, Trivy. Each tool runs in
+  its own container.
 - **Every container is hardened the same way:**
   - non-root user;
   - no Linux capabilities (`cap_drop: ALL`) and `no-new-privileges`;
   - read-only root filesystem, with only `/tmp` writable;
-  - the project mounted **read-only**, except for `dev`, and `.cache/` for the tools that write there;
-  - the test suite and the checks run with **no network at all**;
+  - the project mounted **read-only**, except for `dev`, and `.cache/` for Trivy's database;
+  - unit tests and TruffleHog run with **no network at all** (TruffleHog with
+    `--no-verification`, so found secrets are never sent to their providers to check them);
+  - `HOME` points at the writable `/tmp`, because tools keep settings and caches there (e.g.
+    Semgrep's rule cache) while what they *scan* is the read-only `/work`;
   - the web server is published on `127.0.0.1` only.
 - **No Docker-in-Docker**, no Docker socket mounted anywhere.
 
@@ -56,8 +60,9 @@ CI (`.github/workflows/ci.yml`) runs exactly these commands.
 | What | Pinned by | Hardening | Updated by |
 |---|---|---|---|
 | Dev base image | Tag + digest in `Dockerfile` | Non-root | Dependabot (`docker`) |
+| Test base image | Tag + digest in `Dockerfile` | Non-root (`pwuser`) | Dependabot (`docker`) |
 | Tool images | Tag + digest in `compose.yaml` | Non-root, no caps, read-only | Dependabot (`docker-compose`) |
-| Python test packages | Exact version + SHA-256 of every file, the whole tree (`tests/requirements.txt`) | `pip.conf`: `require-hashes`, wheels only (no build code runs), uploaded ≥ 7 days ago | Dependabot (`pip`) |
+| Python test packages | Exact version + SHA-256 of every file, the whole tree (`tests/requirements.txt`), installed when the `test` image is built | `pip.conf`: `require-hashes`, wheels only (no build code runs), uploaded ≥ 7 days ago | Dependabot (`pip`) |
 | npm packages (from 0.4.0) | `package-lock.json`, exact versions | `.npmrc`: `ignore-scripts`, `min-release-age=7`, `save-exact` | Dependabot (`npm`) |
 | GitHub Actions | Commit SHA | `persist-credentials: false`, read-only token | Dependabot (`github-actions`) |
 
@@ -66,8 +71,9 @@ All of these use a **7-day minimum age**: npm `min-release-age=7`, pip
 release usually gets detected and pulled within days, so it never reaches us. Security updates
 aren't delayed.
 
-`scripts/static-checks.sh` (the `checks` service, also in CI) fails if any image or action loses
-its pin, or if the npm or pip hardening settings are removed.
+All image digests are **multi-platform indexes** (at least `linux/amd64` and `linux/arm64`), so
+the same pins work on Intel and Apple Silicon Macs, Windows (WSL2) and Linux. Docker picks the
+matching platform's image from the pinned index.
 
 ### Updating a pin by hand
 

@@ -1,8 +1,8 @@
 import { test, assert } from './harness.js';
 import {
   generatePhrase, phraseEntropy, PHRASE_DEFAULTS, LINKING_WORDS, inflect, respellings, syllableStarts, roomPassphrase,
-} from '../src/lib/passphrase.js';
-import { WORD_SET } from '../src/lib/words.js';
+} from '../../src/lib/passphrase.js';
+import { WORD_SET } from '../../src/lib/words.js';
 
 const words = (phrase) => phrase.split(/[^A-Za-z0-9]+/).map((w) => w.replace(/\d+$/, '').toLowerCase());
 

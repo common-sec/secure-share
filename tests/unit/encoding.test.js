@@ -1,5 +1,5 @@
 import { test, assert } from './harness.js';
-import { bytesToB64url, b64urlToBytes } from '../src/lib/encoding.js';
+import { bytesToB64url, b64urlToBytes } from '../../src/lib/encoding.js';
 
 test('base64url round-trips every byte value and length', () => {
   for (let len = 0; len < 70; len++) {

@@ -3,8 +3,8 @@
   "configurations": [
     {
       "name": "dev",
-      "runtimeExecutable": "python",
-      "runtimeArgs": ["tools/serve.py", "8080"],
+      "runtimeExecutable": "wsl",
+      "runtimeArgs": ["-d", "Ubuntu", "--", "docker", "compose", "up", "web"],
       "port": 8080
     }
   ]
