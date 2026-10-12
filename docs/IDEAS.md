@@ -40,17 +40,17 @@ Template for a new idea:
 **Proposal:** a Python runner (Python already serves the app) using Playwright, used both locally and in CI.
 
 ## No runtime CDN (vendor Trystero)
-**Status:** ✅ Accepted → 0.4.0, as part of the reproducible TypeScript build
+**Status:** ✅ Accepted → 0.5.0, as part of the reproducible TypeScript build
 **Problem:** jsDelivr serves the P2P library at runtime. Whoever serves the JS controls the app.
 **Proposal:** commit a pinned build of Trystero to `src/vendor/`, record its checksum, and drop the CDN from the CSP.
 
 ## Type checking with JSDoc
-**Status:** ❌ Rejected, superseded by full TypeScript with a reproducible build (0.4.0). Once
+**Status:** ❌ Rejected, superseded by full TypeScript with a reproducible build (0.5.0). Once
 there's a build system for pinned dependencies anyway, TypeScript gives the same checks with less
 noise. Reproducible builds keep "served code = reviewed code" verifiable.
 
 ## Support & feedback links
-**Status:** ✅ Accepted → 0.5.0
+**Status:** ✅ Accepted → 0.8.0
 **Problem:** there's no way for people to support or rate the project, and no visibility for the portfolio.
 **Proposal:** plain links only (no embedded widgets, buttons, badges or counters loaded from third parties):
 - **Developers:** "★ Star on GitHub" link to the repository. Not GitHub's button script.
@@ -63,7 +63,7 @@ noise. Reproducible builds keep "served code = reviewed code" verifiable.
 **Trade-offs:** none for security. Clicking a link is the user's choice and leaves the app.
 
 ## AI-assisted memorable passphrases
-**Status:** ✅ Accepted → 0.6.0
+**Status:** ✅ Accepted → 0.9.0
 **Problem:** random words are secure but hard to remember as a list. A sentence is easier.
 **Proposal:**
 1. **JS (CSPRNG) chooses** the words from the word list and a number.
@@ -125,7 +125,7 @@ they stay in one app. See *Extract reusable libraries* instead.
 `<passphrase-generator>` web component), keeping the app itself whole.
 
 ## Full TypeScript with a reproducible build
-**Status:** ✅ Accepted → 0.4.0
+**Status:** ✅ Accepted → 0.5.0
 **Problem:** dependencies are fetched from a CDN at runtime, and nothing checks types.
 **Proposal:** TypeScript plus a build that installs pinned, locked dependencies, bundles them, and
 produces byte-identical output on every rebuild, so releases can be verified against the source.
@@ -158,9 +158,36 @@ prevents offline guessing.
 only carries data that is already end-to-end encrypted.
 
 ## End-to-end tests with real WebRTC
-**Status:** 💡 Proposed
-**Proposal:** Playwright with two browser contexts and a local Nostr relay in CI, so real WebRTC
-and Trystero are exercised without public relays.
+**Status:** ✅ Accepted → 0.4.0
+**Proposal:** Playwright drives several browser contexts as host and guests through the real UI,
+with a local Nostr relay container in CI so real WebRTC and Trystero are exercised without
+depending on public relays.
+
+## DAST and fuzzing (host and clients)
+**Status:** ✅ Accepted → 0.6.0
+**Proposal:** a pinned OWASP ZAP scan of the served app, plus fuzzing of everything a peer or a
+link can feed into the host and into clients: handshake and protocol messages, files, URL
+parameters, nicknames. Every crash becomes a regression test.
+
+## OpenSSF Scorecard
+**Status:** ✅ Accepted → 0.7.0
+**Proposal:** publish the repository, run the Scorecard action, and clear its checks (branch
+protection, signed releases, fuzzing, pinned dependencies, token permissions, and so on). It's an
+independent, visible signal for auditors and users.
+
+## Hosting: GitHub Pages and alternatives
+**Status:** 💡 Proposed (context for 1.0.0)
+**Context:** the plan is free hosting on GitHub Pages. To weigh:
+- **Privacy:** GitHub, like any host, sees visitors' IP addresses and page requests, and its
+  privacy statement covers that logging. The URL fragment holding room secrets is never sent.
+  Pages gives the site owner **no** visitor statistics.
+- **Headers:** Pages doesn't allow custom response headers. The CSP works through the `<meta>`
+  tag, but `frame-ancestors` (clickjacking protection), HSTS preload and
+  `X-Content-Type-Options` can't be set. A frame-busting check in the page can stand in for
+  `frame-ancestors`.
+- **Free alternatives:** Cloudflare Pages (custom headers, cookieless server-side analytics,
+  but Cloudflare sees all traffic); Codeberg Pages (privacy-focused, non-profit); Netlify (custom
+  headers, paid analytics).
 
 ## Self-hosted / white-label deployments
 **Status:** 💡 Proposed. A sustainability option: own domain, relays and STUN/TURN for organisations.
