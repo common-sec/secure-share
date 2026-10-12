@@ -1,0 +1,4 @@
+# Not our code / not shipped
+.venv/
+node_modules/
+.git/

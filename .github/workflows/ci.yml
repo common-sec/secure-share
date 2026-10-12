@@ -1,5 +1,7 @@
 name: CI
 
+# CI runs exactly the containers a developer runs (compose.yaml): every tool from its pinned
+# image, nothing installed on the runner besides what GitHub provides (Docker).
 on:
   push:
   pull_request:
@@ -10,40 +12,31 @@ permissions:
 jobs:
   test:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         with:
-          python-version: "3.12"
+          persist-credentials: false
+      - name: Prepare cache folder (containers run as uid 1000, the runner as another uid)
+        run: mkdir -p .cache && chmod a+rwX .cache
+      - name: Install hash-pinned test packages (pip.conf rules)
+        run: docker compose run --rm test-deps
+      - name: Browser tests (Chromium + Firefox, no network)
+        run: docker compose run --rm test
 
-      - name: Install test runner (test tooling only, not a runtime dependency)
-        run: |
-          python -m pip install -r tests/requirements.txt
-          python -m playwright install --with-deps chromium firefox
-
-      # Same command as on a developer machine (see docs/TESTING.md).
-      - name: Run browser tests
-        run: python tests/run_headless.py chromium firefox
-
-  static-checks:
+  scan:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        tool: [checks, gitleaks, semgrep, trivy]
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Only allow-listed external origins in the app
-        run: |
-          # Any new external URL in shipped code must be reviewed and added here on purpose.
-          allowed='https://cdn\.jsdelivr\.net(/npm/trystero@0\.26\.0/\+esm)?;?$|https://github\.com/dmotz/trystero$'
-          if grep -rnoE "https?://[^'\" )>]+" index.html src | grep -vE "$allowed"; then
-            echo "::error::Unexpected external URL in shipped code (see above)"
-            exit 1
-          fi
-
-      - name: No innerHTML / eval in shipped code
-        run: |
-          if grep -rnE "innerHTML|outerHTML|insertAdjacentHTML|eval\(|new Function\(" src | grep -vE ':[0-9]+:\s*//'; then
-            echo "::error::Unsafe DOM/code API used"
-            exit 1
-          fi
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          persist-credentials: false
+          fetch-depth: 0   # full history, so gitleaks can scan every commit
+      - name: Prepare cache folder (containers run as uid 1000, the runner as another uid)
+        run: mkdir -p .cache/trivy && chmod -R a+rwX .cache
+      - name: ${{ matrix.tool }}
+        run: docker compose run --rm ${{ matrix.tool }}

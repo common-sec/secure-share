@@ -5,37 +5,26 @@ implementations, not mocks. It needs no dependencies and makes no network connec
 
 ## Run it
 
-**One command, the same everywhere** (your machine and CI):
+In containers, the same way on any machine and in CI (setup: [DEVELOPMENT.md](DEVELOPMENT.md)):
 
 ```bash
-python tests/run_headless.py
+docker compose run --rm test-deps   # once, and whenever tests/requirements.txt changes
+docker compose run --rm test        # Chromium + Firefox, headless, no network
 ```
 
-It serves the repository on a free local port, runs the suite headlessly in Chromium and Firefox,
-prints every result, and exits non-zero on any failure.
-
-One-time setup (Python 3.10+). The virtual environment keeps the test tooling out of your system Python:
+`test` runs `python tests/run_headless.py chromium firefox` inside Microsoft's pinned Playwright
+image. It serves the repository on a loopback port, runs the suite in each browser, prints every
+result and exits non-zero on any failure. Pass options after the service name:
 
 ```bash
-python -m venv .venv
-.venv/Scripts/python -m pip install -r tests/requirements.txt    # macOS/Linux: .venv/bin/python
-.venv/Scripts/python -m playwright install chromium firefox
+docker compose run --rm test python tests/run_headless.py chromium --filter room
 ```
 
-Then `.venv/Scripts/python tests/run_headless.py` (or `.venv/bin/python …`). Options:
+**In a normal browser** (exploring or debugging): `docker compose up web` and open
+http://127.0.0.1:8080/tests/ (`?filter=room` works there too).
 
-| Command | Runs |
-|---|---|
-| `run_headless.py` | Chromium + Firefox (what CI runs) |
-| `run_headless.py chromium` | One browser |
-| `run_headless.py msedge` / `chrome` | Your installed Edge or Chrome, no browser download needed |
-| `run_headless.py --filter room` | Tests whose file or name contains "room" |
-
-**In a normal browser** (no setup): `python tools/serve.py 8080` and open
-http://localhost:8080/tests/ (`?filter=room` works there too).
-
-Playwright and its browsers are test tooling only. The app itself has no Python or npm
-dependencies. The Playwright version is pinned in `tests/requirements.txt`.
+Security scanning (Semgrep, Trivy, Gitleaks, project checks) is described in
+[DEVELOPMENT.md](DEVELOPMENT.md#everyday-commands).
 
 ## What is covered
 
@@ -65,8 +54,8 @@ member"* fail. Run such mutation checks by hand when changing the protocol.
 ## CI
 
 `.github/workflows/ci.yml` runs on every push and pull request:
-1. `python tests/run_headless.py chromium firefox`, the same command as locally.
-2. Static checks: no external URLs other than the reviewed ones, and no `innerHTML`, `eval` or `new Function` in shipped code.
+1. `docker compose run --rm test-deps` and `docker compose run --rm test`, the same commands as locally.
+2. Each scanner in its own job: `checks`, `gitleaks`, `semgrep`, `trivy`.
 
 ## Not yet covered
 

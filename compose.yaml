@@ -1,0 +1,124 @@
+# Every tool runs in its own container from a pinned image (tag for humans and Dependabot, digest
+# for what actually runs). Only `dev` is built (Dockerfile); everything else is an official image
+# used as-is with the project folder mounted.
+#
+#   docker compose run --rm dev               shell in the Node dev image (npm, scripts)
+#   docker compose up web                     serve the app on http://127.0.0.1:8080
+#   docker compose run --rm test-deps         install the hash-pinned test packages (once / after updates)
+#   docker compose run --rm test              browser test suite (Chromium + Firefox, no network)
+#   docker compose run --rm checks            project-specific checks (scripts/static-checks.sh)
+#   docker compose run --rm gitleaks          secrets in git history
+#   docker compose run --rm semgrep           static analysis
+#   docker compose run --rm trivy             vulnerable deps, misconfigurations, secrets
+#
+# All services: non-root user, no Linux capabilities, read-only root filesystem (writable /tmp
+# only), no privilege escalation. The project is mounted read-only except for `dev`.
+
+x-hardening: &hardening
+  read_only: true
+  cap_drop: [ALL]
+  security_opt: ["no-new-privileges:true"]
+  init: true
+  tmpfs:
+    - /tmp:rw,size=1g
+  environment:
+    HOME: /tmp
+    PIP_CONFIG_FILE: /work/pip.conf    # pip hardening, the pip equivalent of .npmrc
+
+x-source-ro: &source-ro
+  - ./:/work:ro
+
+services:
+  dev:
+    build: .
+    image: user-sec-tools/dev:local
+    <<: *hardening
+    volumes:
+      - ./:/work
+
+  web:
+    image: python:3.12.14-slim-bookworm@sha256:392307d22300de8b5986851a12d9176dfc0fc073e65bf6523ebd7dcbeb23564e
+    <<: *hardening
+    user: "1000:1000"
+    working_dir: /work
+    volumes: *source-ro
+    ports:
+      - "127.0.0.1:8080:8080"          # reachable from this computer only
+    command: ["python", "tools/serve.py", "8080", "0.0.0.0"]
+
+  # The Playwright image ships the browsers but not the Python package. test-deps installs the
+  # hash-pinned packages (tests/requirements.txt, enforced by pip.conf) into .cache/pydeps, so the
+  # test run itself needs no network and no image build.
+  test-deps:
+    image: &playwright mcr.microsoft.com/playwright/python:v1.63.0-noble@sha256:72bd171a9ffc2b4b59532aaa6210e21014d07093120dc25528870c0b840da1f0
+    <<: *hardening
+    user: "1000:1000"
+    working_dir: /work
+    volumes:
+      - ./:/work:ro
+      - ./.cache:/work/.cache          # the only writable path
+    command: ["pip", "install", "--target", "/work/.cache/pydeps", "--upgrade", "-r", "tests/requirements.txt"]
+
+  test:
+    image: *playwright
+    <<: *hardening
+    user: "1000:1000"
+    working_dir: /work
+    volumes: *source-ro
+    network_mode: none                 # the suite needs no network: loopback server + fake transport
+    shm_size: 1gb                      # Chromium uses /dev/shm heavily
+    environment:
+      HOME: /tmp
+      PYTHONPATH: /work/.cache/pydeps
+      PYTHONDONTWRITEBYTECODE: "1"
+    command: ["python", "tests/run_headless.py", "chromium", "firefox"]
+
+  checks:
+    image: python:3.12.14-slim-bookworm@sha256:392307d22300de8b5986851a12d9176dfc0fc073e65bf6523ebd7dcbeb23564e
+    <<: *hardening
+    user: "1000:1000"
+    working_dir: /work
+    volumes: *source-ro
+    network_mode: none
+    command: ["sh", "scripts/static-checks.sh"]
+
+  gitleaks:
+    image: zricethezav/gitleaks:v8.30.1@sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f
+    <<: *hardening
+    user: "1000:1000"
+    volumes: *source-ro
+    network_mode: none
+    environment:
+      HOME: /tmp
+      # The mount belongs to another uid; tell git it's safe without writing a config file.
+      GIT_CONFIG_COUNT: "1"
+      GIT_CONFIG_KEY_0: safe.directory
+      GIT_CONFIG_VALUE_0: "*"
+    command: ["git", "--no-banner", "--redact", "/work"]
+
+  semgrep:
+    image: semgrep/semgrep:1.179.0@sha256:93963d9295a366f59e4850127b1550400ee7b388f04fe144e4a1f6325d96e01b
+    <<: *hardening
+    user: "1000:1000"
+    working_dir: /work
+    volumes: *source-ro
+    environment:
+      HOME: /tmp
+      SEMGREP_SEND_METRICS: "off"
+    # Network: downloads the rule packs below from semgrep.dev.
+    command: ["semgrep", "scan", "--metrics=off", "--error",
+              "--config", "p/javascript", "--config", "p/python",
+              "--config", "p/dockerfile", "--config", "p/security-audit", "/work"]
+
+  trivy:
+    image: aquasec/trivy:0.74.0@sha256:62b1e65e8869bc4b4c6aa4fa2b21595256c7c2f6018a9d9ad61caf87187c1969
+    <<: *hardening
+    user: "1000:1000"
+    volumes:
+      - ./:/work:ro
+      - ./.cache/trivy:/cache          # vulnerability DB, kept between runs (git-ignored)
+    # Network: downloads the vulnerability database.
+    command: ["fs", "--cache-dir", "/cache", "--no-progress", "--skip-version-check",
+              "--exit-code", "1", "--severity", "HIGH,CRITICAL",
+              "--scanners", "vuln,misconfig,secret", "--skip-dirs", "/work/.venv",
+              "--skip-dirs", "/work/node_modules", "--skip-dirs", "/work/.cache", "/work"]

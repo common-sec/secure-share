@@ -4,6 +4,27 @@ All notable changes, one section per version. See [docs/ROADMAP.md](docs/ROADMAP
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-12
+
+### Added
+- **Containerised development**: `compose.yaml` runs every task in its own container: `dev` (Node
+  24 + npm, the only image we build), `web`, `test-deps` / `test` (Microsoft's Playwright image),
+  `checks`, `gitleaks`, `semgrep`, `trivy`. Each runs non-root, with no capabilities, a read-only
+  root filesystem, `no-new-privileges`, and a read-only project mount where possible. Tests and
+  checks run with no network.
+- **Pinning everywhere**: images by tag + digest; GitHub Actions by commit SHA; Python test
+  packages (full tree) by exact version + SHA-256 hashes.
+- **Supply-chain rules**: `.npmrc` (`ignore-scripts`, `min-release-age=7`, `save-exact`) and
+  `pip.conf` (`require-hashes`, wheels only, `uploaded-prior-to = P7D`), matched by a 7-day
+  Dependabot cooldown for docker, docker-compose, pip, npm and actions.
+- `scripts/static-checks.sh` fails if anything loses its pin or hardening.
+- `scripts/setup-docker-wsl.sh`: check, Compose-only, or full rootless Docker setup in WSL.
+- docs/DEVELOPMENT.md.
+
+### Changed
+- CI runs the same containers: the test job plus one job per scanner.
+- Test tooling updated to Playwright 1.63.0.
+
 ## [0.2.0] - 2026-10-11
 
 ### Added

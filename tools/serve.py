@@ -20,6 +20,9 @@ class Handler(http.server.SimpleHTTPRequestHandler):
 
 if __name__ == "__main__":
     port = int(sys.argv[1]) if len(sys.argv) > 1 else 8080
-    with http.server.ThreadingHTTPServer(("127.0.0.1", port), Handler) as httpd:
-        print(f"Serving on http://localhost:{port}")
+    # Loopback by default. Inside the dev container we bind 0.0.0.0 and compose publishes the port
+    # on the host's 127.0.0.1 only.
+    host = sys.argv[2] if len(sys.argv) > 2 else "127.0.0.1"
+    with http.server.ThreadingHTTPServer((host, port), Handler) as httpd:
+        print(f"Serving on http://localhost:{port}", flush=True)
         httpd.serve_forever()

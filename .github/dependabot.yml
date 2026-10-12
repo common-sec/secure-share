@@ -1,0 +1,55 @@
+# Dependabot keeps every pinned dependency up to date, with the same 7-day minimum age as
+# .npmrc (min-release-age=7): a new release is only proposed once it has been public for a week.
+# Security updates are not delayed by the cooldown.
+version: 2
+
+updates:
+  # Images used directly by compose.yaml (tests, scanners, web), pinned by tag + digest.
+  - package-ecosystem: docker-compose
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    commit-message:
+      prefix: "deps(compose)"
+
+  # Base image of the dev Dockerfile (pinned by tag + digest).
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    commit-message:
+      prefix: "deps(docker)"
+
+  # Test tooling (tests/requirements.txt, pinned with hashes; installed under pip.conf rules).
+  - package-ecosystem: pip
+    directory: /tests
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    commit-message:
+      prefix: "deps(pip)"
+
+  # npm packages (package.json / package-lock.json, from roadmap 0.4.0 on).
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    commit-message:
+      prefix: "deps(npm)"
+
+  # GitHub Actions used by CI (pinned by commit SHA).
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    commit-message:
+      prefix: "deps(actions)"

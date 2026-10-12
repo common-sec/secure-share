@@ -41,6 +41,7 @@ your data.
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Components, data flow, **network connections and ports**, third parties |
 | [docs/PROTOCOL.md](docs/PROTOCOL.md) | Exact key derivation, handshake and message formats (for auditors) |
 | [docs/THREAT_MODEL.md](docs/THREAT_MODEL.md) | What is protected, against whom, and the known limits |
+| [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) | The containerised dev environment, pinning and supply-chain rules |
 | [docs/TESTING.md](docs/TESTING.md) | How the test suite works and how to run it |
 | [SECURITY.md](SECURITY.md) | Reporting vulnerabilities, audit scope |
 | [docs/ROADMAP.md](docs/ROADMAP.md) | What we're working on (one feature per version) and what's next |
@@ -49,16 +50,16 @@ your data.
 
 ## Run it
 
-The Web Crypto API needs a secure context (HTTPS or `localhost`).
+Everything runs in containers (Docker + Compose; see [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)):
 
 ```bash
-python tools/serve.py 8080
+docker compose up web                                                 # app at http://127.0.0.1:8080
+docker compose run --rm test-deps && docker compose run --rm test     # browser tests
+docker compose run --rm semgrep                                       # or trivy, gitleaks, checks
 ```
 
-Open http://localhost:8080 for the app and http://localhost:8080/tests/ for the test suite. To run
-the tests headlessly in Chromium and Firefox, the same way CI does: `python tests/run_headless.py`
-(one-time setup in [docs/TESTING.md](docs/TESTING.md)). Any
-static host works for deployment (GitHub Pages, Cloudflare Pages, Netlify).
+The app itself is static files: any static host works for deployment (GitHub Pages, Cloudflare
+Pages, Netlify). The Web Crypto API needs a secure context (HTTPS or `localhost`).
 
 ## Design principles
 

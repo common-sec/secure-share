@@ -1,17 +1,15 @@
-"""Run the browser test suite headlessly, on a developer machine or in CI.
+"""Run the browser test suite headlessly.
 
-Setup (once):
-    python -m pip install -r tests/requirements.txt
-    python -m playwright install chromium firefox
+Normally run inside the pinned Playwright container (see docs/TESTING.md):
+    docker compose run --rm test-deps    # hash-pinned Python packages, once
+    docker compose run --rm test         # = python tests/run_headless.py chromium firefox
 
-Run:
-    python tests/run_headless.py                 # Chromium and Firefox
+Options:
     python tests/run_headless.py chromium        # one browser
-    python tests/run_headless.py msedge          # an installed browser (msedge, chrome) instead of
-                                                 # Playwright's bundled builds: no browser download needed
     python tests/run_headless.py --filter room   # subset (matches file and test name)
+    python tests/run_headless.py msedge          # an installed Edge/Chrome (outside containers only)
 
-Serves the repository on a free local port with tools/serve.py's handler, opens /tests/ in each
+Serves the repository on a free loopback port with tools/serve.py's handler, opens /tests/ in each
 browser, prints every result and exits non-zero if anything fails.
 """
 import argparse

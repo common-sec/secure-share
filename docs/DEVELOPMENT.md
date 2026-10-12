@@ -1,0 +1,93 @@
+# Development environment
+
+**All development, testing and scanning happens in containers.** Nothing is installed on the host
+besides a container engine, so a malicious dependency or tool can only reach the project folder,
+not the rest of your machine.
+
+## Requirements
+
+Docker Engine with Compose v2. On Windows, Docker inside WSL2 (Ubuntu) works. The project is
+reached from WSL at `/mnt/c/...`.
+
+```bash
+bash scripts/setup-docker-wsl.sh --check          # read-only: what's installed, what's missing
+bash scripts/setup-docker-wsl.sh --compose-only   # keep the distro's Docker, add Compose + Buildx
+bash scripts/setup-docker-wsl.sh                  # full rootless Docker install (recommended)
+```
+
+Prefer **rootless Docker**: its daemon runs as your user, not root. With the classic root daemon,
+membership of the `docker` group is equivalent to root on that machine (or WSL distro).
+
+## Everyday commands
+
+Run from the repository root (in WSL on Windows):
+
+| Command | What it does |
+|---|---|
+| `docker compose up web` | Serve the app at http://127.0.0.1:8080 |
+| `docker compose run --rm dev` | Shell in the Node dev image (npm, scripts) |
+| `docker compose run --rm test-deps` | Install the hash-pinned test packages into `.cache/pydeps` (once, and after updates) |
+| `docker compose run --rm test` | Browser test suite, Chromium + Firefox, **no network** |
+| `docker compose run --rm checks` | Project rules (`scripts/static-checks.sh`) |
+| `docker compose run --rm gitleaks` | Secrets anywhere in git history |
+| `docker compose run --rm semgrep` | Static analysis (JavaScript, Python, Dockerfile, security audit) |
+| `docker compose run --rm trivy` | Vulnerable dependencies, misconfigurations, secrets |
+
+CI (`.github/workflows/ci.yml`) runs exactly these commands.
+
+## How it's put together
+
+- **One image is built:** `Dockerfile` = the official Node image (pinned by digest) and its
+  non-root `node` user. It's used for npm and project scripts.
+- **Everything else is an official image used as-is**, declared in `compose.yaml` and pinned
+  there by tag and digest: Python (serves the app, runs the checks), Microsoft's Playwright image
+  (browsers), Gitleaks, Semgrep, Trivy. Each tool runs in its own container.
+- **Every container is hardened the same way:**
+  - non-root user;
+  - no Linux capabilities (`cap_drop: ALL`) and `no-new-privileges`;
+  - read-only root filesystem, with only `/tmp` writable;
+  - the project mounted **read-only**, except for `dev`, and `.cache/` for the tools that write there;
+  - the test suite and the checks run with **no network at all**;
+  - the web server is published on `127.0.0.1` only.
+- **No Docker-in-Docker**, no Docker socket mounted anywhere.
+
+## Pinning and supply-chain rules
+
+| What | Pinned by | Hardening | Updated by |
+|---|---|---|---|
+| Dev base image | Tag + digest in `Dockerfile` | Non-root | Dependabot (`docker`) |
+| Tool images | Tag + digest in `compose.yaml` | Non-root, no caps, read-only | Dependabot (`docker-compose`) |
+| Python test packages | Exact version + SHA-256 of every file, the whole tree (`tests/requirements.txt`) | `pip.conf`: `require-hashes`, wheels only (no build code runs), uploaded ≥ 7 days ago | Dependabot (`pip`) |
+| npm packages (from 0.4.0) | `package-lock.json`, exact versions | `.npmrc`: `ignore-scripts`, `min-release-age=7`, `save-exact` | Dependabot (`npm`) |
+| GitHub Actions | Commit SHA | `persist-credentials: false`, read-only token | Dependabot (`github-actions`) |
+
+All of these use a **7-day minimum age**: npm `min-release-age=7`, pip
+`uploaded-prior-to = P7D`, and a Dependabot `cooldown` of 7 days. A freshly published malicious
+release usually gets detected and pulled within days, so it never reaches us. Security updates
+aren't delayed.
+
+`scripts/static-checks.sh` (the `checks` service, also in CI) fails if any image or action loses
+its pin, or if the npm or pip hardening settings are removed.
+
+### Updating a pin by hand
+
+Normally Dependabot does it. To do it manually, pick a version at least 7 days old and take its
+digest from the registry:
+
+```bash
+docker buildx imagetools inspect node:24.20.0-bookworm-slim --format '{{json .Manifest.Digest}}'
+```
+
+Python packages: update the version and **all** `--hash` lines in `tests/requirements.txt`. The
+hashes are listed on each release's PyPI page, or generate them with `pip download` / `pip hash`
+inside a container.
+
+## Why not …
+
+- **Dev containers (VS Code)**: they typically rely on Docker-in-Docker or a mounted Docker
+  socket, which gives the container control over the host's Docker.
+- **mise**: good at pinning tools *on the host*, but we don't install tools on the host. Image
+  digests already pin every tool, and mise's OCI backend is still experimental.
+- **One big image with every tool**: harder to audit and update, and every tool would share one
+  attack surface. Separate official images are smaller, independently pinned and independently
+  updated.

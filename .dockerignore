@@ -1,0 +1,3 @@
+# The dev image COPYs nothing: source code is mounted at run time, never baked into images.
+# So nothing (including .git, .venv or secrets) is sent to the builder.
+**

@@ -40,17 +40,17 @@ Template for a new idea:
 **Proposal:** a Python runner (Python already serves the app) using Playwright, used both locally and in CI.
 
 ## No runtime CDN (vendor Trystero)
-**Status:** ✅ Accepted → 0.3.0, as part of the reproducible TypeScript build
+**Status:** ✅ Accepted → 0.4.0, as part of the reproducible TypeScript build
 **Problem:** jsDelivr serves the P2P library at runtime. Whoever serves the JS controls the app.
 **Proposal:** commit a pinned build of Trystero to `src/vendor/`, record its checksum, and drop the CDN from the CSP.
 
 ## Type checking with JSDoc
-**Status:** ❌ Rejected, superseded by full TypeScript with a reproducible build (0.3.0). Once
+**Status:** ❌ Rejected, superseded by full TypeScript with a reproducible build (0.4.0). Once
 there's a build system for pinned dependencies anyway, TypeScript gives the same checks with less
 noise. Reproducible builds keep "served code = reviewed code" verifiable.
 
 ## Support & feedback links
-**Status:** ✅ Accepted → 0.4.0
+**Status:** ✅ Accepted → 0.5.0
 **Problem:** there's no way for people to support or rate the project, and no visibility for the portfolio.
 **Proposal:** plain links only (no embedded widgets, buttons, badges or counters loaded from third parties):
 - **Developers:** "★ Star on GitHub" link to the repository. Not GitHub's button script.
@@ -63,7 +63,7 @@ noise. Reproducible builds keep "served code = reviewed code" verifiable.
 **Trade-offs:** none for security. Clicking a link is the user's choice and leaves the app.
 
 ## AI-assisted memorable passphrases
-**Status:** ✅ Accepted → 0.5.0
+**Status:** ✅ Accepted → 0.6.0
 **Problem:** random words are secure but hard to remember as a list. A sentence is easier.
 **Proposal:**
 1. **JS (CSPRNG) chooses** the words from the word list and a number.
@@ -94,6 +94,20 @@ noise. Reproducible builds keep "served code = reviewed code" verifiable.
 - **Availability:** Chromium-based browsers only, so the option is hidden when unsupported.
 - **The model can't weaken the password:** if it drops a word, validation fails and we retry.
 
+## Sandboxed development environment
+**Status:** ✅ Accepted → 0.3.0 (done)
+**Problem:** installing dev tooling and packages on the host gives any compromised dependency
+the developer's full user rights.
+**Proposal:** every task in a pinned, hardened container: one small Node dev image, and official
+images used as-is for tests and each scanner. See docs/DEVELOPMENT.md.
+
+## Rootless container engine for development
+**Status:** 💡 Proposed
+**Problem:** the current WSL setup uses Docker's root daemon, and `docker` group membership is
+root-equivalent inside WSL.
+**Proposal:** switch to rootless Docker (`scripts/setup-docker-wsl.sh` already supports it) or
+rootless Podman.
+
 ## Usage statistics from access logs
 **Status:** 💡 Proposed
 **Problem:** we don't know whether anyone uses the tools.
@@ -111,7 +125,7 @@ they stay in one app. See *Extract reusable libraries* instead.
 `<passphrase-generator>` web component), keeping the app itself whole.
 
 ## Full TypeScript with a reproducible build
-**Status:** ✅ Accepted → 0.3.0
+**Status:** ✅ Accepted → 0.4.0
 **Problem:** dependencies are fetched from a CDN at runtime, and nothing checks types.
 **Proposal:** TypeScript plus a build that installs pinned, locked dependencies, bundles them, and
 produces byte-identical output on every rebuild, so releases can be verified against the source.
