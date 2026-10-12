@@ -1,13 +1,14 @@
-import * as home from './tools/home.js';
 import * as password from './tools/password.js';
 import * as chat from './tools/chat.js';
 import * as share from './tools/share.js';
 
+export const APP_NAME = 'Secure Sharing';
+
+// Secure Share is the home page; the title names the tool in use.
 const routes = {
-  '': { mod: home, title: 'User Sec Tools' },
-  password: { mod: password, title: 'Password Generator · User Sec Tools' },
-  chat: { mod: chat, title: 'Secure Chat · User Sec Tools' },
-  share: { mod: share, title: 'Secure Share · User Sec Tools' },
+  share: { mod: share, title: `Share once · ${APP_NAME}` },
+  chat: { mod: chat, title: `Chat · ${APP_NAME}` },
+  password: { mod: password, title: `Passwords · ${APP_NAME}` },
 };
 
 let cleanup = null;
@@ -28,10 +29,11 @@ function render() {
   view.replaceChildren();
 
   const { name, params } = parseHash();
-  const route = routes[name] ?? routes[''];
+  const key = routes[name] ? name : 'share';
+  const route = routes[key];
   document.title = route.title;
   for (const a of document.querySelectorAll('.nav a')) {
-    a.classList.toggle('active', a.dataset.route === name);
+    a.classList.toggle('active', a.dataset.route === key);
   }
   cleanup = route.mod.mount(view, params);
   window.scrollTo(0, 0);

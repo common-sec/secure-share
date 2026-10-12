@@ -1,20 +1,21 @@
 // Memorable passphrases that are not just dictionary words.
 //
-// Default ("memorable") phrase, e.g.  Karrotish~Behind~Stoneness~Pencils~Over~Quailing42
-//   - content words: common words, each with a random ending, the way people bend words when
-//     speaking a foreign language: plurals, adjectives, adverbs, nouns ("-s -y -ish -ful -less
-//     -ly -ness -ism -ist -ize -ed -ing -ery -ation -ment", or none)
+// Default ("memorable") phrase, e.g.  Stone~Behind~Karrotish~Pencils42~Over~Quail
+//   - content words: common words; half of them keep their plain form, the others get an ending
+//     the way people bend words when speaking a foreign language: plurals, adjectives, adverbs,
+//     nouns ("-s -y -ish -ful -less -ly -ness -ism -ist -ize -ed -ing -ery -ation -ment")
 //   - at least one content word also gets a sound-alike spelling (carrot -> karrot,
 //     squirrel -> skwirrel) or a doubled letter (lemon -> lemmon), so the phrase is never
 //     made only of dictionary words
-//   - linking words between pairs of content words (behind, over, within...) so it reads
-//     like a little sentence
-//   - capitals only at syllable starts, one random separator used throughout, a number
+//   - one linking word (behind, over, within...) per pair of content words, in randomly chosen
+//     gaps, so it reads like a little sentence without a fixed shape
+//   - capitals only at syllable starts, one random separator used throughout, a number on a
+//     random word
 //
 // Entropy: every random choice comes from crypto.getRandomValues. Each word slot's entropy is
 // the exact Shannon entropy of its output distribution (computed once at load), so different
 // choices that spell the same word aren't double counted.
-import { randomInt, pick } from './random.js';
+import { randomInt, pick, shuffle } from './random.js';
 import { WORDS, WORD_SET } from './words.js';
 
 export const STYLES = {
@@ -56,6 +57,17 @@ function shannon(masses) {
 
 // ---- endings ----
 const ENDINGS = ['', 's', 'y', 'ish', 'ful', 'less', 'ly', 'ness', 'ism', 'ist', 'ize', 'ed', 'ing', 'ery', 'ation', 'ment'];
+const BENT_ENDINGS = ENDINGS.slice(1);
+
+/** Half the time a word keeps its plain form; otherwise it gets one of the endings. */
+const pickEnding = () => (randomInt(2) ? '' : pick(BENT_ENDINGS));
+
+/** Adds the probability mass of every (word, ending) outcome of pickEnding to `masses`. */
+function addEndingMasses(masses, word, weight) {
+  const add = (out, p) => masses.set(out, (masses.get(out) ?? 0) + p);
+  add(inflect(word, ''), weight / 2);
+  for (const e of BENT_ENDINGS) add(inflect(word, e), weight / 2 / BENT_ENDINGS.length);
+}
 
 /** Appends an ending with simple English spelling rules (box -> boxes, stone -> stony, berry -> berries). */
 export function inflect(word, ending) {
@@ -153,21 +165,17 @@ function getTables() {
   const respellable = WORDS.map((w) => [w, respellings(w)]).filter(([, r]) => r.length > 0);
 
   const plain = new Map();
-  for (const w of WORDS) for (const e of ENDINGS) {
-    const out = inflect(w, e);
-    plain.set(out, (plain.get(out) ?? 0) + 1 / (WORDS.length * ENDINGS.length));
-  }
+  for (const w of WORDS) addEndingMasses(plain, w, 1 / WORDS.length);
   const bent = new Map();
-  for (const [, variants] of respellable) for (const v of variants) for (const e of ENDINGS) {
-    const out = inflect(v, e);
-    bent.set(out, (bent.get(out) ?? 0) + 1 / (respellable.length * variants.length * ENDINGS.length));
+  for (const [, variants] of respellable) {
+    for (const v of variants) addEndingMasses(bent, v, 1 / (respellable.length * variants.length));
   }
 
   // Average bits per token from the "random syllables" capitals (one of k starts, or none).
   let extra = 0;
   const samples = 4000;
   const capBits = (w) => log2(syllableStarts(w).length + 1);
-  for (let i = 0; i < samples; i++) extra += capBits(inflect(pick(WORDS), pick(ENDINGS)));
+  for (let i = 0; i < samples; i++) extra += capBits(inflect(pick(WORDS), pickEnding()));
   const linkExtra = LINKING_WORDS.reduce((n, w) => n + capBits(w), 0) / LINKING_WORDS.length;
 
   tables = {
@@ -188,12 +196,18 @@ function contentWords(o) {
   do { bend = Array.from({ length: o.w }, () => randomInt(2) === 1); } while (!bend.includes(true));
   return bend.map((b) => {
     const base = b ? pick(pick(t.respellable)[1]) : pick(WORDS);
-    return inflect(base, pick(ENDINGS));
+    return inflect(base, pickEnding());
   });
 }
 
-/** Linking words go between each pair of content words: A link B, C link D, ... */
+/** One linking word per pair of content words, placed in randomly chosen gaps between them. */
 const linkCount = (o) => (o.link ? Math.floor(o.w / 2) : 0);
+
+function binomial(n, k) {
+  let r = 1;
+  for (let i = 1; i <= k; i++) r = (r * (n - k + i)) / i;
+  return r;
+}
 
 export function generatePhrase(o) {
   const content = contentWords(o);
@@ -201,10 +215,13 @@ export function generatePhrase(o) {
     const i = randomInt(content.length);
     content[i] += String(randomInt(100)).padStart(2, '0');
   }
+  // Gap i is the space after content word i; pick linkCount distinct gaps at random.
+  const gaps = shuffle(Array.from({ length: content.length - 1 }, (_, i) => i));
+  const linked = new Set(gaps.slice(0, linkCount(o)));
   const tokens = [];
   content.forEach((word, i) => {
     tokens.push(word);
-    if (o.link && i % 2 === 0 && i + 1 < content.length) tokens.push(pick(LINKING_WORDS));
+    if (linked.has(i)) tokens.push(pick(LINKING_WORDS));
   });
 
   const capped = tokens.map((t) => {
@@ -243,7 +260,7 @@ export function phraseEntropy(o) {
     // -1 bit: a bent word can occasionally spell the same as an unbent one.
     bits = log2(masks) + expectedBent * t.bentBits + (w - expectedBent) * t.plainBits - 1;
   }
-  bits += links * log2(LINKING_WORDS.length);
+  bits += links * log2(LINKING_WORDS.length) + log2(binomial(w - 1, links));
   if (o.sep === 'same') bits += log2(RANDOM_SEPARATORS.length);
   if (o.sep === 'rand') bits += gaps * log2(RANDOM_SEPARATORS.length);
   if (o.cap === 'syllable') {
@@ -254,7 +271,9 @@ export function phraseEntropy(o) {
   return bits;
 }
 
-/** Passphrase for chat and share rooms: easy to read aloud and type. */
+/** Settings for chat and share room passphrases: short enough to read aloud, no fixed pattern. */
+export const ROOM_PHRASE = { w: 3, style: 'memorable', link: true, sep: 'same', cap: 'first', num: true };
+
 export function roomPassphrase() {
-  return generatePhrase({ w: 3, style: 'memorable', link: true, sep: '-', cap: 'none', num: false });
+  return generatePhrase(ROOM_PHRASE);
 }

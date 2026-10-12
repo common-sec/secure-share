@@ -60,20 +60,13 @@ main.container { flex: 1; padding-top: 24px; padding-bottom: 32px; }
 
 .footer { color: var(--muted); font-size: .85rem; padding-bottom: 24px; text-align: center; }
 
-.hero { padding: 24px 0 8px; }
 .lead { color: var(--muted); margin: 0 0 1rem; }
 .page-head { margin-bottom: 16px; }
 
-.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
 .card {
   background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
   padding: 20px; margin-bottom: 16px;
 }
-.card-link { display: block; color: var(--text); text-decoration: none; transition: border-color .15s, transform .15s; }
-.card-link:hover { border-color: var(--accent); transform: translateY(-2px); }
-.card-link p { color: var(--muted); }
-.card-icon { font-size: 1.8rem; }
-.card-cta { color: var(--accent); font-weight: 600; }
 
 .btn {
   font: inherit; font-size: .95rem; cursor: pointer; border-radius: 8px; padding: 8px 14px;
@@ -134,6 +127,10 @@ textarea { resize: vertical; }
 
 /* Shared bits */
 .narrow { max-width: 560px; }
+.guide { color: var(--muted); font-size: .92rem; }
+.guide h2 { color: var(--text); }
+.guide ul { padding-left: 1.2rem; margin: 0; }
+.guide li { margin: 6px 0; }
 .row.tight { margin-top: 0; gap: 6px; }
 .status-big { font-size: 1.05rem; margin: 16px 0 8px; }
 .warn { color: var(--fair); }

@@ -6,13 +6,15 @@
 index.html  ── strict CSP, loads src/main.js (hash router)
 │
 ├── src/tools/             UI, one module per tool
-│   ├── password.js        password / passphrase generator
+│   ├── share.js           Secure Share UI (sender + recipient), the home page
 │   ├── chat.js            Secure Chat UI
-│   └── share.js           Secure Share UI (sender + recipient)
+│   ├── password.js        password / passphrase generator
+│   └── widgets.js         shared UI: strength meter, masked passphrase field, copy row
 │
 ├── src/lib/               logic, no DOM except dom.js
 │   ├── random.js          unbiased CSPRNG helpers (crypto.getRandomValues + rejection sampling)
 │   ├── passphrase.js      passphrase generator + exact entropy estimates
+│   ├── strength.js        strength labels + conservative estimate for typed passphrases
 │   ├── words.js           word list used by the generator
 │   ├── crypto.js          key derivation, AES-GCM, ECDSA, HMAC, safety codes (Web Crypto only)
 │   ├── room.js            SecureRoom: the protocol (handshake, approvals, relay, files)

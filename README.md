@@ -1,4 +1,6 @@
-# User Sec Tools
+# Secure Sharing
+
+*(repository: user-sec-tools)*
 
 **Try it:** https://gum0x.github.io/user-sec-tools/
 
@@ -6,7 +8,7 @@
 
 Most ways of sending a password, a key or a confidential file to someone leave a copy behind: in a
 chat history, an email server, a cloud drive, or a "one-time secret" service that stores it until
-it's read. User Sec Tools moves the data **straight from one browser to the other**, encrypted end to
+it's read. Secure Sharing moves the data **straight from one browser to the other**, encrypted end to
 end, and keeps nothing afterwards. It's a static web page with no backend, no accounts, and no
 tracking. You can read all of it, run it locally, or host it yourself.
 
@@ -14,9 +16,9 @@ The aim is to make secure sharing easy for anyone: **privacy by default, not ano
 
 | Tool | What it does |
 |---|---|
-| **Secure Share** (`#/share`) | Send text and/or files once to one person. They need the link **and** a passphrase. Once delivered, the link is dead. |
-| **Secure Chat** (`#/chat`) | Group chat with file sharing. The host approves every member, messages are signed and encrypted, and the room disappears when the host closes it. |
-| **Password Generator** (`#/password`) | Memorable passphrases that are not just dictionary words (`Karrotish~Behind~Stoneness~Pencils~Over~Quailing42`), or random-character passwords. |
+| **Secure Share** (home page) | Send text and/or files once to one person. They need the link **and** a passphrase. Once delivered, the link is dead. |
+| **Secure Chat** (`#/chat`) | For several things to exchange, replies, or more than two people: group chat with file sharing. The host approves every member, messages are signed and encrypted, and the room disappears when the host closes it. |
+| **Password Generator** (`#/password`) | Memorable passphrases that are not just dictionary words (`Stone~Behind~Karrotish~Pencils42~Over~Quail`), or random-character passwords. |
 
 ## How it works, in short
 

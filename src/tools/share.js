@@ -1,7 +1,7 @@
 import { h, copyText, formatBytes, safeFileName } from '../lib/dom.js';
-import { roomPassphrase } from '../lib/passphrase.js';
 import { SecureRoom, DENY_REASONS, MAX_TEXT, MAX_FILE_BYTES } from '../lib/room.js';
-import { readInvite, passphraseField, copyRow } from './chat.js';
+import { readInvite } from './chat.js';
+import { passphraseField, copyRow } from './widgets.js';
 
 export function mount(root, params) {
   let session = null;
@@ -31,7 +31,7 @@ function sendForm(body, setSession) {
   const fileInput = h('input', { type: 'file', multiple: true, hidden: true, onchange: (e) => { addFiles(e.target.files); e.target.value = ''; } });
   const drop = h('div', { class: 'dropzone' }, 'Drop files here, or ',
     h('button', { type: 'button', class: 'btn btn-small', onclick: () => fileInput.click() }, 'choose files'), fileInput);
-  const pass = passphraseField(roomPassphrase());
+  const pass = passphraseField({ generate: true });
   const approve = h('input', { type: 'checkbox' });
   const error = h('p', { class: 'error', hidden: true });
 
@@ -79,6 +79,16 @@ function sendForm(body, setSession) {
   error,
   h('div', { class: 'row' }, submit),
   ));
+  body.append(h('aside', { class: 'card narrow guide' },
+    h('h2', null, 'Which one should I use?'),
+    h('ul', null,
+      h('li', null, h('strong', null, 'Secure Share'), ' (this page): send something ', h('em', null, 'once'),
+        ' to ', h('em', null, 'one'), ' person: a password, a key, a document. The link stops working after delivery.'),
+      h('li', null, h('strong', null, h('a', { href: '#/chat' }, 'Secure Chat')), ': several things to exchange, replies, or more than two people. You host a private room and approve everyone who joins.'),
+      h('li', null, 'Either way, nothing is uploaded: data goes straight from browser to browser, end-to-end encrypted, and both people need the link ',
+        h('em', null, 'and'), ' the passphrase.'),
+    ),
+  ));
 }
 
 function senderView(body, room, { text, files, passphrase }) {
@@ -100,7 +110,7 @@ function senderView(body, room, { text, files, passphrase }) {
   body.replaceChildren(h('div', { class: 'card narrow' },
     steps,
     copyRow('One-time link', room.link('share'), true),
-    copyRow('Passphrase', passphrase, false),
+    copyRow('Passphrase', passphrase, true),
     h('p', { class: 'hint warn' }, '⚠ Keep this tab open until the delivery completes. Nothing is stored on a server, so closing it cancels the share.'),
     status, extra,
     h('div', { class: 'row' }, cancel),
@@ -153,7 +163,7 @@ function senderView(body, room, { text, files, passphrase }) {
 
 // ---------------------------------------------------------------- recipient
 function receiveForm(body, invite, setSession) {
-  const pass = passphraseField('');
+  const pass = passphraseField({ generate: false });
   const error = h('p', { class: 'error', hidden: true });
   const submit = h('button', { class: 'btn btn-primary', type: 'submit' }, 'Receive');
   body.replaceChildren(h('form', { class: 'card narrow', onsubmit: async (e) => {

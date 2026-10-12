@@ -1,6 +1,7 @@
 import { h, copyText } from '../lib/dom.js';
 import { pick, shuffle } from '../lib/random.js';
 import { generatePhrase, phraseEntropy, PHRASE_DEFAULTS, STYLES, SEPARATOR_OPTIONS, CAPS } from '../lib/passphrase.js';
+import { strengthMeter } from './widgets.js';
 
 const SETS = {
   lower: 'abcdefghijklmnopqrstuvwxyz',
@@ -86,20 +87,11 @@ function generateOne(s) {
   return { value: generatePhrase(o), bits: phraseEntropy(o) };
 }
 
-function strength(bits) {
-  if (bits < 40) return ['Weak', 'weak'];
-  if (bits < 60) return ['Fair', 'fair'];
-  if (bits < 80) return ['Good', 'good'];
-  if (bits < 128) return ['Strong', 'strong'];
-  return ['Excellent', 'excellent'];
-}
-
 export function mount(root, params) {
   const s = readSettings(params);
 
   const output = h('ul', { class: 'pw-list' });
-  const meterFill = h('div', { class: 'meter-fill' });
-  const meterLabel = h('span', { class: 'meter-label' });
+  const meter = strengthMeter();
   const error = h('p', { class: 'error', hidden: true });
 
   // ---- controls ----
@@ -178,16 +170,12 @@ export function mount(root, params) {
         const copyBtn = h('button', { class: 'btn btn-small', onclick: () => copyText(r.value, copyBtn) }, 'Copy');
         output.append(h('li', null, h('code', { class: 'pw' }, r.value), copyBtn));
       }
-      const [label, cls] = strength(bits);
-      meterFill.className = `meter-fill ${cls}`;
-      meterFill.style.width = `${Math.min(100, (bits / 128) * 100)}%`;
-      meterLabel.textContent = `${label} · ≈${Math.floor(bits)} bits of entropy`;
+      meter.set(bits);
       error.hidden = true;
     } catch (e) {
       error.textContent = e.message;
       error.hidden = false;
-      meterFill.style.width = '0%';
-      meterLabel.textContent = '';
+      meter.set(null);
     }
   }
 
@@ -212,7 +200,7 @@ export function mount(root, params) {
     h('div', { class: 'card' },
       output,
       error,
-      h('div', { class: 'meter' }, h('div', { class: 'meter-track' }, meterFill), meterLabel),
+      meter.el,
       h('div', { class: 'row' }, h('button', { class: 'btn btn-primary', onclick: regenerate }, '↻ Regenerate')),
     ),
     h('div', { class: 'card' },

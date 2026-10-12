@@ -32,13 +32,15 @@ here once chosen.
 | 0.2.0 | **Tests run anywhere**: one headless test command that works on a developer machine and in CI | ✅ Done |
 | 0.3.0 | **Sandboxed development environment**: all dev, tests and scans in pinned, hardened containers; npm/pip/Dependabot supply-chain rules | ✅ Done |
 | 0.3.1 | **Dev environment refinements**: TruffleHog for secrets, a built test image, unit tests in `tests/unit/`, preview via compose | ✅ Done |
-| 0.4.0 | **End-to-end tests**: real UI flows across several browsers over real WebRTC, with Playwright | Planned |
-| 0.5.0 | **Reproducible TypeScript build**: pinned, locked dependencies bundled at build time, no runtime CDN | Planned |
-| 0.6.0 | **DAST and fuzzing**: dynamic scanning of the served app, plus fuzzing of host and client (protocol and UI inputs) | Planned |
-| 0.7.0 | **OpenSSF Scorecard**: publish the repository and clear the Scorecard checks | Planned |
-| 0.8.0 | **Security posture management**: track every security check and repository setting continuously, in one place | Planned |
-| 0.9.0 | **Support & feedback links**: GitHub star, donations, "+1" rating; short privacy note | Planned |
-| 0.10.0 | **AI-assisted memorable passphrases** (on-device model, entropy kept by the CSPRNG) | Planned |
+| 0.4.0 | **First real-world test feedback**: Secure Share as the home page, clearer naming, stronger and masked room passphrases with a strength meter | ✅ Done |
+| 0.5.0 | **End-to-end tests**: real UI flows across several browsers over real WebRTC, with Playwright | Planned |
+| 0.6.0 | **Reproducible TypeScript build**: pinned, locked dependencies bundled at build time, no runtime CDN | Planned |
+| 0.7.0 | **DAST and fuzzing**: dynamic scanning of the served app, plus fuzzing of host and client (protocol and UI inputs) | Planned |
+| 0.8.0 | **OpenSSF Scorecard**: publish the repository and clear the Scorecard checks | Planned |
+| 0.9.0 | **Security posture management**: track every security check and repository setting continuously, in one place | Planned |
+| 0.10.0 | **Support & feedback links**: GitHub star, donations, "+1" rating; short privacy note | Planned |
+| 0.11.0 | **AI-assisted memorable passphrases** (on-device model, entropy kept by the CSPRNG) | Planned |
+| 0.12.0 | **Local version of the app** (architecture to define: PWA, Electron, Docker image, single file) | Planned |
 | 1.0.0 | **Public release**: license, production deployment with security headers, release checklist, external protocol review | Planned |
 
 ### 0.2.0: Tests run anywhere ✅
@@ -66,12 +68,26 @@ by the Dependabot cooldown; CI runs the same containers; docs/DEVELOPMENT.md exp
   Python packages baked in under `pip.conf` rules, replacing the `test-deps` install step;
 - unit tests live in `tests/unit/` and run as the `test-unit` service (no network);
 - `scripts/static-checks.sh` and the `checks` service are removed: the repository hardening they
-  re-checked is done, and ongoing tracking moves to posture management (0.8.0);
+  re-checked is done, and ongoing tracking moves to posture management (0.9.0);
 - the Claude Code preview (`.claude/launch.json`) starts the app through `docker compose up web`;
 - docs/TESTING.md explains how Playwright runs both the unit tests (inside the browser, where Web
   Crypto, WebRTC and IndexedDB live) and the end-to-end tests.
 
-### 0.4.0: End-to-end tests
+### 0.4.0: First real-world test feedback ✅
+**Context:** first test of the published site, an iPhone on 5G against a computer on wifi, with
+both Secure Chat and Secure Share working across NAT.
+**Done when:**
+- **Secure Share is the home page**, with short guidance pointing to Secure Chat when several
+  things need to be exchanged, or back and forth;
+- the app has a clear name ("Secure Sharing"), and the page title changes with the selected tool;
+- **room passphrases (Chat and Share) have no fixed pattern**: capitals, a number, a random
+  separator, linking words at random positions, and not every word bent; the passphrase
+  generator changes accordingly;
+- passphrase fields show a **strength meter** (exact for generated passphrases, a conservative
+  estimate for typed or edited ones);
+- passphrases are **masked by default**, with a show/hide toggle, wherever they're entered or displayed.
+
+### 0.5.0: End-to-end tests
 **Goal:** test what users actually do, through the real UI, in real browsers, over real WebRTC.
 **Done when:**
 - a `test-e2e` service (Playwright, **with network**) drives several isolated browser contexts
@@ -83,7 +99,7 @@ by the Dependabot cooldown; CI runs the same containers; docs/DEVELOPMENT.md exp
   deterministic CI runs, plus an optional run against the public relays;
 - it runs in CI and is documented in docs/TESTING.md.
 
-### 0.5.0: Reproducible TypeScript build
+### 0.6.0: Reproducible TypeScript build
 **Goal:** move to TypeScript together with a build system, so that every dependency is
 downloaded once at a pinned, locked version, bundled into the app at build time, and never fetched
 from a third party at runtime. Anyone can rebuild a release and get byte-identical output, which is
@@ -97,7 +113,7 @@ how auditors check that the served files come from the reviewed source.
 - the dev container builds the bundle and the `test` container tests it, locally and in CI;
 - docs explain how to rebuild and verify a release.
 
-### 0.6.0: DAST and fuzzing
+### 0.7.0: DAST and fuzzing
 **Goal:** attack the running app the way an outsider would, on both sides of a connection.
 **Done when:**
 - **DAST:** a pinned OWASP ZAP container scans the served app (baseline, plus an active scan
@@ -111,7 +127,7 @@ how auditors check that the served files come from the reviewed source.
   and file names, on both host and client pages;
 - a time-boxed fuzz run in CI, longer runs on demand, and every crash reproduced as a regression test.
 
-### 0.7.0: OpenSSF Scorecard
+### 0.8.0: OpenSSF Scorecard
 **Goal:** a public repository that scores well on the [OpenSSF Scorecard](https://securityscorecards.dev),
 as a visible, independent signal of supply-chain hygiene.
 **Done when:**
@@ -124,7 +140,7 @@ as a visible, independent signal of supply-chain hygiene.
   CI-Tests, Vulnerabilities, Dangerous-Workflow, Binary-Artifacts, Maintained;
 - the OpenSSF Best Practices badge is started.
 
-### 0.8.0: Security posture management
+### 0.9.0: Security posture management
 **Goal:** know at any time which security checks run, which pass, and which repository settings
 protect the project, without re-checking hardening by hand on every commit.
 **Done when:**
@@ -143,19 +159,33 @@ protect the project, without re-checking hardening by hand on every commit.
   the tool that checks it, and its status;
 - pre-commit automation is decided (see [IDEAS.md](IDEAS.md#pre-commit-checks)).
 
-### 0.9.0: Support & feedback links
+### 0.10.0: Support & feedback links
 **Goal:** let developers star the project, users donate or leave a rating, without any embedded
 third-party script, image or cookie.
 **Done when:** plain links (GitHub, Patreon / Buy Me a Coffee, a rating site) appear in the footer
 and after a successful share, and a short "privacy by default" note explains what the app does
 and doesn't collect.
 
-### 0.10.0: AI-assisted memorable passphrases
+### 0.11.0: AI-assisted memorable passphrases
 **Goal:** an optional "make it a sentence" mode in which an on-device model turns CSPRNG-chosen
 words and a number into a memorable phrase, before the usual random variation rules.
 **Done when:** the design in [IDEAS.md](IDEAS.md#ai-assisted-memorable-passphrases) is
 implemented, the output is validated to contain every chosen word, the shown strength counts only
 CSPRNG choices, and it falls back cleanly when no on-device model is available.
+
+### 0.12.0: Local version of the app
+**Goal:** the same app usable without trusting a website at run time: installed or run locally.
+**Architecture to define**, comparing:
+- **PWA**: installable from the site, works offline after the first visit. Still delivered by the
+  website the first time and on updates.
+- **Electron** (or a lighter shell such as Tauri): desktop app with signed releases. A bigger
+  dependency and attack surface.
+- **Docker image**: serve the app locally from a pinned, reproducible image.
+- **Single self-contained HTML file**: download once, verify its checksum or signature, open
+  from disk. Needs a check that Web Crypto, WebRTC and storage work from a local file.
+
+**Done when:** the options are compared in docs, one or more are chosen and shipped, and releases
+are reproducible and verifiable (checksums or signatures).
 
 ### 1.0.0: Public release
 **Goal:** ready to publish and be audited.

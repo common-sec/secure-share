@@ -4,6 +4,31 @@ All notable changes, one section per version. See [docs/ROADMAP.md](docs/ROADMAP
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-10-12
+
+Feedback from the first real-world test (iPhone on 5G and a computer on wifi; Chat and Share both
+worked across NAT).
+
+### Changed
+- **Secure Share is the home page**, with a short guide on when to use Secure Chat instead.
+- The app is named **Secure Sharing**. The page title names the tool in use (Share once / Chat /
+  Passwords), and the navigation reads Share · Chat · Passwords.
+- **Room passphrases have no fixed pattern**: capitals, a number on a random word, one random
+  separator, and the linking word at a random position (about 57 bits).
+- Passphrase generator: half the words keep their plain form (not every word is bent), and
+  linking words go in randomly chosen gaps. Strength stays exact, counting these choices.
+
+### Added
+- Strength meter on room passphrases: exact for generated passphrases, a conservative estimate
+  (`src/lib/strength.js`) for typed or edited ones.
+- Passphrases and room links are masked by default wherever they're entered or shown, with a
+  Show/Hide toggle.
+- Shared UI widgets (`src/tools/widgets.js`): strength meter, reveal toggle, passphrase field, copy row.
+- Unit tests: no-pattern checks, room passphrase format, strength estimate (50 tests).
+
+### Removed
+- The separate home page (`src/tools/home.js`).
+
 ## [0.3.1] - 2026-10-12
 
 ### Changed

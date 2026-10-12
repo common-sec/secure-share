@@ -1,8 +1,13 @@
 import { test, assert } from './harness.js';
 import {
-  generatePhrase, phraseEntropy, PHRASE_DEFAULTS, LINKING_WORDS, inflect, respellings, syllableStarts, roomPassphrase,
+  generatePhrase, phraseEntropy, PHRASE_DEFAULTS, LINKING_WORDS, inflect, respellings, syllableStarts,
+  roomPassphrase, ROOM_PHRASE,
 } from '../../src/lib/passphrase.js';
 import { WORD_SET } from '../../src/lib/words.js';
+import { estimateBits } from '../../src/lib/strength.js';
+
+const isLinking = (t) => LINKING_WORDS.includes(t.toLowerCase());
+const separatorOf = (phrase) => [...new Set(phrase.match(/[^A-Za-z0-9]/g))];
 
 const words = (phrase) => phrase.split(/[^A-Za-z0-9]+/).map((w) => w.replace(/\d+$/, '').toLowerCase());
 
@@ -19,14 +24,34 @@ test('default phrases are never made only of dictionary words', () => {
 test('default phrase structure: 4 words, 2 linking words, one separator, capitals, a number', () => {
   for (let i = 0; i < 100; i++) {
     const phrase = generatePhrase(PHRASE_DEFAULTS);
-    const seps = new Set(phrase.match(/[^A-Za-z0-9]/g));
-    assert.equal(seps.size, 1, `one separator: ${phrase}`);
-    const tokens = phrase.split([...seps][0]);
+    const seps = separatorOf(phrase);
+    assert.equal(seps.length, 1, `one separator: ${phrase}`);
+    const tokens = phrase.split(seps[0]);
     assert.equal(tokens.length, 6, phrase);
-    assert.ok(LINKING_WORDS.includes(tokens[1].toLowerCase()) && LINKING_WORDS.includes(tokens[4].toLowerCase()), phrase);
+    const links = tokens.map((t, j) => (isLinking(t) ? j : -1)).filter((j) => j >= 0);
+    assert.equal(links.length, 2, `two linking words: ${phrase}`);
+    assert.ok(!links.includes(0) && !links.includes(5), `linking words sit between content words: ${phrase}`);
+    assert.ok(links[1] - links[0] > 1, `never two linking words in a row: ${phrase}`);
     assert.ok(tokens.every((t) => /^[A-Z]/.test(t)), `capitalised: ${phrase}`);
     assert.equal((phrase.match(/\d+/g) ?? []).length, 1, `one number: ${phrase}`);
   }
+});
+
+test('no fixed pattern: linking positions, separators and plain words all vary', () => {
+  const positions = new Set();
+  const separators = new Set();
+  let plainWords = 0;
+  for (let i = 0; i < 300; i++) {
+    const phrase = generatePhrase(PHRASE_DEFAULTS);
+    const sep = separatorOf(phrase)[0];
+    separators.add(sep);
+    const tokens = phrase.split(sep);
+    positions.add(tokens.map((t) => (isLinking(t) ? 'L' : 'w')).join(''));
+    plainWords += tokens.filter((t) => !isLinking(t) && WORD_SET.has(t.replace(/\d+$/, '').toLowerCase())).length;
+  }
+  assert.equal(positions.size, 3, `all three linking layouts appear: ${[...positions]}`);
+  assert.atLeast(separators.size, 6, 'separators vary');
+  assert.atLeast(plainWords, 100, 'many content words stay plain, not every word is bent');
 });
 
 test('default strength is at least 75 bits', () => {
@@ -88,8 +113,35 @@ test('syllable splitting', () => {
   assert.deepEqual(syllableStarts('over'), [], 'never the second letter');
 });
 
-test('invented style and room passphrases', () => {
+test('invented style', () => {
   const inv = generatePhrase({ ...PHRASE_DEFAULTS, style: 'invented', link: false, sep: '-', cap: 'none', num: false });
   assert.match(inv, /^[a-z]+(-[a-z]+){3}$/);
-  for (let i = 0; i < 50; i++) assert.match(roomPassphrase(), /^[a-z]+(-[a-z]+){3}$/);
+});
+
+test('room passphrases: capitals, a number, one random separator, at least 50 bits', () => {
+  const separators = new Set();
+  for (let i = 0; i < 100; i++) {
+    const phrase = roomPassphrase();
+    const seps = separatorOf(phrase);
+    assert.equal(seps.length, 1, phrase);
+    separators.add(seps[0]);
+    const tokens = phrase.split(seps[0]);
+    assert.equal(tokens.length, 4, `3 words + 1 linking word: ${phrase}`);
+    assert.ok(tokens.every((t) => /^[A-Z]/.test(t)), `capitalised: ${phrase}`);
+    assert.equal((phrase.match(/\d+/g) ?? []).length, 1, `one number: ${phrase}`);
+  }
+  assert.atLeast(separators.size, 4, 'separator is not always the same');
+  assert.atLeast(phraseEntropy(ROOM_PHRASE), 50);
+});
+
+test('strength estimate for typed passphrases is conservative', () => {
+  assert.ok(estimateBits('garden') < 12, 'one listed word is about 10 bits');
+  assert.ok(estimateBits('Garden') <= estimateBits('garden') + 0.001, 'capitals add nothing');
+  assert.ok(estimateBits('garden-garden-garden') < 35, 'repeated separators add nothing');
+  assert.ok(estimateBits('1234') < 14, 'four digits is about 13 bits');
+  assert.equal(estimateBits(''), 0);
+  for (let i = 0; i < 50; i++) {
+    const phrase = roomPassphrase();
+    assert.ok(estimateBits(phrase) <= phrase.length * Math.log2(95), 'never above the printable-ASCII bound');
+  }
 });

@@ -40,17 +40,17 @@ Template for a new idea:
 **Proposal:** a Python runner (Python already serves the app) using Playwright, used both locally and in CI.
 
 ## No runtime CDN (vendor Trystero)
-**Status:** ✅ Accepted → 0.5.0, as part of the reproducible TypeScript build
+**Status:** ✅ Accepted → 0.6.0, as part of the reproducible TypeScript build
 **Problem:** jsDelivr serves the P2P library at runtime. Whoever serves the JS controls the app.
 **Proposal:** commit a pinned build of Trystero to `src/vendor/`, record its checksum, and drop the CDN from the CSP.
 
 ## Type checking with JSDoc
-**Status:** ❌ Rejected, superseded by full TypeScript with a reproducible build (0.5.0). Once
+**Status:** ❌ Rejected, superseded by full TypeScript with a reproducible build (0.6.0). Once
 there's a build system for pinned dependencies anyway, TypeScript gives the same checks with less
 noise. Reproducible builds keep "served code = reviewed code" verifiable.
 
 ## Support & feedback links
-**Status:** ✅ Accepted → 0.9.0
+**Status:** ✅ Accepted → 0.10.0
 **Problem:** there's no way for people to support or rate the project, and no visibility for the portfolio.
 **Proposal:** plain links only (no embedded widgets, buttons, badges or counters loaded from third parties):
 - **Developers:** "★ Star on GitHub" link to the repository. Not GitHub's button script.
@@ -63,7 +63,7 @@ noise. Reproducible builds keep "served code = reviewed code" verifiable.
 **Trade-offs:** none for security. Clicking a link is the user's choice and leaves the app.
 
 ## AI-assisted memorable passphrases
-**Status:** ✅ Accepted → 0.10.0
+**Status:** ✅ Accepted → 0.11.0
 **Problem:** random words are secure but hard to remember as a list. A sentence is easier.
 **Proposal:**
 1. **JS (CSPRNG) chooses** the words from the word list and a number.
@@ -125,7 +125,7 @@ they stay in one app. See *Extract reusable libraries* instead.
 `<passphrase-generator>` web component), keeping the app itself whole.
 
 ## Full TypeScript with a reproducible build
-**Status:** ✅ Accepted → 0.5.0
+**Status:** ✅ Accepted → 0.6.0
 **Problem:** dependencies are fetched from a CDN at runtime, and nothing checks types.
 **Proposal:** TypeScript plus a build that installs pinned, locked dependencies, bundles them, and
 produces byte-identical output on every rebuild, so releases can be verified against the source.
@@ -158,25 +158,25 @@ prevents offline guessing.
 only carries data that is already end-to-end encrypted.
 
 ## End-to-end tests with real WebRTC
-**Status:** ✅ Accepted → 0.4.0
+**Status:** ✅ Accepted → 0.5.0
 **Proposal:** Playwright drives several browser contexts as host and guests through the real UI,
 with a local Nostr relay container in CI so real WebRTC and Trystero are exercised without
 depending on public relays.
 
 ## DAST and fuzzing (host and clients)
-**Status:** ✅ Accepted → 0.6.0
+**Status:** ✅ Accepted → 0.7.0
 **Proposal:** a pinned OWASP ZAP scan of the served app, plus fuzzing of everything a peer or a
 link can feed into the host and into clients: handshake and protocol messages, files, URL
 parameters, nicknames. Every crash becomes a regression test.
 
 ## OpenSSF Scorecard
-**Status:** ✅ Accepted → 0.7.0
+**Status:** ✅ Accepted → 0.8.0
 **Proposal:** publish the repository, run the Scorecard action, and clear its checks (branch
 protection, signed releases, fuzzing, pinned dependencies, token permissions, and so on). It's an
 independent, visible signal for auditors and users.
 
 ## Security posture management
-**Status:** ✅ Accepted → 0.8.0
+**Status:** ✅ Accepted → 0.9.0
 **Problem:** security checks are spread over several tools and repository settings. Re-verifying
 hardening that's already done on every commit (the old `static-checks.sh`) is noise, but
 regressions must still be noticed.
@@ -186,7 +186,7 @@ container configs, and a short posture document. Custom Semgrep rules only where
 check fits.
 
 ## Pre-commit checks
-**Status:** 💡 Proposed (to decide in 0.8.0)
+**Status:** 💡 Proposed (to decide in 0.9.0)
 **Problem:** some mistakes are cheaper to stop before they're committed. Above all secrets: once
 pushed, a secret is in history and must be rotated.
 **Options:**
@@ -198,6 +198,12 @@ pushed, a secret is in history and must be rotated.
   e.g. `docker compose run --rm trufflehog` on the staged diff. Heavier scans stay in CI.
 
 **Leaning:** the second, limited to secret scanning, since that's what's irreversible after a push.
+
+## Local version of the app
+**Status:** ✅ Accepted → 0.12.0
+**Problem:** using the website means trusting whatever it serves on each visit.
+**Proposal:** a local way to run the same app: a PWA, Electron/Tauri, a Docker image, or a single
+self-contained HTML file. The architecture is still to be decided; see the roadmap item.
 
 ## Hosting: GitHub Pages and alternatives
 **Status:** 💡 Proposed (context for 1.0.0)

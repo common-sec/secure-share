@@ -1,5 +1,5 @@
-import { h, copyText, formatBytes, safeFileName } from '../lib/dom.js';
-import { roomPassphrase } from '../lib/passphrase.js';
+import { h, formatBytes, safeFileName } from '../lib/dom.js';
+import { passphraseField, copyRow } from './widgets.js';
 import { SecureRoom, DENY_REASONS, MAX_TEXT, MAX_FILE_BYTES, cleanNick } from '../lib/room.js';
 import { saveHost, loadHost, forgetHost, claimHost } from '../lib/hoststore.js';
 
@@ -18,12 +18,6 @@ export function readInvite(params) {
   return ok ? inv : null;
 }
 
-export function passphraseField(value) {
-  const input = h('input', { type: 'text', value, spellcheck: 'false', autocomplete: 'off', class: 'mono', required: true });
-  const regen = h('button', { type: 'button', class: 'btn btn-ghost', title: 'Generate another', onclick: () => { input.value = roomPassphrase(); } }, '↻');
-  return { input, el: h('div', { class: 'row grow tight' }, input, value !== '' ? regen : null) };
-}
-
 export function mount(root, params) {
   let session = null;
   let disposed = false;
@@ -32,7 +26,7 @@ export function mount(root, params) {
   const showForm = () => {
     root.replaceChildren();
     const nick = h('input', { type: 'text', maxlength: 32, placeholder: 'e.g. Alice', autocomplete: 'nickname', required: true, value: tabStore.get('uss-nick') ?? '' });
-    const pass = passphraseField(invite ? '' : roomPassphrase());
+    const pass = passphraseField({ generate: !invite });
     const error = h('p', { class: 'error', hidden: true });
     const submit = h('button', { class: 'btn btn-primary', type: 'submit' }, invite ? 'Join chat' : 'Create chat room');
 
@@ -145,7 +139,7 @@ async function startChat(root, { invite, nick, passphrase, restore, release, onR
       h('h3', null, 'Invite'),
       copyRow('Link', link, true),
       passphrase
-        ? copyRow('Passphrase', passphrase, false)
+        ? copyRow('Passphrase', passphrase, true)
         : h('p', { class: 'hint' }, 'Passphrase: the one you chose when creating the room (not kept after closing the tab).'),
       h('p', { class: 'hint' }, 'Send the link and the passphrase through different channels.'),
       h('label', { class: 'check' }, lockToggle, h('span', null, 'Lock room', h('small', null, 'no new join requests'))),
@@ -350,12 +344,6 @@ async function startChat(root, { invite, nick, passphrase, restore, release, onR
       objectUrls.forEach((u) => URL.revokeObjectURL(u));
     },
   };
-}
-
-export function copyRow(label, value, secret) {
-  const field = h('input', { type: secret ? 'password' : 'text', readOnly: true, value, class: 'mono', 'aria-label': label });
-  const btn = h('button', { class: 'btn btn-small', onclick: () => copyText(value, btn) }, 'Copy');
-  return h('div', { class: 'field' }, h('label', null, label), h('div', { class: 'row grow tight' }, field, btn));
 }
 
 function colorFor(id) {
