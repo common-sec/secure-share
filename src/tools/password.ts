@@ -1,6 +1,9 @@
 import { h, copyText } from '../lib/dom.js';
 import { pick, shuffle } from '../lib/random.js';
-import { generatePhrase, phraseEntropy, PHRASE_DEFAULTS, STYLES, SEPARATOR_OPTIONS, CAPS } from '../lib/passphrase.js';
+import {
+  generatePhrase, phraseEntropy, PHRASE_DEFAULTS, STYLES, SEPARATOR_OPTIONS, CAPS,
+  type Caps, type PhraseOptions, type Separator, type Style,
+} from '../lib/passphrase.js';
 import { strengthMeter } from './widgets.js';
 
 const SETS = {
@@ -11,52 +14,72 @@ const SETS = {
 const DEFAULT_SYMBOLS = '!@#$%^&*()-_=+[]{};:,.<>/?~';
 const AMBIGUOUS = 'Il1|O0o';
 
+export interface Settings {
+  mode: 'chars' | 'phrase';
+  // random characters
+  len: number; lower: boolean; upper: boolean; digits: boolean; symbols: boolean;
+  sym: string; amb: boolean; req: boolean; ex: string;
+  // how many to generate
+  n: number;
+  // passphrase
+  w: number; style: Style; link: boolean; sep: Separator; cap: Caps; num: boolean;
+}
+type NumKey = 'len' | 'n' | 'w';
+type BoolKey = 'lower' | 'upper' | 'digits' | 'symbols' | 'amb' | 'req' | 'link' | 'num';
+type ChoiceKey = 'mode' | 'style' | 'sep' | 'cap';
+
 // Settings <-> URL params. Only settings ever go in the link, never a password.
-export const DEFAULTS = {
+export const DEFAULTS: Settings = {
   mode: 'phrase',
   len: 20, lower: true, upper: true, digits: true, symbols: true,
   sym: DEFAULT_SYMBOLS, amb: false, req: true, ex: '', n: 1,
   w: PHRASE_DEFAULTS.w, style: PHRASE_DEFAULTS.style, link: PHRASE_DEFAULTS.link,
   sep: PHRASE_DEFAULTS.sep, cap: PHRASE_DEFAULTS.cap, num: PHRASE_DEFAULTS.num,
 };
-const LIMITS = { len: [4, 256], n: [1, 50], w: [2, 12] };
-const CHOICES = {
+const LIMITS: Record<NumKey, [min: number, max: number]> = { len: [4, 256], n: [1, 50], w: [2, 12] };
+const CHOICES: Record<ChoiceKey, readonly string[]> = {
   mode: ['chars', 'phrase'],
   style: Object.keys(STYLES),
   sep: Object.keys(SEPARATOR_OPTIONS),
   cap: Object.keys(CAPS),
 };
 
-function readSettings(params) {
-  const s = { ...DEFAULTS };
+/** Reads settings from URL parameters; anything invalid falls back to the default. */
+function readSettings(params: URLSearchParams): Settings {
+  const s: Settings = { ...DEFAULTS };
+  const out = s as unknown as Record<string, unknown>;
   for (const [k, def] of Object.entries(DEFAULTS)) {
-    if (!params.has(k)) continue;
     const v = params.get(k);
-    if (typeof def === 'boolean') s[k] = v === '1';
+    if (v === null) continue;
+    if (typeof def === 'boolean') out[k] = v === '1';
     else if (typeof def === 'number') {
       const n = parseInt(v, 10);
-      if (Number.isFinite(n)) s[k] = Math.min(LIMITS[k][1], Math.max(LIMITS[k][0], n));
-    } else if (CHOICES[k]) {
-      if (CHOICES[k].includes(v)) s[k] = v;
-    } else s[k] = v.slice(0, 64);
+      const [min, max] = LIMITS[k as NumKey];
+      if (Number.isFinite(n)) out[k] = Math.min(max, Math.max(min, n));
+    } else if (k in CHOICES) {
+      if (CHOICES[k as ChoiceKey].includes(v)) out[k] = v;
+    } else out[k] = v.slice(0, 64);
   }
   return s;
 }
 
-function writeParams(s) {
+function writeParams(s: Settings): string {
+  const defaults = DEFAULTS as unknown as Record<string, unknown>;
   const p = new URLSearchParams();
   for (const [k, v] of Object.entries(s)) {
-    if (v === DEFAULTS[k]) continue;
+    if (v === defaults[k]) continue;
     p.set(k, typeof v === 'boolean' ? (v ? '1' : '0') : String(v));
   }
   return p.toString();
 }
 
 // ---- character passwords ----
-function buildSets(s) {
+type CharSettings = Pick<Settings, 'len' | 'lower' | 'upper' | 'digits' | 'symbols' | 'sym' | 'amb' | 'req' | 'ex'>;
+
+function buildSets(s: CharSettings): string[] {
   const remove = new Set([...s.ex, ...(s.amb ? AMBIGUOUS : '')]);
-  const clean = (chars) => [...new Set(chars)].filter((c) => !remove.has(c)).join('');
-  const sets = [];
+  const clean = (chars: string) => [...new Set(chars)].filter((c) => !remove.has(c)).join('');
+  const sets: string[] = [];
   if (s.lower) sets.push(clean(SETS.lower));
   if (s.upper) sets.push(clean(SETS.upper));
   if (s.digits) sets.push(clean(SETS.digits));
@@ -64,11 +87,11 @@ function buildSets(s) {
   return sets.filter((x) => x.length > 0);
 }
 
-export function generateChars(s) {
+export function generateChars(s: CharSettings): { value: string; bits: number } {
   const sets = buildSets(s);
   const pool = [...new Set(sets.join(''))].join('');
   if (!pool) throw new Error('Select at least one character set.');
-  const chars = [];
+  const chars: string[] = [];
   if (s.req) {
     if (sets.length > s.len) throw new Error('Length is shorter than the number of required sets.');
     for (const set of sets) chars.push(pick(set));
@@ -77,17 +100,17 @@ export function generateChars(s) {
   return { value: shuffle(chars).join(''), bits: s.len * Math.log2(pool.length) };
 }
 
-const phraseOptions = (s) => ({
+const phraseOptions = (s: Settings): PhraseOptions => ({
   w: s.w, style: s.style, link: s.link, sep: s.sep, cap: s.cap, num: s.num,
 });
 
-function generateOne(s) {
+function generateOne(s: Settings): { value: string; bits: number } {
   if (s.mode === 'chars') return generateChars(s);
   const o = phraseOptions(s);
   return { value: generatePhrase(o), bits: phraseEntropy(o) };
 }
 
-export function mount(root, params) {
+export function mount(root: HTMLElement, params: URLSearchParams): void {
   const s = readSettings(params);
 
   const output = h('ul', { class: 'pw-list' });
@@ -95,30 +118,37 @@ export function mount(root, params) {
   const error = h('p', { class: 'error', hidden: true });
 
   // ---- controls ----
-  const number = (key, min, max) => {
-    const el = h('input', { type: 'number', min, max, value: s[key], class: 'num' });
+  const number = (key: NumKey, min: number, max: number) => {
+    const el = h('input', { type: 'number', min, max, value: String(s[key]), class: 'num' });
     el.addEventListener('change', () => {
-      s[key] = Math.min(LIMITS[key][1], Math.max(LIMITS[key][0], parseInt(el.value, 10) || DEFAULTS[key]));
-      el.value = s[key];
+      const [lo, hi] = LIMITS[key];
+      s[key] = Math.min(hi, Math.max(lo, parseInt(el.value, 10) || DEFAULTS[key]));
+      el.value = String(s[key]);
       update();
     });
     return el;
   };
-  const check = (key, label, hint) => h('label', { class: 'check' },
-    h('input', { type: 'checkbox', checked: s[key], onchange: (e) => { s[key] = e.target.checked; symInput.disabled = !s.symbols; update(); } }),
+  const check = (key: BoolKey, label: string, hint?: string) => h('label', { class: 'check' },
+    h('input', {
+      type: 'checkbox', checked: s[key],
+      onchange: (e: Event) => { s[key] = (e.target as HTMLInputElement).checked; symInput.disabled = !s.symbols; update(); },
+    }),
     h('span', null, label, hint ? h('small', null, hint) : null),
   );
-  const select = (key, options) => {
+  const select = (key: ChoiceKey, options: Array<[value: string, label: string]>) => {
     const el = h('select', null, ...options.map(([v, label]) => h('option', { value: v, selected: s[key] === v }, label)));
-    el.addEventListener('change', () => { s[key] = el.value; update(); });
+    el.addEventListener('change', () => {
+      if (CHOICES[key].includes(el.value)) (s as unknown as Record<string, unknown>)[key] = el.value;
+      update();
+    });
     return el;
   };
-  const field = (label, control) => h('div', { class: 'field' }, h('label', null, label), control);
+  const field = (label: string, control: HTMLElement) => h('div', { class: 'field' }, h('label', null, label), control);
 
-  const lenRange = h('input', { type: 'range', min: LIMITS.len[0], max: 64, value: Math.min(s.len, 64), 'aria-label': 'Length' });
+  const lenRange = h('input', { type: 'range', min: LIMITS.len[0], max: 64, value: String(Math.min(s.len, 64)), 'aria-label': 'Length' });
   const lenNum = number('len', LIMITS.len[0], LIMITS.len[1]);
   lenRange.addEventListener('input', () => { lenNum.value = lenRange.value; lenNum.dispatchEvent(new Event('change')); });
-  lenNum.addEventListener('change', () => { lenRange.value = Math.min(s.len, 64); });
+  lenNum.addEventListener('change', () => { lenRange.value = String(Math.min(s.len, 64)); });
   const symInput = h('input', { type: 'text', value: s.sym, spellcheck: 'false', class: 'mono', disabled: !s.symbols });
   symInput.addEventListener('input', () => { s.sym = symInput.value || DEFAULT_SYMBOLS; update(); });
   const exInput = h('input', { type: 'text', value: s.ex, spellcheck: 'false', class: 'mono', placeholder: 'e.g. {}[]' });
@@ -153,7 +183,7 @@ export function mount(root, params) {
   );
 
   const tabs = h('div', { class: 'tabs', role: 'tablist' });
-  const tab = (mode, label) => {
+  const tab = (mode: Settings['mode'], label: string) => {
     const b = h('button', { role: 'tab', class: 'tab', onclick: () => { s.mode = mode; update(); } }, label);
     b.dataset.mode = mode;
     return b;
@@ -173,14 +203,14 @@ export function mount(root, params) {
       meter.set(bits);
       error.hidden = true;
     } catch (e) {
-      error.textContent = e.message;
+      error.textContent = e instanceof Error ? e.message : String(e);
       error.hidden = false;
       meter.set(null);
     }
   }
 
   function update() {
-    for (const b of tabs.children) b.setAttribute('aria-selected', String(b.dataset.mode === s.mode));
+    for (const b of tabs.children) b.setAttribute('aria-selected', String((b as HTMLElement).dataset.mode === s.mode));
     charsPanel.hidden = s.mode !== 'chars';
     phrasePanel.hidden = s.mode !== 'phrase';
     const q = writeParams(s);

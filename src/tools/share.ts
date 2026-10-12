@@ -1,10 +1,13 @@
 import { h, copyText, formatBytes, safeFileName } from '../lib/dom.js';
 import { SecureRoom, DENY_REASONS, MAX_TEXT, MAX_FILE_BYTES } from '../lib/room.js';
-import { readInvite } from './chat.js';
+import { readInvite, type Invite, type Session } from './chat.js';
 import { passphraseField, copyRow } from './widgets.js';
 
-export function mount(root, params) {
-  let session = null;
+type SetSession = (s: Session) => void;
+const errorText = (e: unknown): string => (e instanceof Error ? e.message : String(e));
+
+export function mount(root: HTMLElement, params: URLSearchParams): () => void {
+  let session: Session | null = null;
   const invite = readInvite(params);
   if (invite) history.replaceState(null, '', '#/share');
 
@@ -30,11 +33,14 @@ export function mount(root, params) {
 }
 
 // ---------------------------------------------------------------- sender
-function sendForm(body, setSession) {
-  const files = [];
+function sendForm(body: HTMLElement, setSession: SetSession): void {
+  const files: File[] = [];
   const text = h('textarea', { rows: 5, maxlength: MAX_TEXT, placeholder: 'Paste a password, a note, a key…' });
   const fileList = h('ul', { class: 'file-list' });
-  const fileInput = h('input', { type: 'file', multiple: true, hidden: true, onchange: (e) => { addFiles(e.target.files); e.target.value = ''; } });
+  const fileInput = h('input', {
+    type: 'file', multiple: true, hidden: true,
+    onchange: (e: Event) => { const t = e.target as HTMLInputElement; addFiles(t.files); t.value = ''; },
+  });
   const drop = h('div', { class: 'dropzone' }, 'Drop files here, or ',
     h('button', { type: 'button', class: 'btn btn-small', onclick: () => fileInput.click() }, 'choose files'), fileInput);
   const pass = passphraseField({ generate: true });
@@ -43,24 +49,24 @@ function sendForm(body, setSession) {
 
   drop.addEventListener('dragover', (e) => { e.preventDefault(); drop.classList.add('over'); });
   drop.addEventListener('dragleave', () => drop.classList.remove('over'));
-  drop.addEventListener('drop', (e) => { e.preventDefault(); drop.classList.remove('over'); addFiles(e.dataTransfer.files); });
+  drop.addEventListener('drop', (e) => { e.preventDefault(); drop.classList.remove('over'); addFiles(e.dataTransfer?.files); });
 
-  function addFiles(list) {
-    for (const f of list) {
+  function addFiles(list: FileList | null | undefined): void {
+    for (const f of Array.from(list ?? [])) {
       if (f.size > MAX_FILE_BYTES) { showError(`${f.name} is larger than ${formatBytes(MAX_FILE_BYTES)}.`); continue; }
       files.push(f);
     }
     renderFiles();
   }
-  function renderFiles() {
+  function renderFiles(): void {
     fileList.replaceChildren(...files.map((f, i) => h('li', null,
       h('span', null, '📄 ', f.name), h('span', { class: 'muted' }, formatBytes(f.size)),
       h('button', { type: 'button', class: 'btn btn-ghost btn-small', onclick: () => { files.splice(i, 1); renderFiles(); } }, '✕'))));
   }
-  const showError = (msg) => { error.textContent = msg; error.hidden = false; };
+  const showError = (msg: string): void => { error.textContent = msg; error.hidden = false; };
 
   const submit = h('button', { class: 'btn btn-primary', type: 'submit' }, 'Create one-time link');
-  body.append(h('form', { class: 'card narrow', onsubmit: async (e) => {
+  body.append(h('form', { class: 'card narrow', onsubmit: async (e: Event) => {
     e.preventDefault();
     error.hidden = true;
     const passphrase = pass.input.value.trim();
@@ -72,7 +78,7 @@ function sendForm(body, setSession) {
       const room = await SecureRoom.host({ app: 'share', passphrase, nick: 'Sender', maxGuests: 1, autoAccept: !approve.checked });
       setSession(senderView(body, room, { text: text.value, files, passphrase }));
     } catch (err) {
-      showError(`Could not start: ${err.message}`);
+      showError(`Could not start: ${errorText(err)}`);
       submit.disabled = false;
       submit.textContent = 'Create one-time link';
     }
@@ -97,7 +103,7 @@ function sendForm(body, setSession) {
   ));
 }
 
-function senderView(body, room, { text, files, passphrase }) {
+function senderView(body: HTMLElement, room: SecureRoom, { text, files, passphrase }: { text: string; files: File[]; passphrase: string }): Session {
   const status = h('p', { class: 'status-big' });
   const steps = h('ol', { class: 'progress-steps' },
     h('li', { class: 'active' }, 'Share the link and passphrase'),
@@ -107,11 +113,11 @@ function senderView(body, room, { text, files, passphrase }) {
   const cancel = h('button', { class: 'btn btn-ghost', onclick: () => { location.hash = '#/share?'; } }, 'Cancel');
   let delivered = false;
 
-  const step = (n) => [...steps.children].forEach((li, i) => {
+  const step = (n: number) => [...steps.children].forEach((li, i) => {
     li.classList.toggle('done', i < n);
     li.classList.toggle('active', i === n);
   });
-  const setStatus = (t) => { status.textContent = t; };
+  const setStatus = (t: string) => { status.textContent = t; };
 
   body.replaceChildren(h('div', { class: 'card narrow' },
     steps,
@@ -125,29 +131,31 @@ function senderView(body, room, { text, files, passphrase }) {
 
   room
     .on('auth-failed', ({ failures }) => extra.append(h('p', { class: 'error' }, `Someone entered a wrong passphrase (${failures}).`)))
-    .on('lock', ({ auto }) => auto && setStatus('Locked after repeated wrong passphrases. Cancel and create a new link.'))
+    .on('lock', ({ auto }) => { if (auto) setStatus('Locked after repeated wrong passphrases. Cancel and create a new link.'); })
     .on('request', ({ peerId, code }) => {
       setStatus('Someone with the right passphrase wants to receive it.');
       extra.replaceChildren(h('div', { class: 'request' },
         h('div', null, 'Safety code ', h('strong', { class: 'mono' }, code ?? '…'), h('div', { class: 'hint' }, 'It should match the code on the recipient’s screen.')),
         h('div', { class: 'row tight' },
-          h('button', { class: 'btn btn-primary btn-small', onclick: () => { extra.replaceChildren(); room.accept(peerId); } }, 'Deliver'),
-          h('button', { class: 'btn btn-small', onclick: () => { extra.replaceChildren(); room.reject(peerId); setStatus('Declined. Still waiting…'); } }, 'Decline')),
+          h('button', { class: 'btn btn-primary btn-small', onclick: () => { extra.replaceChildren(); void room.accept(peerId); } }, 'Deliver'),
+          h('button', { class: 'btn btn-small', onclick: () => { extra.replaceChildren(); void room.reject(peerId); setStatus('Declined. Still waiting…'); } }, 'Decline')),
       ));
     })
-    .on('joined', async ({ member }) => {
+    .on('joined', ({ member }) => {
       step(1);
       room.setLocked(true);
-      setStatus(`Recipient connected (safety code ${member.code}). Sending…`);
-      try {
-        await room.send({ t: 'manifest', text, files: files.map((f) => ({ name: f.name, size: f.size })) });
-        for (const [i, f] of files.entries()) {
-          await room.sendFile(f, (p) => setStatus(`Sending ${f.name} (${i + 1}/${files.length}): ${Math.round(p * 100)}%`));
+      setStatus(`Recipient connected (safety code ${member.code ?? '…'}). Sending…`);
+      void (async () => {
+        try {
+          await room.send({ t: 'manifest', text, files: files.map((f) => ({ name: f.name, size: f.size })) });
+          for (const [i, f] of files.entries()) {
+            await room.sendFile(f, (p) => setStatus(`Sending ${f.name} (${i + 1}/${files.length}): ${Math.round(p * 100)}%`));
+          }
+          setStatus('Waiting for the recipient to confirm…');
+        } catch (e) {
+          setStatus(`Delivery failed: ${errorText(e)}`);
         }
-        setStatus('Waiting for the recipient to confirm…');
-      } catch (e) {
-        setStatus(`Delivery failed: ${e.message}`);
-      }
+      })();
     })
     .on('message', ({ inner }) => {
       if (inner.t !== 'ack') return;
@@ -155,7 +163,7 @@ function senderView(body, room, { text, files, passphrase }) {
       step(3);
       setStatus('Delivered ✓ The room is closed and the link no longer works.');
       cancel.textContent = 'Share something else';
-      room.leave();
+      void room.leave();
     })
     .on('left', () => {
       if (delivered) return;
@@ -164,15 +172,15 @@ function senderView(body, room, { text, files, passphrase }) {
       setStatus('The recipient disconnected before finishing. Waiting for them to reconnect…');
     });
 
-  return { leave: () => room.leave() };
+  return { leave: () => { void room.leave(); } };
 }
 
 // ---------------------------------------------------------------- recipient
-function receiveForm(body, invite, setSession) {
+function receiveForm(body: HTMLElement, invite: Invite, setSession: SetSession): void {
   const pass = passphraseField({ generate: false });
   const error = h('p', { class: 'error', hidden: true });
   const submit = h('button', { class: 'btn btn-primary', type: 'submit' }, 'Receive');
-  body.replaceChildren(h('form', { class: 'card narrow', onsubmit: async (e) => {
+  body.replaceChildren(h('form', { class: 'card narrow', onsubmit: async (e: Event) => {
     e.preventDefault();
     const passphrase = pass.input.value.trim();
     if (!passphrase) { error.textContent = 'Enter the passphrase the sender gave you.'; error.hidden = false; return; }
@@ -182,7 +190,7 @@ function receiveForm(body, invite, setSession) {
       const room = await SecureRoom.join({ app: 'share', ...invite, passphrase, nick: 'Recipient' });
       setSession(receiverView(body, room, () => receiveForm(body, invite, setSession)));
     } catch (err) {
-      error.textContent = `Could not start: ${err.message}`;
+      error.textContent = `Could not start: ${errorText(err)}`;
       error.hidden = false;
       submit.disabled = false;
       submit.textContent = 'Receive';
@@ -196,11 +204,21 @@ function receiveForm(body, invite, setSession) {
   pass.input.focus();
 }
 
-function receiverView(body, room, retry) {
+/** What the sender announces before the files; it comes from the peer, so it's validated. */
+interface Manifest { text: string; fileCount: number }
+
+function parseManifest(fields: Record<string, unknown>): Manifest {
+  return {
+    text: typeof fields.text === 'string' ? fields.text : '',
+    fileCount: Array.isArray(fields.files) ? fields.files.length : 0,
+  };
+}
+
+function receiverView(body: HTMLElement, room: SecureRoom, retry: () => void): Session {
   const status = h('p', { class: 'status-big' }, 'Looking for the sender…');
   const result = h('div', { class: 'result' });
-  const objectUrls = [];
-  let manifest = null;
+  const objectUrls: string[] = [];
+  let manifest: Manifest | null = null;
   let received = 0;
   let done = false;
   const progress = h('progress', { max: 1, value: 0, hidden: true });
@@ -211,7 +229,7 @@ function receiverView(body, room, retry) {
   }, 20000);
 
   const finishIfComplete = async () => {
-    if (!manifest || received < manifest.files.length || done) return;
+    if (!manifest || received < manifest.fileCount || done) return;
     done = true;
     progress.hidden = true;
     status.textContent = 'Received ✓ This was a one-time delivery: save what you need before closing this tab.';
@@ -225,15 +243,16 @@ function receiverView(body, room, retry) {
     })
     .on('message', ({ inner }) => {
       if (inner.t !== 'manifest' || manifest) return;
-      manifest = { text: String(inner.text ?? ''), files: Array.isArray(inner.files) ? inner.files : [] };
-      if (manifest.text) {
-        const btn = h('button', { class: 'btn btn-small', onclick: () => copyText(manifest.text, btn) }, 'Copy');
+      const m = parseManifest(inner);
+      manifest = m;
+      if (m.text) {
+        const btn = h('button', { class: 'btn btn-small', onclick: () => copyText(m.text, btn) }, 'Copy');
         result.append(h('div', { class: 'field' },
           h('div', { class: 'row spread' }, h('label', null, 'Text'), btn),
-          h('pre', { class: 'secret' }, manifest.text)));
+          h('pre', { class: 'secret' }, m.text)));
       }
-      if (manifest.files.length) progress.hidden = false;
-      finishIfComplete();
+      if (m.fileCount) progress.hidden = false;
+      void finishIfComplete();
     })
     .on('file-progress', ({ progress: p, inner }) => {
       progress.value = p;
@@ -247,14 +266,14 @@ function receiverView(body, room, retry) {
         h('div', { class: 'file-info' }, h('strong', null, safeFileName(inner.name)), h('span', { class: 'muted' }, formatBytes(inner.size))),
         h('a', { class: 'btn btn-primary btn-small', href: url, download: safeFileName(inner.name) }, 'Download')));
       received++;
-      finishIfComplete();
+      void finishIfComplete();
     })
-    .on('denied', ({ reason }) => fail(DENY_REASONS[reason] ?? `Could not receive (${reason}).`, reason === 'passphrase'))
-    .on('closed', ({ reason }) => { if (!done && reason !== 'left') fail(DENY_REASONS[reason] ?? 'The share was closed.', false); });
+    .on('denied', ({ reason }) => fail((DENY_REASONS as Record<string, string>)[reason] ?? `Could not receive (${reason}).`, reason === 'passphrase'))
+    .on('closed', ({ reason }) => { if (!done && reason !== 'left') fail(DENY_REASONS[reason], false); });
 
-  function fail(text, canRetry) {
+  function fail(text: string, canRetry: boolean): void {
     clearTimeout(slow);
-    room.leave();
+    void room.leave();
     status.textContent = text;
     status.classList.add('error');
     if (canRetry) result.append(h('button', { class: 'btn', onclick: retry }, 'Try again'));
@@ -263,7 +282,7 @@ function receiverView(body, room, retry) {
   return {
     leave() {
       clearTimeout(slow);
-      room.leave();
+      void room.leave();
       objectUrls.forEach((u) => URL.revokeObjectURL(u));
     },
   };

@@ -3,29 +3,38 @@
 ## Components
 
 ```
-index.html  ── strict CSP, loads src/main.js (hash router)
+src/index.html  ── strict CSP, loads app.js (built from src/main.ts, hash router)
 │
 ├── src/tools/             UI, one module per tool
-│   ├── share.js           Secure Share UI (sender + recipient), the home page
-│   ├── chat.js            Secure Chat UI
-│   ├── password.js        password / passphrase generator
-│   └── widgets.js         shared UI: strength meter, masked passphrase field, copy row
+│   ├── share.ts           Secure Share UI (sender + recipient), the home page
+│   ├── chat.ts            Secure Chat UI
+│   ├── password.ts        password / passphrase generator
+│   └── widgets.ts         shared UI: strength meter, masked passphrase field, copy row
 │
-├── src/lib/               logic, no DOM except dom.js
-│   ├── random.js          unbiased CSPRNG helpers (crypto.getRandomValues + rejection sampling)
-│   ├── passphrase.js      passphrase generator + exact entropy estimates
-│   ├── strength.js        strength labels + conservative estimate for typed passphrases
-│   ├── words.js           word list used by the generator
-│   ├── crypto.js          key derivation, AES-GCM, ECDSA, HMAC, safety codes (Web Crypto only)
-│   ├── room.js            SecureRoom: the protocol (handshake, approvals, relay, files)
-│   ├── hoststore.js       resume hosting after a reload (IndexedDB + Web Locks)
-│   ├── encoding.js        base64url / UTF-8
-│   └── dom.js             tiny DOM builder (text nodes only, never innerHTML)
+├── src/lib/               logic, no DOM except dom.ts
+│   ├── random.ts          unbiased CSPRNG helpers (crypto.getRandomValues + rejection sampling)
+│   ├── passphrase.ts      passphrase generator + exact entropy estimates
+│   ├── strength.ts        strength labels + conservative estimate for typed passphrases
+│   ├── words.ts           word list used by the generator
+│   ├── crypto.ts          key derivation, AES-GCM, ECDSA, HMAC, safety codes (Web Crypto only)
+│   ├── room.ts            SecureRoom: the protocol (handshake, approvals, relay, files), typed messages
+│   ├── hoststore.ts       resume hosting after a reload (IndexedDB + Web Locks)
+│   ├── encoding.ts        base64url / UTF-8
+│   └── dom.ts             tiny DOM builder (text nodes only, never innerHTML)
 │
-└── src/vendor/trystero.js the single third-party import (pinned version)
+└── src/vendor/trystero.ts the single third-party import, loaded lazily (bundled from npm)
 ```
 
-`SecureRoom` (src/lib/room.js) is the core. Chat and Share are thin UIs on top of it:
+## Build
+
+`build.mjs` (esbuild) turns `src/` into `dist/`, the files that are served: `index.html`,
+`styles.css`, `app.js`, and chunks loaded on demand (Trystero is only loaded when Chat or Share
+needs it). Everything is bundled from the locked npm packages, so **no third-party origin serves
+code at runtime**. The build is reproducible (same source → byte-identical `dist/`), and
+`dist/SHA256SUMS` lists every file's checksum; see [RELEASES.md](RELEASES.md). The footer shows
+the build version (`vX.Y.Z · build <commit>`).
+
+`SecureRoom` (src/lib/room.ts) is the core. Chat and Share are thin UIs on top of it:
 
 | | Chat | Share |
 |---|---|---|
@@ -69,7 +78,6 @@ Everything the app connects to, and when:
 | Destination | Protocol / port | When | What is sent | Who sees what |
 |---|---|---|---|---|
 | The static host serving the page | HTTPS, TCP 443 | Page load | Standard GET requests. The URL fragment (room secrets) is **never** sent. | Host operator: your IP, page requests |
-| `cdn.jsdelivr.net` | HTTPS, TCP 443 | Opening Chat or Share | Download of `trystero@0.26.0` | jsDelivr: your IP, the fact you opened Chat/Share |
 | 3 public Nostr relays (chosen from Trystero's list of 29) | WSS, TCP 443 | Only while the room needs to be discoverable (see below) | Subscriptions to a topic derived from app + room ID; WebRTC offers/answers **encrypted** with a key derived from the link secret | Relay operators: your IP, timing, an opaque topic, ciphertext |
 | `stun.l.google.com`, `stun1.l.google.com`, `stun2.l.google.com` | STUN, UDP 19302 | While a WebRTC connection is being set up | STUN binding requests (no content) | Google: your public IP:port |
 | `stun.cloudflare.com` | STUN, UDP 3478 | While a WebRTC connection is being set up | STUN binding requests (no content) | Cloudflare: your public IP:port |
@@ -134,8 +142,8 @@ Secure Share stores nothing.
 
 ## Security headers and policies
 
-- Content Security Policy (meta tag): `default-src 'none'`; scripts only from `'self'` and
-  `https://cdn.jsdelivr.net`; `connect-src 'self' wss:`; no inline scripts or styles; no
+- Content Security Policy (meta tag): `default-src 'none'`; scripts only from `'self'`
+  (no third-party script origin at all); `connect-src 'self' wss:`; no inline scripts or styles; no
   `object`, `base-uri` or form targets.
 - `referrer` policy `no-referrer`.
 - `tools/serve.py` (development) adds `X-Content-Type-Options: nosniff` and `Cache-Control: no-store`.

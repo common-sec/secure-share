@@ -2,3 +2,5 @@
 ^/work/\.venv/
 ^/work/\.cache/
 ^/work/node_modules/
+^/work/build/
+^/work/dist/

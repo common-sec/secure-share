@@ -4,7 +4,8 @@ The unit tests are JavaScript modules that run *inside* the browser (tests/unit/
 because the code under test depends on browser APIs: Web Crypto, IndexedDB, Web Locks. Playwright
 starts the browsers, opens that page and collects the results.
 
-Normally run in the pinned test container (see docs/TESTING.md):
+Normally run in the pinned test container, after building (see docs/TESTING.md):
+    docker compose run --rm build              # the tests import the compiled modules in build/modules/
     docker compose run --rm test-unit          # = python tests/unit/run.py chromium firefox
 
 Options:

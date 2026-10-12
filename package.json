@@ -1,0 +1,24 @@
+{
+  "name": "user-sec-tools",
+  "version": "0.6.0",
+  "private": true,
+  "description": "Secure Sharing: browser-to-browser encrypted file and secret sharing, no server storage.",
+  "license": "UNLICENSED",
+  "type": "module",
+  "engines": {
+    "node": ">=24 <25",
+    "npm": ">=11.10"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "build": "tsc --noEmit && node build.mjs",
+    "build:check": "tsc --noEmit && node build.mjs --check"
+  },
+  "dependencies": {
+    "trystero": "0.26.0"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2",
+    "typescript": "7.0.2"
+  }
+}

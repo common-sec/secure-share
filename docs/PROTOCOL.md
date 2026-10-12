@@ -1,7 +1,7 @@
 # Protocol specification (v2)
 
-This is the protocol implemented by `SecureRoom` in `src/lib/room.js`, with primitives from
-`src/lib/crypto.js`. All primitives are Web Crypto. Encodings: `b64u` = base64url without padding,
+This is the protocol implemented by `SecureRoom` in `src/lib/room.ts`, with primitives from
+`src/lib/crypto.ts`. All primitives are Web Crypto. Encodings: `b64u` = base64url without padding,
 UTF-8 for strings, `‖` = byte concatenation, `|` = the literal character `|` in a string.
 
 ## 1. Identifiers and the room link

@@ -48,6 +48,7 @@ your data.
 | [docs/PROTOCOL.md](docs/PROTOCOL.md) | Exact key derivation, handshake and message formats (for auditors) |
 | [docs/THREAT_MODEL.md](docs/THREAT_MODEL.md) | What is protected, against whom, and the known limits |
 | [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) | The containerised dev environment, pinning and supply-chain rules |
+| [docs/RELEASES.md](docs/RELEASES.md) | Rebuilding a release and verifying its checksums against what is served |
 | [docs/TESTING.md](docs/TESTING.md) | How the test suite works and how to run it |
 | [SECURITY.md](SECURITY.md) | Reporting vulnerabilities, audit scope |
 | [docs/ROADMAP.md](docs/ROADMAP.md) | What we're working on (one feature per version) and what's next |
@@ -61,13 +62,14 @@ your data.
 Everything runs in containers (Docker + Compose; see [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)):
 
 ```bash
+docker compose run --rm build                                         # type-check, build dist/, check it's reproducible
 docker compose up web                                                 # app at http://127.0.0.1:8080
 docker compose run --rm test-unit                                     # unit tests (Chromium + Firefox)
 docker compose run --rm test-e2e                                      # end-to-end tests through the real UI
 docker compose run --rm semgrep                                       # or trivy, trufflehog
 ```
 
-The app itself is static files: any static host works for deployment (GitHub Pages, Cloudflare
+The built app (`dist/`) is static files: any static host works for deployment (GitHub Pages, Cloudflare
 Pages, Netlify). The Web Crypto API needs a secure context (HTTPS or `localhost`).
 
 ## Design principles
@@ -77,7 +79,8 @@ Pages, Netlify). The Web Crypto API needs a secure context (HTTPS or `localhost`
 - **No hand-rolled cryptographic primitives.** All of them come from the browser's Web Crypto
   API: AES-GCM, ECDSA P-256, HKDF, PBKDF2, HMAC, SHA-256 and the CSPRNG. The protocol that combines
   them is documented in [PROTOCOL.md](docs/PROTOCOL.md) and covered by adversarial tests.
-- **Minimal dependencies.** One runtime dependency (Trystero, pinned), no build step, no
-  framework. Every line that runs is in this repository or in the pinned library.
-- **Readable and auditable.** Plain JavaScript modules and a strict Content Security Policy. CI
-  checks block `innerHTML`/`eval` and any unreviewed external origin.
+- **Minimal dependencies.** One runtime dependency (Trystero, locked), bundled at build time,
+  no framework, no CDN. Every line that runs is in this repository or in the locked library.
+- **Readable and verifiable.** Strict TypeScript, a strict Content Security Policy, and a
+  [reproducible build](docs/RELEASES.md): anyone can check the served files match the source.
+  Static analysis (Semgrep) runs on every push.

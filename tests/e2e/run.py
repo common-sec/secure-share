@@ -11,9 +11,10 @@ Trystero and a Nostr relay for discovery, as on the live site.
 
 Default mode serves the app and a minimal Nostr relay from one local server (tests/e2e/server.py)
 and points the app at it through test-only hooks injected before the page loads; ICE uses host
-candidates only, so no STUN server or public relay is involved. (The app still loads Trystero
-from jsDelivr until roadmap 0.6.0 bundles it; then this mode runs fully offline.) Public mode
-injects nothing: the app behaves exactly as on the live site.
+candidates only, so no STUN server or public relay is involved. Every request the browsers make
+to anything but the local server (HTTP or WebSocket) is blocked and fails the scenario: the built
+app must work without any third-party origin. Public mode injects nothing: the app behaves
+exactly as on the live site. Both test the built app (dist/), so run the `build` service first.
 """
 import argparse
 import json
@@ -48,7 +49,9 @@ expect.set_options(timeout=TIMEOUT)
 class Env:
     def __init__(self, playwright, base, public):
         self.pw, self.base, self.public = playwright, base, public
+        self.app = base + "/dist/"     # the built app, exactly as deployed
         self.browsers, self.contexts = {}, []
+        self.blocked = []    # third-party requests the app attempted (local mode)
         relay = base.replace("http://", "ws://") + "/relay"
         self.init_script = None if public else (
             f"window.__USS_TEST_RELAYS__ = {json.dumps([relay])}; window.__USS_TEST_ICE_SERVERS__ = [];")
@@ -65,12 +68,28 @@ class Env:
         """A new person: an isolated browser context (own storage, own WebRTC identity)."""
         ctx = self.browser(browser).new_context(accept_downloads=True)
         if self.init_script:
+            # Guards first: WebSocket routing patches the page, and must be in place before any script.
+            ctx.route(lambda url: not self.local(url), self.block_http)
+            ctx.route_web_socket(lambda url: not self.local(url), self.block_ws)
             ctx.add_init_script(self.init_script)
         self.contexts.append(ctx)
         page = ctx.new_page()
         page.on("pageerror", lambda e: print(f"      [{browser}] page error: {e}"))
         page.on("console", lambda m: m.type == "error" and print(f"      [{browser}] console: {m.text}"))
         return page
+
+    def local(self, url):
+        return url.startswith((self.base + "/", self.base.replace("http://", "ws://") + "/"))
+
+    # Third-party requests are refused and remembered; the scenario then fails.
+    def block_http(self, route):
+        self.blocked.append(route.request.url)
+        route.abort()
+
+    def block_ws(self, ws):
+        # Never connected to the real server, so nothing leaves the browser. (Calling ws.close()
+        # from this handler deadlocks Playwright's sync API.)
+        self.blocked.append(ws.url)
 
     def close_people(self):
         for ctx in self.contexts:
@@ -90,7 +109,7 @@ def file_payload(name, size):
 
 
 def share_send(env, page, text, files=(), approve=False):
-    page.goto(env.base + "/#/share")
+    page.goto(env.app + "#/share")
     page.locator("form textarea").fill(text)
     if files:
         page.locator("form input[type=file]").set_input_files(list(files))
@@ -117,7 +136,7 @@ def download(page, scope, name):
 
 # ---------------------------------------------------------------- helpers: Secure Chat
 def chat_create(env, page, nick):
-    page.goto(env.base + "/#/chat")
+    page.goto(env.app + "#/chat")
     page.get_by_placeholder("e.g. Alice").fill(nick)
     passphrase = page.locator("form input[aria-label=Passphrase]").input_value()
     page.get_by_role("button", name="Create chat room").click()
@@ -198,7 +217,7 @@ def scenario(name, browsers=("chromium",)):
 def share_happy_path(env, b):
     sender, recipient = env.person(b), env.person(b)
     secret_file = file_payload("keys.bin", 300_000)
-    sender.goto(env.base + "/#/share")
+    sender.goto(env.app + "#/share")
     audit(sender, "share-form")
     link, passphrase = share_send(env, sender, "db-password: Karrot~Over~Stone42", [secret_file])
     audit(sender, "share-waiting")
@@ -242,7 +261,7 @@ def share_with_approval(env, b):
           browsers=("chromium", "firefox"))
 def chat_group(env, b):
     host, bob, carol = env.person(b), env.person(b), env.person(b)
-    host.goto(env.base + "/#/chat")
+    host.goto(env.app + "#/chat")
     audit(host, "chat-form")
     link, passphrase = chat_create(env, host, "Alice")
     audit(host, "chat-room-host")
@@ -318,7 +337,7 @@ def chat_cross_browser(env, b):
 @scenario("passwords page passes the accessibility checks")
 def passwords_a11y(env, b):
     page = env.person(b)
-    page.goto(env.base + "/#/password")
+    page.goto(env.app + "#/password")
     expect(page.locator(".pw").first).to_be_visible()
     audit(page, "passwords")
 
@@ -344,7 +363,9 @@ def main():
             for name, fn, b in selected:
                 start = time.time()
                 try:
+                    env.blocked = []
                     fn(env, b)
+                    assert not env.blocked, f"the app tried to reach third parties: {env.blocked}"
                     print(f"  ✓ {name} ({time.time() - start:.1f} s)", flush=True)
                 except Exception:  # noqa: BLE001 - report every failure and continue
                     failed += 1

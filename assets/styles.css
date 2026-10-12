@@ -230,3 +230,5 @@ main.container:has(.chat-layout) { max-width: 1100px; }
   .chat-main { height: 65vh; }
   .msg { max-width: 90%; }
 }
+.footer .version { display: block; margin-top: 4px; font-size: .8rem; }
+.footer .version a { color: var(--muted); }

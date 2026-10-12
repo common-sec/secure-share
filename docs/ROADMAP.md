@@ -36,8 +36,8 @@ here once chosen.
 | 0.3.1 | **Dev environment refinements**: TruffleHog for secrets, a built test image, unit tests in `tests/unit/`, preview via compose | ✅ Done |
 | 0.4.0 | **First real-world test feedback**: Secure Share as the home page, clearer naming, stronger and masked room passphrases with a strength meter | ✅ Done |
 | 0.5.0 | **End-to-end tests**: real UI flows across several browsers over real WebRTC, with Playwright | ✅ Done |
-| 0.6.0 | **Reproducible TypeScript build**: pinned, locked dependencies bundled at build time, no runtime CDN | Next |
-| 0.7.0 | **Safari and Edge coverage**: unit and end-to-end tests also on WebKit (Safari's engine, and every iOS browser), Edge where it differs from Chromium | Planned |
+| 0.6.0 | **Reproducible TypeScript build**: pinned, locked dependencies bundled at build time, no runtime CDN | ✅ Done |
+| 0.7.0 | **Safari and Edge coverage**: unit and end-to-end tests also on WebKit (Safari's engine, and every iOS browser), Edge where it differs from Chromium | Next |
 | 0.8.0 | **Name, logo and organisation**: a distinctive app name, logo and favicon; move the repository to a dedicated GitHub organisation (an umbrella for several security tools, name not decided yet) | Planned |
 | 0.9.0 | **Share a generated password**: a button on the password generator opens a one-way Secure Share with it, passphrase and link ready | Planned |
 | 0.10.0 | **SEO and launch readiness**: pre-rendered static pages, metadata and social previews, How it works and FAQ, sitemap, Search Console | Planned |
@@ -107,7 +107,7 @@ both Secure Chat and Secure Share working across NAT.
 - automated accessibility checks (axe-core) run on every page and state;
 - it runs in CI and is documented in docs/TESTING.md.
 
-### 0.6.0: Reproducible TypeScript build
+### 0.6.0: Reproducible TypeScript build ✅
 **Goal:** move to TypeScript together with a build system, so that every dependency is
 downloaded once at a pinned, locked version, bundled into the app at build time, and never fetched
 from a third party at runtime. Anyone can rebuild a release and get byte-identical output, which is

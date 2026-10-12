@@ -1,0 +1,39 @@
+name: Release
+
+# For every version tag (vX.Y.Z): build the app reproducibly and publish a GitHub Release with
+# the bundle and its checksums. Anyone can rebuild the same tag and compare (docs/RELEASES.md).
+on:
+  push:
+    tags: ["v*.*.*"]
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write   # create the release
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Type-check, build, and check the build is reproducible
+        run: chmod a+rwX . && docker compose run --rm build
+      - name: Package (deterministic tarball) and checksum
+        run: |
+          name="secure-sharing-${GITHUB_REF_NAME}"
+          tar --sort=name --mtime='@0' --owner=0 --group=0 --numeric-owner \
+              --transform "s,^dist,${name}," -cf - dist | gzip -n -9 > "${name}.tar.gz"
+          sha256sum "${name}.tar.gz" > "${name}.tar.gz.sha256"
+          cp dist/SHA256SUMS "${name}.SHA256SUMS"
+          cat "${name}.tar.gz.sha256" "${name}.SHA256SUMS"
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          name="secure-sharing-${GITHUB_REF_NAME}"
+          gh release create "${GITHUB_REF_NAME}" --repo "${GITHUB_REPOSITORY}" --verify-tag \
+            --title "${GITHUB_REF_NAME}" --notes "See CHANGELOG.md. To verify, rebuild this tag (docs/RELEASES.md) and compare checksums." \
+            "${name}.tar.gz" "${name}.tar.gz.sha256" "${name}.SHA256SUMS"

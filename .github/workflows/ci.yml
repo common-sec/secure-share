@@ -10,6 +10,19 @@ permissions:
   contents: read
 
 jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # The checkout belongs to the runner's uid; the containers run as uid 1000.
+      - name: Type-check, build, and check the build is reproducible
+        run: chmod a+rwX . && docker compose run --rm build
+      - name: Checksums of this build
+        run: cat dist/SHA256SUMS
+
   test-unit:
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -17,6 +30,8 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      - name: Build the app (the tests import the compiled modules)
+        run: chmod a+rwX . && docker compose run --rm build
       - name: Build the test image (pinned base, hash-pinned packages under pip.conf rules)
         run: docker compose build test-unit
       - name: Unit tests (Chromium + Firefox, no network)
@@ -29,9 +44,11 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      - name: Build the app
+        run: chmod a+rwX . && docker compose run --rm build
       - name: Build the test image
         run: docker compose build test-e2e
-      - name: End-to-end tests (real UI, real WebRTC, local relay)
+      - name: End-to-end tests (real UI, real WebRTC, local relay, third-party requests blocked)
         run: docker compose run --rm test-e2e
 
   scan:

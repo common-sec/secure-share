@@ -2,9 +2,9 @@ import { test, assert } from './harness.js';
 import {
   generatePhrase, phraseEntropy, PHRASE_DEFAULTS, LINKING_WORDS, inflect, respellings, syllableStarts,
   roomPassphrase, ROOM_PHRASE,
-} from '../../src/lib/passphrase.js';
-import { WORD_SET } from '../../src/lib/words.js';
-import { estimateBits } from '../../src/lib/strength.js';
+} from '../../build/modules/lib/passphrase.js';
+import { WORD_SET } from '../../build/modules/lib/words.js';
+import { estimateBits } from '../../build/modules/lib/strength.js';
 
 const isLinking = (t) => LINKING_WORDS.includes(t.toLowerCase());
 const separatorOf = (phrase) => [...new Set(phrase.match(/[^A-Za-z0-9]/g))];

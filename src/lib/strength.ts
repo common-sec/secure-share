@@ -3,7 +3,9 @@
 import { WORDS, WORD_SET } from './words.js';
 import { LINKING_WORDS } from './passphrase.js';
 
-export function strengthLabel(bits) {
+export type StrengthClass = 'weak' | 'fair' | 'good' | 'strong' | 'excellent';
+
+export function strengthLabel(bits: number): [label: string, cls: StrengthClass] {
   if (bits < 40) return ['Weak', 'weak'];
   if (bits < 60) return ['Fair', 'fair'];
   if (bits < 80) return ['Good', 'good'];
@@ -23,9 +25,9 @@ const WORD_BITS = Math.log2(WORDS.length);
  *   - capitals: nothing (people capitalise predictably)
  * Never more than length × log2(95), the bound for printable ASCII.
  */
-export function estimateBits(text) {
+export function estimateBits(text: string): number {
   let bits = 0;
-  let lastSymbol = null;
+  let lastSymbol: string | null = null;
   for (const [run] of String(text).matchAll(/[A-Za-z]+|[0-9]+|[^A-Za-z0-9]/g)) {
     if (/^[A-Za-z]/.test(run)) {
       const w = run.toLowerCase();

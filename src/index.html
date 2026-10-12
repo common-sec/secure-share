@@ -3,12 +3,13 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- Scripts only from this site: the whole app, Trystero included, is bundled at build time. -->
   <meta http-equiv="Content-Security-Policy"
-        content="default-src 'none'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self'; img-src 'self' blob: data:; connect-src 'self' wss:; base-uri 'none'; form-action 'none'; object-src 'none'">
+        content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' blob: data:; connect-src 'self' wss:; base-uri 'none'; form-action 'none'; object-src 'none'">
   <meta name="referrer" content="no-referrer">
   <title>Secure Sharing</title>
-  <link rel="stylesheet" href="assets/styles.css">
-  <script type="module" src="src/main.js"></script>
+  <link rel="stylesheet" href="styles.css">
+  <script type="module" src="app.js"></script>
 </head>
 <body>
   <header class="topbar">
@@ -24,6 +25,7 @@
   <main id="view" class="container"></main>
   <footer class="footer container">
     Everything runs locally in your browser. No accounts, no tracking, no backend.
+    <span class="version" id="version"></span>
   </footer>
 </body>
 </html>

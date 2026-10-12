@@ -4,6 +4,29 @@ All notable changes, one section per version. See [docs/ROADMAP.md](docs/ROADMAP
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-10-12
+
+### Added
+- **Reproducible build**: `build.mjs` (esbuild) bundles the app into `dist/`. Building the same
+  commit twice gives byte-identical files, and `npm run build:check` fails otherwise. Every build
+  writes `dist/SHA256SUMS`.
+- `docker compose run --rm build`: `npm ci`, type-check, build and reproducibility check in the
+  pinned dev image. CI runs it on every push and prints the checksums.
+- **GitHub Pages deploys the built `dist/`** from a workflow (`pages.yml`); **releases** for every
+  `vX.Y.Z` tag publish a deterministic tarball and its checksums (`release.yml`).
+- The footer shows the **build version** (`v0.6.0 · build <commit>`), linking to the commit.
+- [docs/RELEASES.md](docs/RELEASES.md): how to rebuild a release and verify what the site serves.
+
+### Changed
+- **Sources are strict TypeScript.** Protocol messages are typed and validated as in
+  [PROTOCOL.md](docs/PROTOCOL.md); `SecureRoom` events are a typed map.
+- **Trystero is installed from npm** (`package-lock.json`, integrity hashes, `npm ci`) and bundled
+  as a lazily loaded chunk. **No CDN at runtime**: the CSP allows scripts only from `'self'`.
+- `index.html` moved to `src/`. `docker compose up web` serves `dist/`.
+- Unit tests import the transpiled modules (`build/modules/`); end-to-end tests run against
+  `dist/` and **block every third-party request** (a scenario fails if the app tries one).
+- Semgrep also runs its TypeScript rules.
+
 ## [0.5.0] - 2026-10-12
 
 ### Added
