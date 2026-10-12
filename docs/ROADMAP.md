@@ -11,6 +11,8 @@ here once chosen.
 3. **Iteration = commit.** Every iteration ends with a commit whose message says what changed and
    why. Tests must pass locally and in CI before an item is marked *Done*.
 4. **Release.** When an item is done: update [CHANGELOG.md](../CHANGELOG.md), mark it *Done*, and tag `vX.Y.Z`.
+5. **Small improvements** that don't need a feature of their own live in [TODO.md](TODO.md), by
+   priority. They're done between roadmap items and released as patch versions.
 
 ## Versioning
 
@@ -36,16 +38,15 @@ here once chosen.
 | 0.5.0 | **End-to-end tests**: real UI flows across several browsers over real WebRTC, with Playwright | ✅ Done |
 | 0.6.0 | **Reproducible TypeScript build**: pinned, locked dependencies bundled at build time, no runtime CDN | Next |
 | 0.7.0 | **Safari and Edge coverage**: unit and end-to-end tests also on WebKit (Safari's engine, and every iOS browser), Edge where it differs from Chromium | Planned |
-| 0.8.0 | **Name, logo and organisation**: a distinctive name, logo and favicon; move the repository to a dedicated GitHub organisation with a clean `<org>.github.io` address | Planned |
-| 0.9.0 | **Sending and receiving UX**: phone-friendly flows, recipient trust, masked received secrets, share sheet / QR, plain language, accessibility basics | Planned |
-| 0.10.0 | **Share a generated password**: a button on the password generator opens a one-way Secure Share with it, passphrase and link ready | Planned |
-| 0.11.0 | **SEO and launch readiness**: pre-rendered static pages, metadata and social previews, How it works and FAQ, sitemap, Search Console | Planned |
-| 0.12.0 | **DAST and fuzzing**: dynamic scanning of the served app, plus fuzzing of host and client (protocol and UI inputs) | Planned |
-| 0.13.0 | **OpenSSF Scorecard**: publish the repository and clear the Scorecard checks | Planned |
-| 0.14.0 | **Security posture management**: track every security check and repository setting continuously, in one place | Planned |
-| 0.15.0 | **Support & feedback links**: GitHub star, donations, "+1" rating; short privacy note | Planned |
-| 0.16.0 | **AI-assisted memorable passphrases** (on-device model, entropy kept by the CSPRNG) | Planned |
-| 0.17.0 | **Local version of the app** (architecture to define: PWA, Electron, Docker image, single file) | Planned |
+| 0.8.0 | **Name, logo and organisation**: a distinctive app name, logo and favicon; move the repository to a dedicated GitHub organisation (an umbrella for several security tools, name not decided yet) | Planned |
+| 0.9.0 | **Share a generated password**: a button on the password generator opens a one-way Secure Share with it, passphrase and link ready | Planned |
+| 0.10.0 | **SEO and launch readiness**: pre-rendered static pages, metadata and social previews, How it works and FAQ, sitemap, Search Console | Planned |
+| 0.11.0 | **DAST and fuzzing**: dynamic scanning of the served app, plus fuzzing of host and client (protocol and UI inputs) | Planned |
+| 0.12.0 | **OpenSSF Scorecard**: publish the repository and clear the Scorecard checks | Planned |
+| 0.13.0 | **Security posture management**: track every security check and repository setting continuously, in one place | Planned |
+| 0.14.0 | **Support & feedback links**: GitHub star, donations, "+1" rating; short privacy note | Planned |
+| 0.15.0 | **AI-assisted memorable passphrases** (on-device model, entropy kept by the CSPRNG) | Planned |
+| 0.16.0 | **Local version of the app** (architecture to define: PWA, Electron, Docker image, single file) | Planned |
 | 1.0.0 | **Public release**: license, production deployment with security headers, release checklist, external protocol review | Planned |
 
 ### 0.2.0: Tests run anywhere ✅
@@ -73,7 +74,7 @@ by the Dependabot cooldown; CI runs the same containers; docs/DEVELOPMENT.md exp
   Python packages baked in under `pip.conf` rules, replacing the `test-deps` install step;
 - unit tests live in `tests/unit/` and run as the `test-unit` service (no network);
 - `scripts/static-checks.sh` and the `checks` service are removed: the repository hardening they
-  re-checked is done, and ongoing tracking moves to posture management (0.14.0);
+  re-checked is done, and ongoing tracking moves to posture management (0.13.0);
 - the Claude Code preview (`.claude/launch.json`) starts the app through `docker compose up web`;
 - docs/TESTING.md explains how Playwright runs both the unit tests (inside the browser, where Web
   Crypto, WebRTC and IndexedDB live) and the end-to-end tests.
@@ -139,33 +140,24 @@ browser runs on WebKit, Safari's engine.
 ### 0.8.0: Name, logo and organisation
 **Why early:** the public address changes, so this must happen before anything is announced or
 indexed. See [the UX/product/SEO review](reviews/2026-10-12-ux-product-seo.md#5-name-and-logo).
+**Two separate names:**
+- the **organisation**: an umbrella for several security tools and repositories (this app is
+  the first), so its name must not be tied to sharing. *Not decided yet.*
+- this **app**: its own product name (shortlist in the review).
+
 **Done when:**
-- a name is chosen (shortlist in the review), after a trademark and domain check;
-- a logo exists as SVG plus favicon, `apple-touch-icon`, manifest icons and a 1200 × 630 social image;
-- the repository lives in a dedicated GitHub organisation with 2FA required, organisation
-  rulesets (protected default branch, required reviews, signed commits), and at least two owners
-  or a documented recovery path;
-- the site is served from `https://<org>.github.io/`, with all links, docs and badges updated;
+- the organisation name and the app name are chosen, after a trademark and domain check;
+- a logo exists for the app (and, if wanted, a mark for the organisation) as SVG plus favicon,
+  `apple-touch-icon`, manifest icons and a 1200 × 630 social image;
+- the repository lives in the organisation with 2FA required, organisation rulesets (protected
+  default branch, required reviews, signed commits), and at least two owners or a documented
+  recovery path;
+- the site is served from the organisation's Pages: `https://<org>.github.io/<app>/` for this
+  app, with `https://<org>.github.io/` as a small portal listing the organisation's tools; all
+  links, docs and badges are updated;
 - the app, README and docs use the new name consistently.
 
-### 0.9.0: Sending and receiving UX
-**Goal:** a first-time user, sender or recipient, on a phone or a computer, understands what's
-happening, trusts it, and succeeds. Findings S1–S7 and R1–R5 in
-[the review](reviews/2026-10-12-ux-product-seo.md#2-ux-secure-share-the-main-flow).
-**Done when:**
-- the sender's phone stays awake while waiting (Screen Wake Lock), and leaving the page is warned
-  about and explained;
-- links can be sent with the system share sheet and shown as a QR code; "Copy invitation" text
-  reminds people to send the passphrase another way;
-- the recipient page explains what this is, links to the source and How it works, and shows live
-  connection stages with actionable advice when the sender isn't reachable;
-- received secrets are masked by default (Show, Copy, Clear from screen);
-- the main action is visible without scrolling on a phone; plain language replaces jargon
-  ("Strong enough for this room ✓" rather than bits); the tab title reflects the state;
-- accessibility basics: labels associated with every field, tap targets ≥ 44 px, consistent
-  `aria-live` status, visible focus, sufficient contrast in both themes.
-
-### 0.10.0: Share a generated password
+### 0.9.0: Share a generated password
 **Goal:** generate a password and send it safely in one step.
 **Done when:**
 - each generated password has a **"Share securely"** button that opens Secure Share with the
@@ -173,7 +165,7 @@ happening, trusts it, and succeeds. Findings S1–S7 and R1–R5 in
 - the password is handed over **in memory only**: never in the URL, history, storage or logs;
 - covered by an end-to-end test (generate → share → receive the same password).
 
-### 0.11.0: SEO and launch readiness
+### 0.10.0: SEO and launch readiness
 **Goal:** people searching for how to send a password or a sensitive file securely find the app,
 and shared links show a trustworthy preview. See
 [the review](reviews/2026-10-12-ux-product-seo.md#7-seo-and-discoverability).
@@ -190,7 +182,7 @@ and shared links show a trustworthy preview. See
 - a launch checklist lists the channels (Show HN, Reddit, Product Hunt, AlternativeTo, privacy
   tool directories) and what each requires.
 
-### 0.12.0: DAST and fuzzing
+### 0.11.0: DAST and fuzzing
 **Goal:** attack the running app the way an outsider would, on both sides of a connection.
 **Done when:**
 - **DAST:** a pinned OWASP ZAP container scans the served app (baseline, plus an active scan
@@ -204,7 +196,7 @@ and shared links show a trustworthy preview. See
   and file names, on both host and client pages;
 - a time-boxed fuzz run in CI, longer runs on demand, and every crash reproduced as a regression test.
 
-### 0.13.0: OpenSSF Scorecard
+### 0.12.0: OpenSSF Scorecard
 **Goal:** a public repository that scores well on the [OpenSSF Scorecard](https://securityscorecards.dev),
 as a visible, independent signal of supply-chain hygiene.
 **Done when:**
@@ -217,7 +209,7 @@ as a visible, independent signal of supply-chain hygiene.
   CI-Tests, Vulnerabilities, Dangerous-Workflow, Binary-Artifacts, Maintained;
 - the OpenSSF Best Practices badge is started.
 
-### 0.14.0: Security posture management
+### 0.13.0: Security posture management
 **Goal:** know at any time which security checks run, which pass, and which repository settings
 protect the project, without re-checking hardening by hand on every commit.
 **Done when:**
@@ -236,21 +228,21 @@ protect the project, without re-checking hardening by hand on every commit.
   the tool that checks it, and its status;
 - pre-commit automation is decided (see [IDEAS.md](IDEAS.md#pre-commit-checks)).
 
-### 0.15.0: Support & feedback links
+### 0.14.0: Support & feedback links
 **Goal:** let developers star the project, users donate or leave a rating, without any embedded
 third-party script, image or cookie.
 **Done when:** plain links (GitHub, Patreon / Buy Me a Coffee, a rating site) appear in the footer
 and after a successful share, and a short "privacy by default" note explains what the app does
 and doesn't collect.
 
-### 0.16.0: AI-assisted memorable passphrases
+### 0.15.0: AI-assisted memorable passphrases
 **Goal:** an optional "make it a sentence" mode in which an on-device model turns CSPRNG-chosen
 words and a number into a memorable phrase, before the usual random variation rules.
 **Done when:** the design in [IDEAS.md](IDEAS.md#ai-assisted-memorable-passphrases) is
 implemented, the output is validated to contain every chosen word, the shown strength counts only
 CSPRNG choices, and it falls back cleanly when no on-device model is available.
 
-### 0.17.0: Local version of the app
+### 0.16.0: Local version of the app
 **Goal:** the same app usable without trusting a website at run time: installed or run locally.
 **Architecture to define**, comparing:
 - **PWA**: installable from the site, works offline after the first visit. Still delivered by the
