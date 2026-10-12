@@ -4,6 +4,14 @@ All notable changes, one section per version. See [docs/ROADMAP.md](docs/ROADMAP
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-10-12
+
+### Changed
+- Secure Share explains what it is: encrypted transfer from computer to computer, browser to
+  browser; ideal for passwords and sensitive files between any kind of user; no special software
+  needed; Secure Chat for longer or back-and-forth exchanges.
+- Roadmap 0.6.0 (TypeScript build) now includes showing the build version in the app.
+
 ## [0.4.0] - 2026-10-12
 
 Feedback from the first real-world test (iPhone on 5G and a computer on wifi; Chat and Share both

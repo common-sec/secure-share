@@ -10,9 +10,15 @@ export function mount(root, params) {
 
   root.append(h('section', { class: 'page-head' },
     h('h1', null, 'Secure Share'),
-    h('p', { class: 'lead' }, invite
-      ? 'Someone sent you a one-time, end-to-end encrypted delivery.'
-      : 'Send text or files once, directly to one person. Nothing is uploaded or stored anywhere.'),
+    invite
+      ? h('p', { class: 'lead' }, 'Someone sent you a one-time, end-to-end encrypted delivery.')
+      : [
+        h('p', { class: 'lead' },
+          'Encrypted transfer from computer to computer, browser to browser. Ideal for passwords and sensitive files, between any kind of user.'),
+        h('p', { class: 'lead' },
+          'No special software needed: it works in any modern browser, and nothing is uploaded or stored anywhere. For longer or back-and-forth exchanges, open a ',
+          h('a', { href: '#/chat' }, 'Secure Chat'), ' channel instead.'),
+      ],
   ));
   const body = h('div');
   root.append(body);

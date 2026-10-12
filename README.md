@@ -16,7 +16,7 @@ The aim is to make secure sharing easy for anyone: **privacy by default, not ano
 
 | Tool | What it does |
 |---|---|
-| **Secure Share** (home page) | Send text and/or files once to one person. They need the link **and** a passphrase. Once delivered, the link is dead. |
+| **Secure Share** (home page) | Encrypted transfer from computer to computer, browser to browser: ideal for passwords and sensitive files, between any kind of user, with no special software. Send text and/or files once to one person. They need the link **and** a passphrase. Once delivered, the link is dead. |
 | **Secure Chat** (`#/chat`) | For several things to exchange, replies, or more than two people: group chat with file sharing. The host approves every member, messages are signed and encrypted, and the room disappears when the host closes it. |
 | **Password Generator** (`#/password`) | Memorable passphrases that are not just dictionary words (`Stone~Behind~Karrotish~Pencils42~Over~Quail`), or random-character passwords. |
 

@@ -111,7 +111,9 @@ how auditors check that the served files come from the reviewed source.
 - the build bundles everything into `dist/` (CSP `script-src 'self'`, no CDN);
 - building twice gives identical `dist/` checksums, CI checks this and publishes the checksums;
 - the dev container builds the bundle and the `test` container tests it, locally and in CI;
-- docs explain how to rebuild and verify a release.
+- docs explain how to rebuild and verify a release;
+- the app shows its **build version** (release tag plus short commit) in the footer, matching
+  the published checksums, so users and auditors can tell exactly which build they're running.
 
 ### 0.7.0: DAST and fuzzing
 **Goal:** attack the running app the way an outsider would, on both sides of a connection.
