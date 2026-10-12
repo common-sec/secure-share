@@ -65,7 +65,7 @@ CI (`.github/workflows/ci.yml`) runs exactly these commands.
 | Test base image | Tag + digest in `Dockerfile` | Non-root (`pwuser`) | Dependabot (`docker`) |
 | Tool images | Tag + digest in `compose.yaml` | Non-root, no caps, read-only | Dependabot (`docker-compose`) |
 | Python test packages | Exact version + SHA-256 of every file, the whole tree (`tests/requirements.txt`), installed when the `test` image is built | `pip.conf`: `require-hashes`, wheels only (no build code runs), uploaded ≥ 7 days ago | Dependabot (`pip`) |
-| npm packages (from 0.10.0) | `package-lock.json`, exact versions | `.npmrc`: `ignore-scripts`, `min-release-age=7`, `save-exact` | Dependabot (`npm`) |
+| npm packages (from 0.6.0) | `package-lock.json`, exact versions | `.npmrc`: `ignore-scripts`, `min-release-age=7`, `save-exact` | Dependabot (`npm`) |
 | GitHub Actions | Commit SHA | `persist-credentials: false`, read-only token | Dependabot (`github-actions`) |
 
 All of these use a **7-day minimum age**: npm `min-release-age=7`, pip

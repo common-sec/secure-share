@@ -1,5 +1,5 @@
 {
-  "_note": "Known axe-core findings, accepted until roadmap 0.7.0 (Sending and receiving UX: accessibility basics). Any finding not listed here fails the end-to-end tests. Remove entries as they're fixed; never add one without a roadmap reference.",
+  "_note": "Known axe-core findings, accepted until roadmap 0.9.0 (Sending and receiving UX: accessibility basics). Any finding not listed here fails the end-to-end tests. Remove entries as they're fixed; never add one without a roadmap reference.",
   "chat-form": [],
   "chat-room-guest": [
     "color-contrast",

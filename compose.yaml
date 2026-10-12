@@ -60,7 +60,7 @@ services:
   # End-to-end: users' flows through the real UI over real WebRTC (see docs/TESTING.md).
   # Discovery uses the local relay in the test server and ICE uses host candidates only. The one
   # outside dependency is the app loading Trystero from jsDelivr; once it's bundled (roadmap
-  # 0.10.0), this service moves to the internal `offline` network below.
+  # 0.6.0), this service moves to the internal `offline` network below.
   test-e2e:
     build: { context: ., target: test }
     image: user-sec-tools/test:local
@@ -129,6 +129,6 @@ services:
               "--skip-dirs", "/work/node_modules", "--skip-dirs", "/work/.cache", "/work"]
 
 networks:
-  # For test-e2e once the app has no runtime CDN dependency (roadmap 0.10.0).
+  # For test-e2e once the app has no runtime CDN dependency (roadmap 0.6.0).
   offline:
     internal: true

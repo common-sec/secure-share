@@ -12,7 +12,7 @@ Trystero and a Nostr relay for discovery, as on the live site.
 Default mode serves the app and a minimal Nostr relay from one local server (tests/e2e/server.py)
 and points the app at it through test-only hooks injected before the page loads; ICE uses host
 candidates only, so no STUN server or public relay is involved. (The app still loads Trystero
-from jsDelivr until roadmap 0.10.0 bundles it; then this mode runs fully offline.) Public mode
+from jsDelivr until roadmap 0.6.0 bundles it; then this mode runs fully offline.) Public mode
 injects nothing: the app behaves exactly as on the live site.
 """
 import argparse
@@ -169,7 +169,7 @@ _recorded = {}
 
 def audit(page, state):
     """axe-core on the current page. Known issues are listed in axe-baseline.json (to be fixed in
-    roadmap 0.7.0); anything else fails the test."""
+    roadmap 0.9.0); anything else fails the test."""
     violations = _axe.run(page).response["violations"]
     found = {v["id"]: v for v in violations}
     if RECORD:
