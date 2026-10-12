@@ -51,6 +51,7 @@ your data.
 | [docs/ROADMAP.md](docs/ROADMAP.md) | What we're working on (one feature per version) and what's next |
 | [docs/IDEAS.md](docs/IDEAS.md) | Ideas waiting to be chosen for the roadmap |
 | [CHANGELOG.md](CHANGELOG.md) | What changed in each version |
+| [docs/reviews/](docs/reviews/) | Reviews: [UX, product and SEO (2026-10-12)](docs/reviews/2026-10-12-ux-product-seo.md) |
 
 ## Run it
 
