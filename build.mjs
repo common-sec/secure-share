@@ -63,7 +63,6 @@ async function buildApp(outdir) {
   });
   copyFileSync('src/index.html', join(outdir, 'index.html'));
   copyFileSync('assets/styles.css', join(outdir, 'styles.css'));
-  writeFileSync(join(outdir, '.nojekyll'), '');
   const files = listFiles(outdir).filter((f) => !f.endsWith('SHA256SUMS'));
   const sums = files.map((f) => `${sha256(f)}  ${relative(outdir, f).split('\\').join('/')}`).join('\n') + '\n';
   writeFileSync(join(outdir, 'SHA256SUMS'), sums);

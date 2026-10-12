@@ -4,6 +4,20 @@ All notable changes, one section per version. See [docs/ROADMAP.md](docs/ROADMAP
 
 ## [Unreleased]
 
+## [0.6.1] - 2026-10-12
+
+### Fixed
+- **Release tarballs are now reproducible on any machine.** In 0.6.0 the files inside matched,
+  but the archive kept the checkout's permissions (e.g. `777` on a Windows drive in WSL), so a
+  rebuilt tarball's checksum could differ. `tools/package.py` (new `package` service, pinned
+  Python image) writes every header field explicitly.
+- `dist/` no longer contains `.nojekyll`: Pages deploys from a workflow, which doesn't use Jekyll
+  and doesn't serve hidden files, so `SHA256SUMS` listed a file the site didn't have.
+
+### Verified
+- Rebuilding `v0.6.0` reproduced every file in its `SHA256SUMS`, and the live site served the
+  same files (except `.nojekyll`, fixed above).
+
 ## [0.6.0] - 2026-10-12
 
 ### Added

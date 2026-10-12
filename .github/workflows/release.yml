@@ -21,19 +21,13 @@ jobs:
           persist-credentials: false
       - name: Type-check, build, and check the build is reproducible
         run: chmod a+rwX . && docker compose run --rm build
-      - name: Package (deterministic tarball) and checksum
-        run: |
-          name="secure-sharing-${GITHUB_REF_NAME}"
-          tar --sort=name --mtime='@0' --owner=0 --group=0 --numeric-owner \
-              --transform "s,^dist,${name}," -cf - dist | gzip -n -9 > "${name}.tar.gz"
-          sha256sum "${name}.tar.gz" > "${name}.tar.gz.sha256"
-          cp dist/SHA256SUMS "${name}.SHA256SUMS"
-          cat "${name}.tar.gz.sha256" "${name}.SHA256SUMS"
+      - name: Package (deterministic tarball) and checksums
+        run: docker compose run --rm package "${GITHUB_REF_NAME}" && cat release/*.SHA256SUMS
       - name: Publish the release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          name="secure-sharing-${GITHUB_REF_NAME}"
+          name="release/secure-sharing-${GITHUB_REF_NAME}"
           gh release create "${GITHUB_REF_NAME}" --repo "${GITHUB_REPOSITORY}" --verify-tag \
             --title "${GITHUB_REF_NAME}" --notes "See CHANGELOG.md. To verify, rebuild this tag (docs/RELEASES.md) and compare checksums." \
             "${name}.tar.gz" "${name}.tar.gz.sha256" "${name}.SHA256SUMS"
