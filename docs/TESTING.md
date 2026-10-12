@@ -69,7 +69,7 @@ http://127.0.0.1:8080/tests/unit/ (`?filter=room` works there too).
 Security tests must fail when the protection they guard is removed. For example, deleting the
 signature check in `#verifyEnvelope` (src/lib/room.js) makes *"a member cannot forge messages as
 another member"* fail. Do such mutation checks by hand when changing the protocol. Systematic
-fuzzing is planned for roadmap 0.11.0.
+fuzzing is planned for roadmap 0.12.0.
 
 ## End-to-end tests
 
@@ -99,7 +99,7 @@ clicks, types, uploads and downloads files exactly as a user would, and the peer
   `__USS_TEST_ICE_SERVERS__` (empty, so host candidates only and no STUN). They can only be set
   by a script already running in the page, which has full control anyway, so links and user
   input can't reach them. Runs are fast and deterministic. The one outside dependency left is
-  the app loading Trystero from jsDelivr; once it's bundled (roadmap 0.10.0), this mode moves to
+  the app loading Trystero from jsDelivr; once it's bundled (roadmap 0.6.0), this mode moves to
   an internal network with no internet at all.
 - **`test-e2e-public`: real world.** Nothing is injected: the app uses the real public Nostr
   relays and STUN servers, exactly as on the live site. It tests real-world networking, and
@@ -108,7 +108,7 @@ clicks, types, uploads and downloads files exactly as a user would, and the peer
 ### Accessibility
 
 Every audited page state runs **axe-core** (via `axe-playwright-python`, hash-pinned).
-`tests/e2e/axe-baseline.json` lists the findings that are known and accepted until roadmap 0.7.0
+`tests/e2e/axe-baseline.json` lists the findings that are known and accepted until roadmap 0.9.0
 fixes them (colour contrast, heading order, unlabelled fields on the password page). Any finding
 not in that list fails the run. To review the current findings:
 `docker compose run --rm -e E2E_AXE_RECORD=1 test-e2e` prints them instead of failing.
