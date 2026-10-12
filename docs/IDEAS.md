@@ -173,6 +173,31 @@ remove trust in the host for membership and add forward secrecy.
 **Status:** 🅿️ Parked: no mature, maintained browser library today. The current design already
 prevents offline guessing.
 
+## Own signaling relay
+**Status:** 💡 Proposed
+**Problem:** browsers find each other through public Nostr relays. That works, but those relays
+were built for social media, owe us no uptime (rate limiting was seen in testing), and their
+operators see users' IP addresses and timing. See [COMMUNICATION.md](COMMUNICATION.md) and
+[DECISIONS.md D3](DECISIONS.md#d3-signaling-through-public-nostr-relays-via-trystero-).
+**Proposal:** run our own small signaling relay and make signaling pluggable: our relay by
+default, public Nostr relays as a fallback. Options: Trystero's `ws-relay` strategy, or a Nostr
+relay (e.g. strfry, nostr-rs-relay) that accepts only our ephemeral event kinds. It only carries
+the encrypted connection cards (a few KB per connection); data still goes directly between browsers.
+**Trade-offs:** we'd operate a service (uptime, abuse handling, rate limits) and see IP addresses
+ourselves. Hosting must be zero-cost: check whether Cloudflare Workers + Durable Objects
+(WebSockets) fit the free tier. The e2e tests already use a local relay of this kind.
+
+## Store-and-forward delivery
+**Status:** 💡 Proposed
+**Problem:** with Secure Share, the sender's tab must stay open until the recipient opens the
+link. That's the biggest usability limit.
+**Proposal:** an optional mode in which the encrypted payload waits on a server until it's
+fetched once, then is deleted, as one-time-secret services do but end-to-end encrypted, so the
+server can't read it.
+**Trade-offs:** it **changes the product promise** ("nothing is stored on any server", even if
+encrypted); it needs server storage, abuse controls and size limits; and it isn't free to run.
+A product decision first, then a technical one.
+
 ## Optional TURN relay
 **Status:** 💡 Proposed
 **Problem:** peers behind strict NATs or firewalls can't connect.
