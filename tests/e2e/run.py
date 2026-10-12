@@ -169,7 +169,7 @@ _recorded = {}
 
 def audit(page, state):
     """axe-core on the current page. Known issues are listed in axe-baseline.json (to be fixed in
-    roadmap 0.9.0); anything else fails the test."""
+    docs/TODO.md, accessibility A1-A4); anything else fails the test."""
     violations = _axe.run(page).response["violations"]
     found = {v["id"]: v for v in violations}
     if RECORD:

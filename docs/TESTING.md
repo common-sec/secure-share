@@ -108,7 +108,7 @@ clicks, types, uploads and downloads files exactly as a user would, and the peer
 ### Accessibility
 
 Every audited page state runs **axe-core** (via `axe-playwright-python`, hash-pinned).
-`tests/e2e/axe-baseline.json` lists the findings that are known and accepted until roadmap 0.9.0
+`tests/e2e/axe-baseline.json` lists the findings that are known and accepted until the accessibility items (A1–A4) in [TODO.md](TODO.md)
 fixes them (colour contrast, heading order, unlabelled fields on the password page). Any finding
 not in that list fails the run. To review the current findings:
 `docker compose run --rm -e E2E_AXE_RECORD=1 test-e2e` prints them instead of failing.

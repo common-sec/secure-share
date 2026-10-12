@@ -23,6 +23,11 @@ updates:
       default-days: 7
     commit-message:
       prefix: "deps(docker)"
+    ignore:
+      # The dev toolchain stays on Node LTS releases; a new major is adopted deliberately once it
+      # becomes LTS (even majors, each October), not as soon as it's published.
+      - dependency-name: node
+        update-types: ["version-update:semver-major"]
 
   # Test tooling (tests/requirements.txt, pinned with hashes; installed under pip.conf rules).
   - package-ecosystem: pip
@@ -33,8 +38,13 @@ updates:
       default-days: 7
     commit-message:
       prefix: "deps(pip)"
+    ignore:
+      # Playwright pins its own dependencies (1.63: pyee>=13,<14); a pyee major arrives with the
+      # Playwright update that allows it.
+      - dependency-name: pyee
+        update-types: ["version-update:semver-major"]
 
-  # npm packages (package.json / package-lock.json, from roadmap 0.4.0 on).
+  # npm packages (package.json / package-lock.json, from roadmap 0.6.0 on).
   - package-ecosystem: npm
     directory: /
     schedule:
