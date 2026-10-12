@@ -4,3 +4,4 @@
 ^/work/node_modules/
 ^/work/build/
 ^/work/dist/
+^/work/release/
