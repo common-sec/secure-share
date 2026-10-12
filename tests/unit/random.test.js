@@ -1,5 +1,5 @@
 import { test, assert } from './harness.js';
-import { randomInt, shuffle } from '../../src/lib/random.js';
+import { randomInt, shuffle } from '../../build/modules/lib/random.js';
 
 test('randomInt stays in range', () => {
   for (const n of [1, 2, 3, 7, 62, 100, 2 ** 32]) {

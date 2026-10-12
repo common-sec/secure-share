@@ -3,8 +3,13 @@ import { h, copyText } from '../lib/dom.js';
 import { roomPassphrase, phraseEntropy, ROOM_PHRASE } from '../lib/passphrase.js';
 import { strengthLabel, estimateBits } from '../lib/strength.js';
 
+export interface StrengthMeter {
+  el: HTMLElement;
+  set(bits: number | null, opts?: { estimated?: boolean }): void;
+}
+
 /** Strength meter: call set(bits, { estimated }) to update. */
-export function strengthMeter() {
+export function strengthMeter(): StrengthMeter {
   const fill = h('div', { class: 'meter-fill' });
   const label = h('span', { class: 'meter-label' });
   const el = h('div', { class: 'meter' }, h('div', { class: 'meter-track' }, fill), label);
@@ -27,7 +32,7 @@ export function strengthMeter() {
 }
 
 /** A Show/Hide button that toggles an input between masked and visible. */
-export function revealToggle(input) {
+export function revealToggle(input: HTMLInputElement): HTMLButtonElement {
   const btn = h('button', { type: 'button', class: 'btn btn-ghost', 'aria-pressed': 'false' }, 'Show');
   btn.addEventListener('click', () => {
     const show = input.type === 'password';
@@ -44,20 +49,21 @@ export function revealToggle(input) {
  *                     (exact for generated values, an estimate once edited)
  *   generate: false → empty field for the passphrase someone gave you
  */
-export function passphraseField({ generate }) {
+export function passphraseField({ generate }: { generate: boolean }): { input: HTMLInputElement; el: HTMLElement } {
   const input = h('input', {
     type: 'password', spellcheck: 'false', autocomplete: 'off', autocapitalize: 'off',
     class: 'mono', required: true, 'aria-label': 'Passphrase',
   });
-  const controls = [input, revealToggle(input)];
-  let meter = null;
+  const controls: HTMLElement[] = [input, revealToggle(input)];
+  let meter: StrengthMeter | null = null;
   if (generate) {
-    meter = strengthMeter();
+    const m = strengthMeter();
+    meter = m;
     let generated = '';
     const refresh = () => {
-      if (!input.value) meter.set(null);
-      else if (input.value === generated) meter.set(phraseEntropy(ROOM_PHRASE));
-      else meter.set(estimateBits(input.value), { estimated: true });
+      if (!input.value) m.set(null);
+      else if (input.value === generated) m.set(phraseEntropy(ROOM_PHRASE));
+      else m.set(estimateBits(input.value), { estimated: true });
     };
     const regenerate = () => { generated = roomPassphrase(); input.value = generated; refresh(); };
     input.addEventListener('input', refresh);
@@ -70,7 +76,7 @@ export function passphraseField({ generate }) {
 }
 
 /** Read-only value with a Copy button; secrets are masked, with a Show toggle. */
-export function copyRow(label, value, secret) {
+export function copyRow(label: string, value: string, secret: boolean): HTMLElement {
   const field = h('input', { type: secret ? 'password' : 'text', readOnly: true, value, class: 'mono', 'aria-label': label });
   const btn = h('button', { class: 'btn btn-small', onclick: () => copyText(value, btn) }, 'Copy');
   return h('div', { class: 'field' }, h('label', null, label),

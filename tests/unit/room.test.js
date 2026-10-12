@@ -1,8 +1,8 @@
 // Protocol tests for SecureRoom over an in-memory transport, including malicious peers.
 import { test, assert } from './harness.js';
 import { FakeNetwork } from './fake-transport.js';
-import { SecureRoom } from '../../src/lib/room.js';
-import * as C from '../../src/lib/crypto.js';
+import { SecureRoom } from '../../build/modules/lib/room.js';
+import * as C from '../../build/modules/lib/crypto.js';
 
 const PASS = 'karrot-behind-stonish';
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -260,7 +260,7 @@ test('a file whose content does not match its signed hash is dropped', async () 
   const files = collect(host, 'file');
   const real = new Uint8Array([1, 2, 3]);
   const fake = new Uint8Array([6, 6, 6]);
-  const { bytesToB64url } = await import('../../src/lib/encoding.js');
+  const { bytesToB64url } = await import('../../build/modules/lib/encoding.js');
   const inner = { t: 'file', name: 'x', size: 3, type: '', sha256: bytesToB64url(await C.sha256(real)), id: C.randomId(12), from: bob.identity.id, ts: Date.now() };
   const d = JSON.stringify(inner);
   const m = await C.sealJson(bob.keys.groupKey, { d, s: await C.sign(bob.identity, d) });

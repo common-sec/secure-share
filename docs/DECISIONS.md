@@ -80,14 +80,18 @@ kept under "History".
 
 ## Engineering
 
-### D12. Plain JavaScript, no build step (for now) 🔄
-- **Why:** the served code is exactly the reviewed code; few moving parts.
-- **Next:** TypeScript with a reproducible, pinned build (roadmap), which also removes the runtime CDN (D13).
+### D12. Strict TypeScript with a reproducible build ✅ (0.6.0)
+- **What:** TypeScript (strict) built by esbuild into `dist/`. Building the same source twice gives
+  byte-identical files, and every release publishes their checksums.
+- **Why:** types catch mistakes in the protocol code; reproducibility keeps "served code =
+  reviewed code" verifiable now that there is a build step.
+- **Before:** plain JavaScript with no build step (0.1.0 to 0.5.0).
 
-### D13. One runtime dependency, loaded from a pinned CDN URL 🔄
-- **What:** `trystero@0.26.0` from jsDelivr, allowed by the CSP.
-- **Why:** no build step yet.
-- **Next:** bundle it at build time with a lockfile, so no third-party script loads at runtime.
+### D13. One runtime dependency, bundled from a lockfile ✅ (0.6.0)
+- **What:** `trystero@0.26.0` from npm, locked with integrity hashes and bundled into the app. The
+  CSP allows scripts only from `'self'`.
+- **Why:** no third party serves code at runtime.
+- **Before:** loaded from jsDelivr at a pinned URL.
 
 ### D14. All development, tests and scans in containers ✅
 - **What:** pinned images (tag + digest), non-root, no capabilities, read-only filesystems, tests

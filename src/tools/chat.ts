@@ -1,25 +1,32 @@
-import { h, formatBytes, safeFileName } from '../lib/dom.js';
+import { h, formatBytes, safeFileName, type Child } from '../lib/dom.js';
 import { passphraseField, copyRow } from './widgets.js';
-import { SecureRoom, DENY_REASONS, MAX_TEXT, MAX_FILE_BYTES, cleanNick } from '../lib/room.js';
-import { saveHost, loadHost, forgetHost, claimHost } from '../lib/hoststore.js';
+import { SecureRoom, DENY_REASONS, MAX_TEXT, MAX_FILE_BYTES, cleanNick, type Inner, type Member } from '../lib/room.js';
+import { saveHost, loadHost, forgetHost, claimHost, type HostRecord } from '../lib/hoststore.js';
 
 // Per-tab conveniences (sessionStorage is cleared when the tab closes).
 const tabStore = {
-  get(k) { try { return sessionStorage.getItem(k); } catch { return null; } },
-  set(k, v) { try { sessionStorage.setItem(k, v); } catch { /* unavailable */ } },
-  del(k) { try { sessionStorage.removeItem(k); } catch { /* unavailable */ } },
+  get(k: string): string | null { try { return sessionStorage.getItem(k); } catch { return null; } },
+  set(k: string, v: string): void { try { sessionStorage.setItem(k, v); } catch { /* unavailable */ } },
+  del(k: string): void { try { sessionStorage.removeItem(k); } catch { /* unavailable */ } },
 };
 
 const LINK_RE = { r: /^[A-Za-z0-9_-]{22}$/, k: /^[A-Za-z0-9_-]{43}$/, h: /^[A-Za-z0-9_-]{43}$/ };
 
-export function readInvite(params) {
-  const inv = { roomId: params.get('r'), secret: params.get('k'), hostFp: params.get('h') };
-  const ok = LINK_RE.r.test(inv.roomId ?? '') && LINK_RE.k.test(inv.secret ?? '') && LINK_RE.h.test(inv.hostFp ?? '');
-  return ok ? inv : null;
+export interface Invite { roomId: string; secret: string; hostFp: string }
+export interface Session { leave(): void }
+
+const errorText = (e: unknown): string => (e instanceof Error ? e.message : String(e));
+
+/** The room link's parameters, if they're well-formed (they come from a URL anyone can craft). */
+export function readInvite(params: URLSearchParams): Invite | null {
+  const roomId = params.get('r') ?? '';
+  const secret = params.get('k') ?? '';
+  const hostFp = params.get('h') ?? '';
+  return LINK_RE.r.test(roomId) && LINK_RE.k.test(secret) && LINK_RE.h.test(hostFp) ? { roomId, secret, hostFp } : null;
 }
 
-export function mount(root, params) {
-  let session = null;
+export function mount(root: HTMLElement, params: URLSearchParams): () => void {
+  let session: Session | null = null;
   let disposed = false;
   const invite = readInvite(params);
 
@@ -30,7 +37,7 @@ export function mount(root, params) {
     const error = h('p', { class: 'error', hidden: true });
     const submit = h('button', { class: 'btn btn-primary', type: 'submit' }, invite ? 'Join chat' : 'Create chat room');
 
-    const form = h('form', { class: 'card narrow', onsubmit: async (e) => {
+    const form = h('form', { class: 'card narrow', onsubmit: async (e: Event) => {
       e.preventDefault();
       const n = cleanNick(nick.value);
       const p = pass.input.value.trim();
@@ -41,7 +48,7 @@ export function mount(root, params) {
       try {
         session = await startChat(root, { invite, nick: n, passphrase: p, onRetry: showForm });
       } catch (err) {
-        error.textContent = `Could not start: ${err.message}`;
+        error.textContent = `Could not start: ${errorText(err)}`;
         error.hidden = false;
         submit.disabled = false;
         submit.textContent = invite ? 'Join chat' : 'Create chat room';
@@ -92,25 +99,36 @@ export function mount(root, params) {
   return () => { disposed = true; session?.leave(); };
 }
 
-async function startChat(root, { invite, nick, passphrase, restore, release, onRetry }) {
-  let room;
-  if (restore) room = await SecureRoom.host({ app: 'chat', restore, maxGuests: 7 });
-  else if (invite) room = await SecureRoom.join({ app: 'chat', ...invite, passphrase, nick });
-  else room = await SecureRoom.host({ app: 'chat', passphrase, nick, maxGuests: 7 });
+interface StartOptions {
+  invite?: Invite | null;
+  nick?: string;
+  passphrase?: string | null;
+  restore?: HostRecord;
+  release?: (() => void) | null;
+  onRetry: () => void;
+}
 
-  const link = room.isHost ? room.link('chat') : null;
+interface FileCard { bar: HTMLProgressElement; actions: HTMLElement }
+
+async function startChat(root: HTMLElement, { invite, nick = '', passphrase = null, restore, release = null, onRetry }: StartOptions): Promise<Session> {
+  let room: SecureRoom;
+  if (restore) room = await SecureRoom.host({ app: 'chat', restore, maxGuests: 7 });
+  else if (invite) room = await SecureRoom.join({ app: 'chat', ...invite, passphrase: passphrase ?? '', nick });
+  else room = await SecureRoom.host({ app: 'chat', passphrase: passphrase ?? '', nick, maxGuests: 7 });
+
+  const link = room.link('chat');
   if (room.isHost) {
     // Keep the room link in the address bar and make a reload resume the room.
     release ??= await claimHost('chat', room.roomId);
     history.replaceState(null, '', link.slice(link.indexOf('#')));
-    const persist = () => saveHost('chat', room.snapshot());
+    const persist = () => { void saveHost('chat', room.snapshot()); };
     persist();
     room.on('persist', persist);
     if (passphrase) tabStore.set(`uss-pass:${room.roomId}`, passphrase);
     else passphrase = tabStore.get(`uss-pass:${room.roomId}`);
   }
-  const objectUrls = [];
-  const fileCards = new Map();
+  const objectUrls: string[] = [];
+  const fileCards = new Map<string | symbol, FileCard>();
 
   // ---- layout ----
   const badge = h('span', { class: room.isHost ? 'badge badge-host' : 'badge' }, room.isHost ? '★ You are the host' : 'Connecting to host…');
@@ -118,10 +136,13 @@ async function startChat(root, { invite, nick, passphrase, restore, release, onR
   const messages = h('ol', { class: 'messages', 'aria-live': 'polite' });
   const input = h('textarea', { rows: 1, placeholder: 'Write a message…', maxlength: MAX_TEXT, disabled: true });
   const sendBtn = h('button', { class: 'btn btn-primary', disabled: true, onclick: sendText, title: 'Send (Enter)' }, 'Send');
-  const fileInput = h('input', { type: 'file', multiple: true, hidden: true, onchange: (e) => { sendFiles(e.target.files); e.target.value = ''; } });
+  const fileInput = h('input', {
+    type: 'file', multiple: true, hidden: true,
+    onchange: (e: Event) => { const t = e.target as HTMLInputElement; void sendFiles(t.files); t.value = ''; },
+  });
   const attachBtn = h('button', { class: 'btn btn-ghost attach', disabled: true, title: `Attach files (up to ${formatBytes(MAX_FILE_BYTES)})`, onclick: () => fileInput.click() }, '📎');
   const memberList = h('ul', { class: 'members' });
-  const lockToggle = h('input', { type: 'checkbox', onchange: (e) => room.setLocked(e.target.checked) });
+  const lockToggle = h('input', { type: 'checkbox', onchange: (e: Event) => room.setLocked((e.target as HTMLInputElement).checked) });
 
   const chatPane = h('section', { class: 'chat-main' },
     requests,
@@ -130,8 +151,8 @@ async function startChat(root, { invite, nick, passphrase, restore, release, onR
   );
   chatPane.addEventListener('dragover', (e) => { if (!input.disabled) { e.preventDefault(); chatPane.classList.add('over'); } });
   chatPane.addEventListener('dragleave', (e) => { if (e.target === chatPane) chatPane.classList.remove('over'); });
-  chatPane.addEventListener('drop', (e) => { e.preventDefault(); chatPane.classList.remove('over'); if (!input.disabled) sendFiles(e.dataTransfer.files); });
-  input.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendText(); } });
+  chatPane.addEventListener('drop', (e) => { e.preventDefault(); chatPane.classList.remove('over'); if (!input.disabled) void sendFiles(e.dataTransfer?.files); });
+  input.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void sendText(); } });
   input.addEventListener('input', () => { input.style.height = 'auto'; input.style.height = `${Math.min(input.scrollHeight, 200)}px`; });
 
   const side = h('aside', { class: 'chat-side' },
@@ -157,14 +178,14 @@ async function startChat(root, { invite, nick, passphrase, restore, release, onR
 
   // ---- rendering ----
   const atBottom = () => messages.scrollHeight - messages.scrollTop - messages.clientHeight < 60;
-  function push(el) {
+  function push(el: HTMLElement): void {
     const stick = atBottom();
     messages.append(el);
     if (stick) messages.scrollTop = messages.scrollHeight;
   }
-  const system = (text, cls = '') => push(h('li', { class: `sys ${cls}` }, text));
+  const system = (text: string, cls = '') => push(h('li', { class: `sys ${cls}` }, text));
 
-  function bubble(member, ts, ...content) {
+  function bubble(member: Member, ts: number, ...content: Child[]): HTMLElement {
     const mine = member.id === room.identity.id;
     const name = h('span', { class: 'who' }, member.nick, member.host ? ' ★' : '');
     name.style.color = colorFor(member.id);
@@ -174,11 +195,11 @@ async function startChat(root, { invite, nick, passphrase, restore, release, onR
       ...content);
   }
 
-  function textBubble(member, inner) {
+  function textBubble(member: Member, inner: Inner): void {
     push(bubble(member, inner.ts, h('div', { class: 'body' }, String(inner.body))));
   }
 
-  function fileBubble(key, member, inner) {
+  function fileBubble(key: string | symbol, member: Member, inner: { name: unknown; size: number; ts: number }): FileCard {
     const bar = h('progress', { max: 1, value: 0 });
     const actions = h('div', { class: 'file-actions' });
     const card = h('div', { class: 'file-card' },
@@ -187,19 +208,19 @@ async function startChat(root, { invite, nick, passphrase, restore, release, onR
       actions,
     );
     push(bubble(member, inner.ts, card));
-    const entry = { bar, actions };
+    const entry: FileCard = { bar, actions };
     fileCards.set(key, entry);
     return entry;
   }
 
-  function renderMembers() {
+  function renderMembers(): void {
     memberList.replaceChildren();
     for (const m of room.members.values()) {
       const name = h('span', { class: 'who' }, m.nick);
       name.style.color = colorFor(m.id);
       const tags = [m.host ? h('span', { class: 'tag' }, 'host') : null, m.id === room.identity.id ? h('span', { class: 'tag' }, 'you') : null];
       const code = room.isHost && m.code ? h('div', { class: 'code' }, 'Safety code ', h('strong', { class: 'mono' }, m.code)) : null;
-      const kick = room.isHost && !m.host ? h('button', { class: 'btn btn-ghost btn-small', onclick: () => room.kick(m.id) }, 'Remove') : null;
+      const kick = room.isHost && !m.host ? h('button', { class: 'btn btn-ghost btn-small', onclick: () => { void room.kick(m.id); } }, 'Remove') : null;
       memberList.append(h('li', null, h('div', { class: 'row tight' }, name, ...tags, kick), code));
     }
     if (!room.isHost && room.hostCode) {
@@ -209,13 +230,13 @@ async function startChat(root, { invite, nick, passphrase, restore, release, onR
     if (room.isHost && room.members.size === 1) memberList.append(h('li', { class: 'hint' }, 'Nobody has joined yet.'));
   }
 
-  function setEnabled(on) {
+  function setEnabled(on: boolean): void {
     input.disabled = sendBtn.disabled = attachBtn.disabled = !on;
     if (on) input.focus();
   }
 
   // ---- actions ----
-  async function sendText() {
+  async function sendText(): Promise<void> {
     const body = input.value;
     if (!body.trim()) return;
     try {
@@ -224,12 +245,13 @@ async function startChat(root, { invite, nick, passphrase, restore, release, onR
       input.value = '';
       input.style.height = 'auto';
     } catch (e) {
-      system(e.message === 'Nobody to send to yet' ? 'Nobody else is in the room yet.' : `Not sent: ${e.message}`, 'error');
+      const msg = errorText(e);
+      system(msg === 'Nobody to send to yet' ? 'Nobody else is in the room yet.' : `Not sent: ${msg}`, 'error');
     }
   }
 
-  async function sendFiles(list) {
-    for (const file of list) {
+  async function sendFiles(list: FileList | null | undefined): Promise<void> {
+    for (const file of Array.from(list ?? [])) {
       if (file.size > MAX_FILE_BYTES) { system(`${file.name} is larger than ${formatBytes(MAX_FILE_BYTES)}.`, 'error'); continue; }
       const placeholder = { name: file.name, size: file.size, ts: Date.now() };
       const card = fileBubble(Symbol('out'), room.self, placeholder);
@@ -238,7 +260,7 @@ async function startChat(root, { invite, nick, passphrase, restore, release, onR
         card.bar.value = 1;
         card.actions.append(h('span', { class: 'ok' }, 'Sent ✓'));
       } catch (e) {
-        card.actions.append(h('span', { class: 'error' }, e.message === 'Nobody to send to yet' ? 'Nobody to send to' : 'Failed'));
+        card.actions.append(h('span', { class: 'error' }, errorText(e) === 'Nobody to send to yet' ? 'Nobody to send to' : 'Failed'));
       }
     }
   }
@@ -271,14 +293,14 @@ async function startChat(root, { invite, nick, passphrase, restore, release, onR
           h('div', { class: 'code' }, 'Safety code ', h('strong', { class: 'mono' }, code ?? '…'),
             ' · ask them to read theirs aloud. It must match.')),
         h('div', { class: 'row tight' },
-          h('button', { class: 'btn btn-primary btn-small', onclick: () => { el.remove(); room.accept(peerId); } }, 'Accept'),
-          h('button', { class: 'btn btn-small', onclick: () => { el.remove(); room.reject(peerId); system(`Declined ${who}.`); } }, 'Decline'),
+          h('button', { class: 'btn btn-primary btn-small', onclick: () => { el.remove(); void room.accept(peerId); } }, 'Accept'),
+          h('button', { class: 'btn btn-small', onclick: () => { el.remove(); void room.reject(peerId); system(`Declined ${who}.`); } }, 'Decline'),
         ),
       );
       el.dataset.peer = peerId;
       requests.append(el);
     })
-    .on('request-cancelled', ({ peerId }) => requests.querySelector(`[data-peer="${CSS.escape(peerId)}"]`)?.remove())
+    .on('request-cancelled', ({ peerId }) => { requests.querySelector(`[data-peer="${CSS.escape(peerId)}"]`)?.remove(); })
     .on('connected', ({ code }) => {
       clearTimeout(slowTimer);
       badge.textContent = '✓ Host verified · waiting for approval';
@@ -302,11 +324,11 @@ async function startChat(root, { invite, nick, passphrase, restore, release, onR
       system('You’re in. Messages are end-to-end encrypted.');
       setEnabled(true);
     })
-    .on('denied', ({ reason }) => finish(DENY_REASONS[reason] ?? `Could not join (${reason}).`, true))
-    .on('closed', ({ reason }) => { if (reason !== 'left') finish(DENY_REASONS[reason] ?? 'The room was closed.', reason === 'passphrase'); });
+    .on('denied', ({ reason }) => finish((DENY_REASONS as Record<string, string>)[reason] ?? `Could not join (${reason}).`, true))
+    .on('closed', ({ reason }) => { if (reason !== 'left') finish(DENY_REASONS[reason], reason === 'passphrase'); });
 
-  function finish(text, retry) {
-    room.leave();
+  function finish(text: string, retry: boolean): void {
+    void room.leave();
     setEnabled(false);
     badge.textContent = 'Disconnected';
     system(text, 'error');
@@ -316,7 +338,7 @@ async function startChat(root, { invite, nick, passphrase, restore, release, onR
   }
 
   renderMembers();
-  let slowTimer = null;
+  let slowTimer: ReturnType<typeof setTimeout> | undefined;
   if (restore) {
     system('Room resumed after a reload. Members you approved will reconnect automatically.');
     setEnabled(true);
@@ -328,16 +350,16 @@ async function startChat(root, { invite, nick, passphrase, restore, release, onR
     slowTimer = setTimeout(() => system('Still looking. The host must keep their chat tab open. Check that the link is complete.'), 20000);
   }
 
-  const onBeforeUnload = (e) => { if (room.members.size > 1 || room.isHost) e.preventDefault(); };
+  const onBeforeUnload = (e: BeforeUnloadEvent) => { if (room.members.size > 1 || room.isHost) e.preventDefault(); };
   window.addEventListener('beforeunload', onBeforeUnload);
 
   return {
     leave() {
       clearTimeout(slowTimer);
       window.removeEventListener('beforeunload', onBeforeUnload);
-      room.leave();
+      void room.leave();
       if (room.isHost) {
-        forgetHost('chat', room.roomId);
+        void forgetHost('chat', room.roomId);
         tabStore.del(`uss-pass:${room.roomId}`);
         release?.();
       }
@@ -346,7 +368,7 @@ async function startChat(root, { invite, nick, passphrase, restore, release, onR
   };
 }
 
-function colorFor(id) {
+function colorFor(id: string): string {
   let n = 0;
   for (const c of id) n = (n * 31 + c.charCodeAt(0)) >>> 0;
   return `hsl(${n % 360} 65% 45%)`;

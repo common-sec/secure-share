@@ -21,7 +21,7 @@ import { WORDS, WORD_SET } from './words.js';
 export const STYLES = {
   memorable: 'Memorable (bent real words)',
   invented: 'Invented words',
-};
+} as const;
 export const SEPARATOR_OPTIONS = {
   same: 'One random symbol',
   rand: 'Random symbol each time',
@@ -30,15 +30,32 @@ export const SEPARATOR_OPTIONS = {
   _: 'Underscore  _',
   space: 'Space',
   none: 'None',
-};
+} as const;
 export const CAPS = {
   first: 'Each word',
   syllable: 'Random syllables',
   none: 'None',
-};
-export const PHRASE_DEFAULTS = { w: 4, style: 'memorable', link: true, sep: 'same', cap: 'first', num: true };
+} as const;
 
-const FIXED_SEPARATORS = { '-': '-', '.': '.', _: '_', space: ' ', none: '' };
+export type Style = keyof typeof STYLES;
+export type Separator = keyof typeof SEPARATOR_OPTIONS;
+export type Caps = keyof typeof CAPS;
+
+export interface PhraseOptions {
+  /** number of content words */
+  w: number;
+  style: Style;
+  /** linking words between pairs of content words */
+  link: boolean;
+  sep: Separator;
+  cap: Caps;
+  /** a two-digit number on a random word */
+  num: boolean;
+}
+
+export const PHRASE_DEFAULTS: PhraseOptions = { w: 4, style: 'memorable', link: true, sep: 'same', cap: 'first', num: true };
+
+const FIXED_SEPARATORS: Record<string, string> = { '-': '-', '.': '.', _: '_', space: ' ', none: '' };
 const RANDOM_SEPARATORS = '-._~+=!*';
 
 export const LINKING_WORDS = ['in', 'on', 'at', 'by', 'of', 'to', 'for', 'with', 'from', 'into', 'over', 'under',
@@ -46,10 +63,10 @@ export const LINKING_WORDS = ['in', 'on', 'at', 'by', 'of', 'to', 'for', 'with',
   'against', 'below', 'above', 'after', 'before', 'like', 'and', 'or', 'is', 'are', 'was', 'were', 'has', 'had',
   'the', 'my', 'our', 'your', 'their'];
 
-const isVowel = (w, i) => 'aeiou'.includes(w[i]) || (w[i] === 'y' && i > 0);
+const isVowel = (w: string, i: number): boolean => 'aeiou'.includes(w[i]) || (w[i] === 'y' && i > 0);
 const log2 = Math.log2;
 
-function shannon(masses) {
+function shannon(masses: Map<string, number>): number {
   let bits = 0;
   for (const p of masses.values()) if (p > 0) bits -= p * log2(p);
   return bits;
@@ -60,21 +77,21 @@ const ENDINGS = ['', 's', 'y', 'ish', 'ful', 'less', 'ly', 'ness', 'ism', 'ist',
 const BENT_ENDINGS = ENDINGS.slice(1);
 
 /** Half the time a word keeps its plain form; otherwise it gets one of the endings. */
-const pickEnding = () => (randomInt(2) ? '' : pick(BENT_ENDINGS));
+const pickEnding = (): string => (randomInt(2) ? '' : pick(BENT_ENDINGS));
 
 /** Adds the probability mass of every (word, ending) outcome of pickEnding to `masses`. */
-function addEndingMasses(masses, word, weight) {
-  const add = (out, p) => masses.set(out, (masses.get(out) ?? 0) + p);
+function addEndingMasses(masses: Map<string, number>, word: string, weight: number): void {
+  const add = (out: string, p: number) => masses.set(out, (masses.get(out) ?? 0) + p);
   add(inflect(word, ''), weight / 2);
   for (const e of BENT_ENDINGS) add(inflect(word, e), weight / 2 / BENT_ENDINGS.length);
 }
 
 /** Appends an ending with simple English spelling rules (box -> boxes, stone -> stony, berry -> berries). */
-export function inflect(word, ending) {
+export function inflect(word: string, ending: string): string {
   return ending ? join(word, ending).replace(/(.)\1\1/g, '$1$1') : word; // never three same letters
 }
 
-function join(word, ending) {
+function join(word: string, ending: string): string {
   const last = word[word.length - 1];
   const consonantY = last === 'y' && !isVowel(word, word.length - 2);
   if (ending === 's') {
@@ -93,11 +110,11 @@ function join(word, ending) {
 }
 
 // ---- sound-alike spellings ----
-const SUBSTITUTIONS = [['ph', 'f'], ['f', 'ph'], ['ck', 'k'], ['c', 'k'], ['s', 'z'], ['x', 'ks'], ['qu', 'kw'], ['i', 'y'], ['y', 'i']];
+const SUBSTITUTIONS: [from: string, to: string][] = [['ph', 'f'], ['f', 'ph'], ['ck', 'k'], ['c', 'k'], ['s', 'z'], ['x', 'ks'], ['qu', 'kw'], ['i', 'y'], ['y', 'i']];
 const DOUBLABLE = 'bdfgklmnprtz';
 
-export function respellings(word) {
-  const out = new Set();
+export function respellings(word: string): string[] {
+  const out = new Set<string>();
   for (const [from, to] of SUBSTITUTIONS) {
     for (let i = word.indexOf(from); i !== -1; i = word.indexOf(from, i + 1)) {
       const next = word[i + from.length];
@@ -120,8 +137,8 @@ export function respellings(word) {
 
 // ---- syllables (for capitals) ----
 /** Indexes where a new syllable starts after the first (garden -> [3]: gar|den). */
-export function syllableStarts(word) {
-  const groups = [];
+export function syllableStarts(word: string): number[] {
+  const groups: [start: number, end: number][] = [];
   for (let i = 0; i < word.length;) {
     if (isVowel(word, i)) {
       const start = i;
@@ -129,10 +146,10 @@ export function syllableStarts(word) {
       groups.push([start, i]);
     } else i++;
   }
-  const last = groups[groups.length - 1];
+  const last = groups[groups.length - 1]!;
   // A final silent "e" (stone) is not a syllable, except after l (candle).
   if (groups.length > 1 && last[0] === word.length - 1 && word[last[0]] === 'e' && word[last[0] - 1] !== 'l') groups.pop();
-  const starts = [];
+  const starts: number[] = [];
   for (let g = 1; g < groups.length; g++) {
     let s = groups[g][0] - 1; // the consonant before the vowel group starts the syllable
     if (/^(ch|sh|th|ph|wh)$/.test(word.slice(s - 1, s + 1))) s -= 1;
@@ -141,7 +158,7 @@ export function syllableStarts(word) {
   return starts;
 }
 
-const upperAt = (w, i) => w.slice(0, i) + w[i].toUpperCase() + w.slice(i + 1);
+const upperAt = (w: string, i: number): string => w.slice(0, i) + w[i].toUpperCase() + w.slice(i + 1);
 
 // ---- invented words ----
 // Onsets are consonants only, vowels are vowels only and the optional coda appears only at the
@@ -152,21 +169,32 @@ const VOWELS = ['a', 'e', 'i', 'o', 'u', 'ai', 'ou', 'ee'];
 const CODAS = ['', 'n', 'r', 's', 'l', 'm', 'k', 'x'];
 const INVENTED_BITS = 1 + 2.5 * log2(ONSETS.length * VOWELS.length) + log2(CODAS.length);
 
-function invented() {
+function invented(): string {
   let out = '';
   for (let i = 2 + randomInt(2); i > 0; i--) out += pick(ONSETS) + pick(VOWELS);
   return out + pick(CODAS);
 }
 
 // ---- tables (built once) ----
-let tables = null;
-function getTables() {
-  if (tables) return tables;
-  const respellable = WORDS.map((w) => [w, respellings(w)]).filter(([, r]) => r.length > 0);
+interface Tables {
+  /** words that have at least one sound-alike respelling, with those respellings */
+  respellable: [word: string, variants: string[]][];
+  plainBits: number;
+  bentBits: number;
+  wordSyllables: number;
+  linkSyllables: number;
+}
 
-  const plain = new Map();
+let tables: Tables | null = null;
+function getTables(): Tables {
+  if (tables) return tables;
+  const respellable = WORDS
+    .map((w): [string, string[]] => [w, respellings(w)])
+    .filter(([, r]) => r.length > 0);
+
+  const plain = new Map<string, number>();
   for (const w of WORDS) addEndingMasses(plain, w, 1 / WORDS.length);
-  const bent = new Map();
+  const bent = new Map<string, number>();
   for (const [, variants] of respellable) {
     for (const v of variants) addEndingMasses(bent, v, 1 / (respellable.length * variants.length));
   }
@@ -174,7 +202,7 @@ function getTables() {
   // Average bits per token from the "random syllables" capitals (one of k starts, or none).
   let extra = 0;
   const samples = 4000;
-  const capBits = (w) => log2(syllableStarts(w).length + 1);
+  const capBits = (w: string) => log2(syllableStarts(w).length + 1);
   for (let i = 0; i < samples; i++) extra += capBits(inflect(pick(WORDS), pickEnding()));
   const linkExtra = LINKING_WORDS.reduce((n, w) => n + capBits(w), 0) / LINKING_WORDS.length;
 
@@ -189,10 +217,10 @@ function getTables() {
 }
 
 // ---- generation ----
-function contentWords(o) {
+function contentWords(o: PhraseOptions): string[] {
   if (o.style === 'invented') return Array.from({ length: o.w }, invented);
   const t = getTables();
-  let bend;
+  let bend: boolean[];
   do { bend = Array.from({ length: o.w }, () => randomInt(2) === 1); } while (!bend.includes(true));
   return bend.map((b) => {
     const base = b ? pick(pick(t.respellable)[1]) : pick(WORDS);
@@ -201,15 +229,15 @@ function contentWords(o) {
 }
 
 /** One linking word per pair of content words, placed in randomly chosen gaps between them. */
-const linkCount = (o) => (o.link ? Math.floor(o.w / 2) : 0);
+const linkCount = (o: PhraseOptions): number => (o.link ? Math.floor(o.w / 2) : 0);
 
-function binomial(n, k) {
+function binomial(n: number, k: number): number {
   let r = 1;
   for (let i = 1; i <= k; i++) r = (r * (n - k + i)) / i;
   return r;
 }
 
-export function generatePhrase(o) {
+export function generatePhrase(o: PhraseOptions): string {
   const content = contentWords(o);
   if (o.num) {
     const i = randomInt(content.length);
@@ -218,7 +246,7 @@ export function generatePhrase(o) {
   // Gap i is the space after content word i; pick linkCount distinct gaps at random.
   const gaps = shuffle(Array.from({ length: content.length - 1 }, (_, i) => i));
   const linked = new Set(gaps.slice(0, linkCount(o)));
-  const tokens = [];
+  const tokens: string[] = [];
   content.forEach((word, i) => {
     tokens.push(word);
     if (linked.has(i)) tokens.push(pick(LINKING_WORDS));
@@ -245,11 +273,11 @@ export function generatePhrase(o) {
   return out;
 }
 
-export function phraseEntropy(o) {
+export function phraseEntropy(o: PhraseOptions): number {
   const w = o.w;
   const links = linkCount(o);
   const gaps = w + links - 1;
-  let bits;
+  let bits: number;
   if (o.style === 'invented') {
     bits = w * INVENTED_BITS;
   } else {
@@ -272,8 +300,8 @@ export function phraseEntropy(o) {
 }
 
 /** Settings for chat and share room passphrases: short enough to read aloud, no fixed pattern. */
-export const ROOM_PHRASE = { w: 3, style: 'memorable', link: true, sep: 'same', cap: 'first', num: true };
+export const ROOM_PHRASE: PhraseOptions = { w: 3, style: 'memorable', link: true, sep: 'same', cap: 'first', num: true };
 
-export function roomPassphrase() {
+export function roomPassphrase(): string {
   return generatePhrase(ROOM_PHRASE);
 }

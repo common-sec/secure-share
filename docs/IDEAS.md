@@ -41,7 +41,7 @@ Template for a new idea:
 **Proposal:** a Python runner (Python already serves the app) using Playwright, used both locally and in CI.
 
 ## No runtime CDN (vendor Trystero)
-**Status:** ✅ Accepted → 0.6.0, as part of the reproducible TypeScript build
+**Status:** ✅ Done in 0.6.0, as part of the reproducible TypeScript build (bundled from the npm lockfile instead of committed)
 **Problem:** jsDelivr serves the P2P library at runtime. Whoever serves the JS controls the app.
 **Proposal:** commit a pinned build of Trystero to `src/vendor/`, record its checksum, and drop the CDN from the CSP.
 
@@ -148,7 +148,7 @@ they stay in one app. See *Extract reusable libraries* instead.
 `<passphrase-generator>` web component), keeping the app itself whole.
 
 ## Full TypeScript with a reproducible build
-**Status:** ✅ Accepted → 0.6.0
+**Status:** ✅ Done in 0.6.0
 **Problem:** dependencies are fetched from a CDN at runtime, and nothing checks types.
 **Proposal:** TypeScript plus a build that installs pinned, locked dependencies, bundles them, and
 produces byte-identical output on every rebuild, so releases can be verified against the source.

@@ -2,10 +2,11 @@
 # the rest are official images used as-is. Images are pinned by tag (for humans and Dependabot)
 # and multi-platform digest (what actually runs, on amd64 and arm64 alike).
 #
+#   docker compose run --rm build             npm ci + type-check + build dist/ + reproducibility check
 #   docker compose run --rm dev               shell in the Node dev image (npm, scripts)
-#   docker compose up web                     serve the app on http://127.0.0.1:8080
+#   docker compose up web                     serve the built app (dist/) on http://127.0.0.1:8080
 #   docker compose run --rm test-unit         unit tests in Chromium + Firefox (no network)
-#   docker compose run --rm test-e2e          end-to-end tests, local relay, host-only ICE
+#   docker compose run --rm test-e2e          end-to-end tests, local relay, no third-party requests
 #   docker compose run --rm test-e2e-public   end-to-end tests over the real public relays and STUN
 #   docker compose run --rm trufflehog        secrets in the working tree and all of git history
 #   docker compose run --rm semgrep           static analysis
@@ -37,15 +38,26 @@ services:
     volumes:
       - ./:/work
 
+  # Installs the locked dependencies (no install scripts, >= 7 days old: .npmrc), type-checks,
+  # builds dist/ and build/modules/, then builds again and fails unless the output is identical.
+  build:
+    build: { context: ., target: dev }
+    image: user-sec-tools/dev:local
+    <<: *hardening
+    volumes:
+      - ./:/work
+    command: ["sh", "-c", "npm ci --no-audit --no-fund && npm run build:check"]
+
+  # Serves the built app exactly as it's deployed (run `build` first).
   web:
     image: python:3.14.7-slim-bookworm@sha256:82bc3c539b8813ada9d68c63b40158fa002f7f33de9bf3312a3dfdc0620dff56
     <<: *hardening
     user: "1000:1000"
-    working_dir: /work
+    working_dir: /work/dist
     volumes: *source-ro
     ports:
       - "127.0.0.1:8080:8080"          # reachable from this computer only
-    command: ["python", "tools/serve.py", "8080", "0.0.0.0"]
+    command: ["python", "/work/tools/serve.py", "8080", "0.0.0.0"]
 
   test-unit:
     build: { context: ., target: test }
@@ -57,10 +69,11 @@ services:
     shm_size: 1gb                      # Chromium uses /dev/shm heavily
     command: ["python", "tests/unit/run.py", "chromium", "firefox"]
 
-  # End-to-end: users' flows through the real UI over real WebRTC (see docs/TESTING.md).
-  # Discovery uses the local relay in the test server and ICE uses host candidates only. The one
-  # outside dependency is the app loading Trystero from jsDelivr; once it's bundled (roadmap
-  # 0.6.0), this service moves to the internal `offline` network below.
+  # End-to-end: users' flows through the real UI over real WebRTC (see docs/TESTING.md), against
+  # the built app (run `build` first). Discovery uses the local relay in the test server and ICE
+  # uses host candidates only. The browsers block every request that isn't to the local test
+  # server and fail the run if the app tries one. (Not an `internal: true` network: browsers
+  # gather no WebRTC candidates at all without a default route.)
   test-e2e:
     build: { context: ., target: test }
     image: user-sec-tools/test:local
@@ -112,7 +125,7 @@ services:
       SEMGREP_SEND_METRICS: "off"
     # Network: downloads the rule packs below from semgrep.dev.
     command: ["semgrep", "scan", "--metrics=off", "--error",
-              "--config", "p/javascript", "--config", "p/python",
+              "--config", "p/javascript", "--config", "p/typescript", "--config", "p/python",
               "--config", "p/dockerfile", "--config", "p/security-audit", "/work"]
 
   trivy:
@@ -128,7 +141,3 @@ services:
               "--scanners", "vuln,misconfig,secret", "--skip-dirs", "/work/.venv",
               "--skip-dirs", "/work/node_modules", "--skip-dirs", "/work/.cache", "/work"]
 
-networks:
-  # For test-e2e once the app has no runtime CDN dependency (roadmap 0.6.0).
-  offline:
-    internal: true

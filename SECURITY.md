@@ -10,7 +10,7 @@ within a few days, and credit in the release notes if you'd like.
 ## Scope
 
 In scope:
-- the protocol and its implementation (`src/lib/room.js`, `src/lib/crypto.js`), see [docs/PROTOCOL.md](docs/PROTOCOL.md);
+- the protocol and its implementation (`src/lib/room.ts`, `src/lib/crypto.ts`), see [docs/PROTOCOL.md](docs/PROTOCOL.md);
 - anything that breaks a property in [docs/THREAT_MODEL.md](docs/THREAT_MODEL.md);
 - XSS, CSP bypasses, or injection through peer-controlled data;
 - weaknesses in password or passphrase generation (bias, overstated entropy).
@@ -23,7 +23,9 @@ browser extensions.
 
 - Start with [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), then [docs/PROTOCOL.md](docs/PROTOCOL.md).
 - All cryptographic primitives are Web Crypto. The code to review is the composition in
-  `src/lib/crypto.js` (about 120 lines) and `src/lib/room.js` (about 470 lines).
+  `src/lib/crypto.ts` and `src/lib/room.ts` (strict TypeScript).
 - `tests/unit/room.test.js` shows the intended security properties as executable tests. Adversarial
   peers are built with `tests/unit/fake-transport.js`.
-- The only runtime dependency is `trystero@0.26.0` (MIT), loaded from `src/vendor/trystero.js`.
+- The only runtime dependency is `trystero@0.26.0` (MIT), locked in `package-lock.json`, bundled
+  at build time and imported from `src/vendor/trystero.ts`. Builds are reproducible: see
+  [docs/RELEASES.md](docs/RELEASES.md) to check that served files match the source.

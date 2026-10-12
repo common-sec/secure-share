@@ -10,7 +10,8 @@
 //     while their relay connection is up (not paused)
 //   - onPeerHandshake runs on both sides before a peer becomes active; if either side throws,
 //     the pair never connects
-//   - actions deliver in order per pair; ArrayBuffers arrive as fresh copies
+//   - actions deliver in order per pair; binary data (ArrayBuffer or any view) arrives as a fresh
+//     Uint8Array, as Trystero delivers it
 //   - closing a peer connection fires onPeerLeave on both ends
 let counter = 0;
 
@@ -19,8 +20,8 @@ function randomHex(bytes) {
 }
 
 function clone(data) {
-  if (data instanceof ArrayBuffer) return data.slice(0);
-  if (ArrayBuffer.isView(data)) return data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength);
+  if (data instanceof ArrayBuffer) return new Uint8Array(data.slice(0));
+  if (ArrayBuffer.isView(data)) return new Uint8Array(data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength));
   if (data && typeof data === 'object') return structuredClone(data);
   return data;
 }

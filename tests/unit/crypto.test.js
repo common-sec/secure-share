@@ -1,6 +1,6 @@
 import { test, assert } from './harness.js';
-import * as C from '../../src/lib/crypto.js';
-import { utf8 } from '../../src/lib/encoding.js';
+import * as C from '../../build/modules/lib/crypto.js';
+import { utf8 } from '../../build/modules/lib/encoding.js';
 
 const room = C.randomId(16);
 const secret = C.randomId(32);

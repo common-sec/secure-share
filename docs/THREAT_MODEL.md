@@ -20,7 +20,7 @@
 ## Adversaries and mitigations
 
 ### 1. Network observer (Wi-Fi, ISP, backbone)
-- **Sees:** that you connect to the static host, jsDelivr, Nostr relays, STUN servers and a peer IP; timing and volume.
+- **Sees:** that you connect to the static host, Nostr relays, STUN servers and a peer IP; timing and volume.
 - **Cannot:** read or modify content. Everything is TLS, WSS or DTLS, and the app adds AES-256-GCM on top.
 - **Residual:** traffic analysis. File sizes are approximately visible.
 
@@ -58,15 +58,19 @@
 - **Can** swap the roster's key for another member's nickname, impersonating them to others. Members can only verify the host, not each other. See [PROTOCOL.md §11](PROTOCOL.md).
 - **Cannot** forge messages signed by a key it doesn't hold.
 
-### 9. Supply chain: the static host, jsDelivr, the Trystero package
+### 9. Supply chain: the static host, the npm packages, the build
 - **This is the most important residual risk.** Whoever controls the served JavaScript controls the app.
 - **Mitigations:**
-  - one runtime dependency, pinned to an exact version;
-  - a strict CSP (only `'self'` and `cdn.jsdelivr.net` may serve scripts);
-  - no build step, so the served files are the reviewed files;
-  - CI rejects new external origins.
-- **Recommended for deployment:** vendor Trystero into the repository so jsDelivr isn't trusted at
-  runtime, and serve with HSTS. Paranoid users can run it locally (`python tools/serve.py`).
+  - one runtime dependency (Trystero, with two small dependencies of its own) and two build tools
+    (TypeScript, esbuild), at exact versions locked with integrity hashes in `package-lock.json`,
+    installed with `npm ci`, no install scripts, and only releases at least 7 days old;
+  - everything is **bundled at build time**: no CDN, and the CSP lets scripts load only from `'self'`;
+  - the build is **reproducible**: anyone can rebuild a release tag and compare its checksums
+    with the published `SHA256SUMS` and with the files actually served ([RELEASES.md](RELEASES.md));
+  - the footer shows which build is running (version + commit).
+- **Remaining:** the static host (GitHub Pages) could still serve different files. Comparing the
+  served files with a release's checksums detects it, and running a verified release locally
+  avoids it. Serve with HSTS in production.
 
 ### 10. Cross-site scripting and injection
 - All user and peer content is rendered with text nodes, never `innerHTML`. CI enforces this.

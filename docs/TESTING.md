@@ -11,8 +11,8 @@ Playwright plays two roles:
 
 | Level | What runs where | Playwright's role | Network |
 |---|---|---|---|
-| **Unit** (`tests/unit/`) | The tests are JavaScript modules **inside the page** (`tests/unit/index.html`). They import the app's modules directly and exercise them, including the full protocol between several in-page "peers" over an in-memory transport. | Starts each browser, opens the test page, waits, and collects the results the page reports | **None**, the container has no network |
-| **End-to-end** (`tests/e2e/`) | The tests are Python scripts **outside the page**. They act as users: several isolated browser contexts (host, guests, sender, recipient) click through the real UI. | Drives the browsers: opens pages, types, clicks, uploads and downloads files, reads what's on screen, runs accessibility checks | **Yes**: real WebRTC, real Trystero, a Nostr relay (local by default, public with `test-e2e-public`) |
+| **Unit** (`tests/unit/`) | The tests are JavaScript modules **inside the page** (`tests/unit/index.html`). They import the app's modules (transpiled one-to-one into `build/modules/` by the build) and exercise them, including the full protocol between several in-page "peers" over an in-memory transport. | Starts each browser, opens the test page, waits, and collects the results the page reports | **None**, the container has no network |
+| **End-to-end** (`tests/e2e/`) | The tests are Python scripts **outside the page**, against the built app in `dist/`. They act as users: several isolated browser contexts (host, guests, sender, recipient) click through the real UI. | Drives the browsers: opens pages, types, clicks, uploads and downloads files, reads what's on screen, runs accessibility checks | **Yes**: real WebRTC, real Trystero, a Nostr relay (local by default, public with `test-e2e-public`) |
 
 So unit tests check the code's guarantees precisely and quickly, without depending on anything
 outside the container. End-to-end tests check that real users in real browsers can actually do
@@ -23,8 +23,9 @@ the things the app promises, over the real network stack.
 Everything runs in containers (setup: [DEVELOPMENT.md](DEVELOPMENT.md)):
 
 ```bash
+docker compose run --rm build              # first: type-check and build dist/ and build/modules/
 docker compose run --rm test-unit          # unit tests (no network)
-docker compose run --rm test-e2e           # end-to-end, local relay (what CI runs)
+docker compose run --rm test-e2e           # end-to-end, local relay, no third-party requests (what CI runs)
 docker compose run --rm test-e2e-public    # end-to-end over the real public relays and STUN
 ```
 
@@ -37,8 +38,9 @@ prints every result and exits non-zero on any failure. Options go after the serv
 docker compose run --rm test-unit python tests/unit/run.py chromium --filter room
 ```
 
-**In a normal browser** (exploring or debugging): `docker compose up web` and open
-http://127.0.0.1:8080/tests/unit/ (`?filter=room` works there too).
+**In a normal browser** (exploring or debugging): after the build, serve the repository root
+(`docker compose run --rm --service-ports -w /work web`, or any static server) and open
+`/tests/unit/` (`?filter=room` works there too). `docker compose up web` serves only `dist/`.
 
 ## Unit tests: what is covered
 
@@ -67,7 +69,7 @@ http://127.0.0.1:8080/tests/unit/ (`?filter=room` works there too).
 ### Checking that tests catch regressions
 
 Security tests must fail when the protection they guard is removed. For example, deleting the
-signature check in `#verifyEnvelope` (src/lib/room.js) makes *"a member cannot forge messages as
+signature check in `#verifyEnvelope` (src/lib/room.ts) makes *"a member cannot forge messages as
 another member"* fail. Do such mutation checks by hand when changing the protocol. Systematic
 fuzzing is planned for roadmap 0.12.0.
 
@@ -98,9 +100,11 @@ clicks, types, uploads and downloads files exactly as a user would, and the peer
   injects two **test-only hooks** before the page loads: `__USS_TEST_RELAYS__` (relay URLs) and
   `__USS_TEST_ICE_SERVERS__` (empty, so host candidates only and no STUN). They can only be set
   by a script already running in the page, which has full control anyway, so links and user
-  input can't reach them. Runs are fast and deterministic. The one outside dependency left is
-  the app loading Trystero from jsDelivr; once it's bundled (roadmap 0.6.0), this mode moves to
-  an internal network with no internet at all.
+  input can't reach them. Runs are fast and deterministic. Since Trystero is bundled into the
+  build, the app needs no third party at all, and the tests enforce it: each browser context
+  **blocks every request (HTTP or WebSocket) that isn't to the local test server**, and a
+  scenario fails if the app tried one. (A Docker `internal` network isn't used for this, because
+  browsers gather no WebRTC candidates at all on a machine without a default route.)
 - **`test-e2e-public`: real world.** Nothing is injected: the app uses the real public Nostr
   relays and STUN servers, exactly as on the live site. It tests real-world networking, and
   depends on those third parties being up, so it isn't a CI gate.
@@ -116,5 +120,7 @@ not in that list fails the run. To review the current findings:
 ## CI
 
 `.github/workflows/ci.yml` runs on every push and pull request:
-1. `test-unit`: builds the test image and runs `docker compose run --rm test-unit`, the same command as locally.
-2. `scan`: one job each for `trufflehog`, `semgrep` and `trivy` (see [DEVELOPMENT.md](DEVELOPMENT.md)).
+1. `build`: `docker compose run --rm build`: type-check, build, check that a second build is
+   byte-identical, and print `dist/SHA256SUMS`.
+2. `test-unit` and `test-e2e`: build the app, build the test image and run the same commands as locally.
+3. `scan`: one job each for `trufflehog`, `semgrep` and `trivy` (see [DEVELOPMENT.md](DEVELOPMENT.md)).

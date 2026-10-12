@@ -24,16 +24,31 @@ Run from the repository root (in WSL on Windows):
 
 | Command | What it does |
 |---|---|
-| `docker compose up web` | Serve the app at http://127.0.0.1:8080 |
+| `docker compose run --rm build` | `npm ci`, type-check, build `dist/` and check a second build is byte-identical |
+| `docker compose up web` | Serve the built app (`dist/`) at http://127.0.0.1:8080 |
 | `docker compose run --rm dev` | Shell in the Node dev image (npm, scripts) |
 | `docker compose run --rm test-unit` | Unit tests in Chromium + Firefox, **no network** (see [TESTING.md](TESTING.md)) |
-| `docker compose run --rm test-e2e` | End-to-end tests through the real UI, local relay, host-only ICE |
+| `docker compose run --rm test-e2e` | End-to-end tests of `dist/` through the real UI, local relay, **third-party requests blocked** |
 | `docker compose run --rm test-e2e-public` | End-to-end tests over the real public relays and STUN |
 | `docker compose run --rm trufflehog` | Secrets in the working tree and in every commit of git history |
-| `docker compose run --rm semgrep` | Static analysis (JavaScript, Python, Dockerfile, security audit) |
+| `docker compose run --rm semgrep` | Static analysis (TypeScript, JavaScript, Python, Dockerfile, security audit) |
 | `docker compose run --rm trivy` | Vulnerable dependencies, misconfigurations, secrets |
 
+Run `build` first after changing `src/`: the web server and both test suites use its output.
 CI (`.github/workflows/ci.yml`) runs exactly these commands.
+
+## The build
+
+Sources are TypeScript in `src/` (strict mode). `build.mjs` uses esbuild to produce:
+
+- `dist/`: the app as served: `index.html`, `styles.css`, `app.js` and lazily loaded chunks
+  (Trystero and its dependencies are bundled in, so nothing is fetched from a CDN), plus
+  `SHA256SUMS`. GitHub Pages serves this folder.
+- `build/modules/`: every source module transpiled one-to-one, for the unit tests.
+
+The build stamps the version (`package.json` version + short commit, read from `.git` or
+`$BUILD_COMMIT`) into the app's footer. `npm run build:check` builds twice and fails if the
+checksums differ; see [RELEASES.md](RELEASES.md) for verifying a published release.
 
 ## How it's put together
 
@@ -65,7 +80,7 @@ CI (`.github/workflows/ci.yml`) runs exactly these commands.
 | Test base image | Tag + digest in `Dockerfile` | Non-root (`pwuser`) | Dependabot (`docker`) |
 | Tool images | Tag + digest in `compose.yaml` | Non-root, no caps, read-only | Dependabot (`docker-compose`) |
 | Python test packages | Exact version + SHA-256 of every file, the whole tree (`tests/requirements.txt`), installed when the `test` image is built | `pip.conf`: `require-hashes`, wheels only (no build code runs), uploaded ≥ 7 days ago | Dependabot (`pip`) |
-| npm packages (from 0.6.0) | `package-lock.json`, exact versions | `.npmrc`: `ignore-scripts`, `min-release-age=7`, `save-exact` | Dependabot (`npm`) |
+| npm packages (Trystero, esbuild, TypeScript) | `package.json` exact versions + `package-lock.json` integrity hashes, installed with `npm ci` | `.npmrc`: `ignore-scripts`, `min-release-age=7`, `save-exact`, `engine-strict` | Dependabot (`npm`) |
 | GitHub Actions | Commit SHA | `persist-credentials: false`, read-only token | Dependabot (`github-actions`) |
 
 All of these use a **7-day minimum age**: npm `min-release-age=7`, pip
