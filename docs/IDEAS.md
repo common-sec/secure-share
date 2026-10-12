@@ -40,17 +40,17 @@ Template for a new idea:
 **Proposal:** a Python runner (Python already serves the app) using Playwright, used both locally and in CI.
 
 ## No runtime CDN (vendor Trystero)
-**Status:** ✅ Accepted → 0.9.0, as part of the reproducible TypeScript build
+**Status:** ✅ Accepted → 0.10.0, as part of the reproducible TypeScript build
 **Problem:** jsDelivr serves the P2P library at runtime. Whoever serves the JS controls the app.
 **Proposal:** commit a pinned build of Trystero to `src/vendor/`, record its checksum, and drop the CDN from the CSP.
 
 ## Type checking with JSDoc
-**Status:** ❌ Rejected, superseded by full TypeScript with a reproducible build (0.9.0). Once
+**Status:** ❌ Rejected, superseded by full TypeScript with a reproducible build (0.10.0). Once
 there's a build system for pinned dependencies anyway, TypeScript gives the same checks with less
 noise. Reproducible builds keep "served code = reviewed code" verifiable.
 
 ## Support & feedback links
-**Status:** ✅ Accepted → 0.13.0
+**Status:** ✅ Accepted → 0.14.0
 **Problem:** there's no way for people to support or rate the project, and no visibility for the portfolio.
 **Proposal:** plain links only (no embedded widgets, buttons, badges or counters loaded from third parties):
 - **Developers:** "★ Star on GitHub" link to the repository. Not GitHub's button script.
@@ -63,7 +63,7 @@ noise. Reproducible builds keep "served code = reviewed code" verifiable.
 **Trade-offs:** none for security. Clicking a link is the user's choice and leaves the app.
 
 ## AI-assisted memorable passphrases
-**Status:** ✅ Accepted → 0.14.0
+**Status:** ✅ Accepted → 0.15.0
 **Problem:** random words are secure but hard to remember as a list. A sentence is easier.
 **Proposal:**
 1. **JS (CSPRNG) chooses** the words from the word list and a number.
@@ -109,19 +109,19 @@ root-equivalent inside WSL.
 rootless Podman.
 
 ## Name, logo and organisation
-**Status:** ✅ Accepted → 0.5.0
+**Status:** ✅ Accepted → 0.6.0
 **Proposal:** a distinctive name and logo, and a dedicated GitHub organisation for security
 tools: organisation-wide 2FA, rulesets and Allstar policies, several owners, and a clean
 `<org>.github.io` address. Shortlist and criteria in
 [the 2026-10-12 review](reviews/2026-10-12-ux-product-seo.md#5-name-and-logo).
 
 ## Sending and receiving UX
-**Status:** ✅ Accepted → 0.6.0
+**Status:** ✅ Accepted → 0.7.0
 **Proposal:** fixes from the 2026-10-12 review: phone wake lock, share sheet and QR, recipient
 trust and context, masked received secrets, plain language, accessibility basics.
 
 ## SEO and launch readiness
-**Status:** ✅ Accepted → 0.7.0
+**Status:** ✅ Accepted → 0.9.0
 **Proposal:** pre-rendered static pages per tool, metadata and social previews, How it works and
 FAQ, sitemap, Search Console and Bing Webmaster Tools, Lighthouse CI, launch checklist.
 
@@ -133,7 +133,7 @@ both reach and SEO.
 ## Usage statistics from access logs
 **Status:** 💡 Proposed
 **Problem:** we don't know whether anyone uses the tools.
-**Proposal:** search impressions and clicks from Google Search Console and Bing Webmaster Tools (no script on the page; planned in 0.7.0). Beyond that, read the static host's aggregate access logs (page and module loads). There's no
+**Proposal:** search impressions and clicks from Google Search Console and Bing Webmaster Tools (no script on the page; planned in 0.9.0). Beyond that, read the static host's aggregate access logs (page and module loads). There's no
 code in the app, and the URL fragment holding secrets is never sent to the host. Optionally, a
 self-hosted, opt-in event counter that stores no IP and no identifier.
 
@@ -147,7 +147,7 @@ they stay in one app. See *Extract reusable libraries* instead.
 `<passphrase-generator>` web component), keeping the app itself whole.
 
 ## Full TypeScript with a reproducible build
-**Status:** ✅ Accepted → 0.9.0
+**Status:** ✅ Accepted → 0.10.0
 **Problem:** dependencies are fetched from a CDN at runtime, and nothing checks types.
 **Proposal:** TypeScript plus a build that installs pinned, locked dependencies, bundles them, and
 produces byte-identical output on every rebuild, so releases can be verified against the source.
@@ -180,25 +180,25 @@ prevents offline guessing.
 only carries data that is already end-to-end encrypted.
 
 ## End-to-end tests with real WebRTC
-**Status:** ✅ Accepted → 0.8.0
+**Status:** ✅ Accepted → 0.5.0
 **Proposal:** Playwright drives several browser contexts as host and guests through the real UI,
 with a local Nostr relay container in CI so real WebRTC and Trystero are exercised without
 depending on public relays.
 
 ## DAST and fuzzing (host and clients)
-**Status:** ✅ Accepted → 0.10.0
+**Status:** ✅ Accepted → 0.11.0
 **Proposal:** a pinned OWASP ZAP scan of the served app, plus fuzzing of everything a peer or a
 link can feed into the host and into clients: handshake and protocol messages, files, URL
 parameters, nicknames. Every crash becomes a regression test.
 
 ## OpenSSF Scorecard
-**Status:** ✅ Accepted → 0.11.0
+**Status:** ✅ Accepted → 0.12.0
 **Proposal:** publish the repository, run the Scorecard action, and clear its checks (branch
 protection, signed releases, fuzzing, pinned dependencies, token permissions, and so on). It's an
 independent, visible signal for auditors and users.
 
 ## Security posture management
-**Status:** ✅ Accepted → 0.12.0
+**Status:** ✅ Accepted → 0.13.0
 **Problem:** security checks are spread over several tools and repository settings. Re-verifying
 hardening that's already done on every commit (the old `static-checks.sh`) is noise, but
 regressions must still be noticed.
@@ -208,7 +208,7 @@ container configs, and a short posture document. Custom Semgrep rules only where
 check fits.
 
 ## Pre-commit checks
-**Status:** 💡 Proposed (to decide in 0.12.0)
+**Status:** 💡 Proposed (to decide in 0.13.0)
 **Problem:** some mistakes are cheaper to stop before they're committed. Above all secrets: once
 pushed, a secret is in history and must be rotated.
 **Options:**
@@ -221,8 +221,13 @@ pushed, a secret is in history and must be rotated.
 
 **Leaning:** the second, limited to secret scanning, since that's what's irreversible after a push.
 
+## Share a generated password in one step
+**Status:** ✅ Accepted → 0.8.0
+**Proposal:** a "Share securely" button next to each generated password that opens Secure Share
+pre-filled (in memory, never via the URL), with passphrase and one-time link ready.
+
 ## Local version of the app
-**Status:** ✅ Accepted → 0.15.0
+**Status:** ✅ Accepted → 0.16.0
 **Problem:** using the website means trusting whatever it serves on each visit.
 **Proposal:** a local way to run the same app: a PWA, Electron/Tauri, a Docker image, or a single
 self-contained HTML file. The architecture is still to be decided; see the roadmap item.
