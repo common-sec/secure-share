@@ -59,6 +59,9 @@ With several guests the topology is a **star**: every guest connects only to the
 relays signed, encrypted messages. Guests never connect to each other, so they never learn each
 other's IP addresses.
 
+For a step-by-step explanation of how browsers find each other and connect, with diagrams, see
+[COMMUNICATION.md](COMMUNICATION.md). The reasoning behind these choices is in [DECISIONS.md](DECISIONS.md).
+
 ## Network connections and ports
 
 Everything the app connects to, and when:

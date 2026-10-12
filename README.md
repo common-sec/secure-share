@@ -42,6 +42,8 @@ your data.
 
 | Document | For |
 |---|---|
+| [docs/COMMUNICATION.md](docs/COMMUNICATION.md) | **How two browsers find each other and connect**, step by step with diagrams (Nostr, NAT, WebRTC) |
+| [docs/DECISIONS.md](docs/DECISIONS.md) | The decisions behind the design, why, and when to revisit them |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Components, data flow, **network connections and ports**, third parties |
 | [docs/PROTOCOL.md](docs/PROTOCOL.md) | Exact key derivation, handshake and message formats (for auditors) |
 | [docs/THREAT_MODEL.md](docs/THREAT_MODEL.md) | What is protected, against whom, and the known limits |
