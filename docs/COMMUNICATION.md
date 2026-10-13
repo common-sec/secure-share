@@ -146,8 +146,8 @@ sequenceDiagram
     B->>A: hello: guest public key + fresh number + nickname
     Note over B: Bob checks Alice's key against the fingerprint in the link.<br/>Otherwise she isn't the host, so he stops.
     A->>B: signature over both fresh numbers (proves Alice holds the host key)
-    B->>A: passphrase proof (HMAC over both fresh numbers; reveals nothing reusable)
-    Note over A: Wrong proof means "wrong passphrase"; 5 failures lock the room
+    B->>A: passphrase proof (HMAC over both fresh numbers, reveals nothing reusable)
+    Note over A: Wrong proof means "wrong passphrase", 5 failures lock the room
     A->>B: ok
     Note over A,B: Both screens show the same safety code (from both DTLS certificates).<br/>Chat: Alice approves Bob. Share: delivery starts.
     A->>B: messages / files: signed by the sender, AES-256-GCM encrypted
