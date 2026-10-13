@@ -160,22 +160,56 @@ sequenceDiagram
     participant R as Nostr relays (x3)
     participant B as Bob (guest), peer HSNV...
 
-    Note over A,B: TLS on TCP 443, then an HTTP "Upgrade: websocket" request, then WebSocket frames (WSS)
+    Note over A,B: Every arrow to or from the relays travels over WSS: TLS on TCP 443, upgraded from HTTPS
+
+    rect rgba(80, 120, 220, 0.12)
+    Note over A,R: Phase 1. Alice connects to the relays and subscribes
     A->>R: REQ sub-a {kinds [22824], tag x [ce6b37...], since now} (room topic)
     A->>R: REQ sub-a2 {kinds [22724], tag x [2281ba...]} (Alice's peer topic)
-    A->>R: EVENT kind 22824, x=ce6b37... content {"peerId":"1ZWz..."} (every 60 s)
-    Note over B: Bob opens the link. The secret after the hash sign is never sent to any server.
+    end
+
+    rect rgba(30, 160, 120, 0.12)
+    Note over A,R: Phase 2. Alice announces she's in the room (repeated every 60 s)
+    A->>R: EVENT kind 22824, x=ce6b37... content {"peerId":"1ZWz..."}
+    end
+
+    rect rgba(80, 120, 220, 0.12)
+    Note over R,B: Phase 3. Bob opens the link, subscribes and announces himself
     B->>R: REQ room topic + Bob's peer topic (kind 22849, x=1b7dd7...)
     B->>R: EVENT on room topic, content {"peerId":"HSNV..."}
     R-->>A: EVENT from Bob: {"peerId":"HSNV..."}
+    end
+
+    rect rgba(220, 150, 30, 0.14)
+    Note over A,B: Phase 4. Swap the encrypted business cards (offer and answer)
     A->>R: EVENT on Bob's peer topic, {"peerId":"1ZWz...","offerId":"42r_...","offer":"<encrypted SDP>"}
     R-->>B: Alice's encrypted offer
     B->>R: EVENT on Alice's peer topic, {"peerId":"HSNV...","offerId":"42r_...","answer":"<encrypted SDP>"}
     R-->>A: Bob's encrypted answer
+    end
+
+    rect rgba(130, 90, 210, 0.12)
+    Note over A,B: Phase 5. Swap encrypted addresses (ICE candidates), as each one is found
     A->>R: EVENT on Bob's peer topic, {"peerId":"1ZWz...","offerId":"42r_...","candidate":"<encrypted>"}
     B->>R: EVENT on Alice's peer topic, {"peerId":"HSNV...","offerId":"42r_...","candidate":"<encrypted>"}
+    end
+
     Note over A,B: Both now hold each other's card and addresses. The relays never could read them.
 ```
+
+| # | Phase | Message | What it means |
+|---|---|---|---|
+| 1 | Connect and subscribe | `REQ` on the room topic | "Send me every new message about this room." Only browsers with the same link compute the same topic |
+| 2 | Connect and subscribe | `REQ` on Alice's own peer topic | "And every message addressed to me personally" (offers, answers, candidates) |
+| 3 | Announce | `EVENT` on the room topic, `{"peerId"}` | "I'm here, my random session ID is 1ZWz…". Repeated every minute so latecomers see it |
+| 4 | Bob joins | Bob's two `REQ`s | Bob subscribes to the room and to his own peer topic, exactly like Alice |
+| 5 | Bob joins | Bob's announcement | "I'm here too, I'm HSNV…" |
+| 6 | Bob joins | Relay → Alice | The relay forwards Bob's announcement to Alice, who now knows Bob exists |
+| 7 | Business cards | Alice's `offer` | Alice's WebRTC card (SDP), encrypted with the key from the link, addressed to Bob's peer topic |
+| 8 | Business cards | Relay → Bob | The relay forwards it. It can't read it |
+| 9 | Business cards | Bob's `answer` | Bob decrypts Alice's card and replies with his own, encrypted, addressed to Alice |
+| 10 | Business cards | Relay → Alice | The relay forwards Bob's card to Alice |
+| 11–12 | Addresses | `candidate`s | Each address (local, public) as soon as the browser discovers it, encrypted. The relays forward them the same way (arrows omitted) |
 
 The messages in full (Trystero's message shapes, from its source):
 
@@ -294,19 +328,41 @@ sequenceDiagram
     participant NB as Bob's router (NAT)
     participant B as Bob
 
+    rect rgba(80, 120, 220, 0.12)
+    Note over A,B: Phase 1. Each side asks a STUN server for its public address (UDP)
     A->>ST: STUN Binding Request (UDP 19302, via NA)
     ST-->>A: Binding Response, XOR-MAPPED-ADDRESS 85.1.2.3:51234
     B->>ST: Binding Request (via NB)
     ST-->>B: Binding Response, XOR-MAPPED-ADDRESS 92.4.5.6:40000
-    Note over A,B: Those addresses went into the encrypted candidates of step 2.
+    end
+
+    Note over A,B: Those public addresses went into the encrypted candidates of step 2.
+
+    rect rgba(220, 150, 30, 0.14)
+    Note over A,B: Phase 2. ICE connectivity checks: both fire at once, punching holes in their own NATs
     A->>NB: STUN check to 92.4.5.6:40000, USERNAME "Bobufrag:Hk8s" (opens a path out through NA)
     B->>NA: STUN check to 85.1.2.3:51234, USERNAME "Hk8s:Bobufrag" (opens a path out through NB)
-    Note over NA,NB: Each router now sees a reply to a packet it sent out, so it lets it in.<br/>This is "hole punching".
-    A->>B: check succeeds (signed with the ICE password from the SDP)
-    A->>B: DTLS handshake on the same UDP ports, certificates checked against the SDP fingerprints
+    A->>B: check succeeds (signed with the ICE password from the card)
+    end
+
+    rect rgba(30, 160, 120, 0.12)
+    Note over A,B: Phase 3. Secure channel on the same UDP path
+    A->>B: DTLS handshake, certificates checked against the fingerprints in the cards
     A->>B: SCTP association inside DTLS, data channel opened
+    end
+
     Note over A,B: Encrypted data channel open. Direct, no server in between.
 ```
+
+| # | Phase | Message | What it means |
+|---|---|---|---|
+| 1–2 | Public address | Alice's Binding Request and its response | "What address do you see me as?" The STUN server answers with the public IP:port Alice's router used |
+| 3–4 | Public address | The same for Bob | Bob learns his own public address |
+| 5 | Hole punching | Alice → Bob's public address | A test packet. It probably bounces off Bob's router, but on the way out it makes Alice's router expect replies from Bob |
+| 6 | Hole punching | Bob → Alice's public address | The same from Bob. Now each router has seen outgoing traffic to the other, so it lets the other's packets in |
+| 7 | Hole punching | Check succeeds | A test packet gets through and is answered. Both are authenticated with the ICE password from the cards, so they can't be faked |
+| 8 | Secure channel | DTLS handshake | TLS for UDP. Each side checks the other's certificate against the fingerprint from its card. Our safety code comes from these fingerprints |
+| 9 | Secure channel | SCTP association | The data channel that carries everything from now on, inside DTLS |
 
 ### When it fails: symmetric NAT
 
@@ -339,18 +395,53 @@ sequenceDiagram
     autonumber
     participant A as Alice (host)
     participant B as Bob (guest)
+
+    rect rgba(80, 120, 220, 0.12)
+    Note over A,B: Phase 1. Hello: each side sends its public key and a fresh random number
     A->>B: {"v":2,"role":"host","pub":"BME6VIGq...","nonce":"E482dcr0..."}
     B->>A: {"v":2,"role":"guest","pub":"BBiUZviz...","nonce":"d2Sw9EiW...","nick":"Bob"}
+    end
     Note over B: SHA-256 of Alice's pub must equal h from the link (0UfLJ2Hf...)<br/>Otherwise she isn't the host, so Bob stops.
+
+    rect rgba(30, 160, 120, 0.12)
+    Note over A,B: Phase 2. Host proves it's the real host
     A->>B: {"sig":"-xAzxpHc..."} ECDSA over "uss-host|d2Sw9EiW...|E482dcr0..."
+    end
+
+    rect rgba(220, 150, 30, 0.14)
+    Note over A,B: Phase 3. Guest proves the passphrase, without revealing it
     B->>A: {"proof":"Cuxa8YKU..."} HMAC over "uss-join|E482dcr0...|d2Sw9EiW...|BBiUZviz...|Bob"
+    end
     Note over A: A wrong proof means a wrong passphrase, and 5 failures lock the room
+
+    rect rgba(30, 160, 120, 0.12)
+    Note over A,B: Phase 4. Result
     A->>B: {"ok":true}
+    end
     Note over A,B: Both screens show the same safety code (from both DTLS fingerprints).<br/>Chat: Alice approves Bob. Share: delivery starts.
+
+    rect rgba(130, 90, 210, 0.12)
+    Note over A,B: Phase 5. Admission (encrypted with the group key)
     A->>B: control "LWxq2UFB..." = AES-GCM of {"t":"welcome"}
     A->>B: control = AES-GCM of {"t":"roster","members":[...]}
-    B->>A: message "…" = AES-GCM of {"d": message JSON, "s": Bob's signature}
+    end
+
+    rect rgba(80, 120, 220, 0.12)
+    Note over A,B: Phase 6. Messages and files, signed by the sender and encrypted
+    B->>A: message = AES-GCM of {"d": message JSON, "s": Bob's signature}
+    end
 ```
+
+| # | Phase | Message | What it means |
+|---|---|---|---|
+| 1 | Hello | Host hello | Alice's public key (whose fingerprint is `h` in the link) and a fresh random number |
+| 2 | Hello | Guest hello | Bob's session public key, his own fresh random number and his nickname. Bob also checks Alice's key against `h` |
+| 3 | Host proof | `sig` | Alice signs both random numbers with her private key. Only the real host can, and fresh numbers mean an old signature can't be replayed |
+| 4 | Passphrase proof | `proof` | Bob shows he knows the passphrase: an HMAC under a key derived from link + passphrase. Nothing in it helps anyone guess the passphrase |
+| 5 | Result | `ok` | Accepted, or refused with a reason: wrong passphrase, room locked, room full, nickname taken… |
+| 6 | Admission | `welcome` | The host admits Bob (after approval in Chat). Encrypted with the group key |
+| 7 | Admission | `roster` | Who's in the room: nicknames and public keys, so everyone can check each message's signature |
+| 8 | Messages | A chat message, Share manifest or file | Signed by the sender, encrypted with the group key. In a group chat the host relays it unchanged |
 
 The same messages in full:
 
