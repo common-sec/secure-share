@@ -5,6 +5,10 @@ directly, without a server of ours in between. No prior networking knowledge is 
 decisions behind each choice are in [DECISIONS.md](DECISIONS.md), and the exact cryptographic
 messages are in [PROTOCOL.md](PROTOCOL.md).
 
+**About the examples:** every message below has the exact *format* the app and Trystero use:
+field names, encodings and lengths. The *values* are made up (random), except where marked as
+real (relay host names, STUN servers, the topic computation).
+
 ## The big picture
 
 ```mermaid
@@ -12,16 +16,16 @@ flowchart LR
     A["Alice's browser<br/>(host / sender)"]
     B["Bob's browser<br/>(guest / recipient)"]
     S["Static host<br/>(GitHub Pages)"]
-    R["Public Nostr relays<br/>(3 of ~29, run by volunteers)"]
+    R["Public Nostr relays<br/>(3 of 29, run by volunteers)"]
     T["STUN servers<br/>(Google, Cloudflare)"]
 
-    S -- "1. app files (HTTPS)" --> A
-    S -- "1. app files (HTTPS)" --> B
-    A <-- "2. encrypted 'business cards'<br/>(WSS, discovery only)" --> R
-    B <-- "2. encrypted 'business cards'<br/>(WSS, discovery only)" --> R
-    A -. "3. what's my public address? (UDP)" .-> T
-    B -. "3. what's my public address? (UDP)" .-> T
-    A <== "4. direct, end-to-end encrypted channel<br/>(WebRTC: DTLS over UDP)<br/>all messages and files" ==> B
+    S -- "1. app files<br/>HTTPS, TCP 443" --> A
+    S -- "1. app files<br/>HTTPS, TCP 443" --> B
+    A <-- "2. encrypted 'business cards'<br/>WSS, TCP 443, discovery only" --> R
+    B <-- "2. encrypted 'business cards'<br/>WSS, TCP 443, discovery only" --> R
+    A -. "3. what's my public address?<br/>STUN, UDP 19302 / 3478" .-> T
+    B -. "3. what's my public address?<br/>STUN, UDP 19302 / 3478" .-> T
+    A <== "4. direct, end-to-end encrypted channel<br/>WebRTC: DTLS + SCTP over UDP, browser-chosen ports<br/>all messages and files" ==> B
 ```
 
 | Who | Sees | Never sees |
@@ -31,6 +35,38 @@ flowchart LR
 | STUN servers | Your public IP and port | Anything else |
 | The other browser | Your IP address (inherent to a direct connection) | Nothing it isn't meant to; you approve who joins |
 
+All of the app's code, including the Trystero library, comes from the static host. Nothing is
+loaded from any other site (since 0.6.0).
+
+## Step 0: the room link and the passphrase
+
+Creating a room makes three random values and puts them in the link, **after the `#`**. Browsers
+never send that part of a URL to any server, not even to the site that serves the app.
+
+```
+https://gum0x.github.io/user-sec-tools/#/share?r=Q7nmLtvgH6OIiTJ387mbqQ&k=G4laNCs8p9dVdjEwUSRZZ8tAwBdv-cH4tTxzRKiO1nY&h=0UfLJ2Hfxmyl2PblVEoHTrbRx_1MUl2F5lyU-gJIVdY
+└──────────── sent to the server ───────┘└─────────────────────── stays in the browser ───────────────────────────────────────────────────────────────┘
+```
+
+| Parameter | Example | What it is | Used for |
+|---|---|---|---|
+| `#/share` or `#/chat` | `#/share` | Which tool | Picks the screen, and the Trystero app ID: `user-sec-tools.share.v2` or `user-sec-tools.chat.v2` |
+| `r`: room ID | `Q7nmLtvgH6OIiTJ387mbqQ` | 16 random bytes, base64url (22 chars) | Names the room: the Nostr topics and key-derivation salts come from it |
+| `k`: link secret | `G4laNCs8…KiO1nY` | 32 random bytes, base64url (43 chars) | Encrypts the business cards on the relays, and, with the passphrase, all data |
+| `h`: host key fingerprint | `0UfLJ2Hf…gJIVdY` | SHA-256 of the host's public key (43 chars) | Lets guests check they reached the real host |
+
+| Not in the link | Example | What it is |
+|---|---|---|
+| **Passphrase** | `Stone~Behind~Karrotish42` | Shared separately (e.g. read out on a call). Proven inside the direct channel; never sent anywhere |
+| Host public key | `BME6VIGq4d4D2PcV…0PhwAAE` (87 chars) | The host's ECDSA P-256 public key, sent in the handshake (step 4). Its SHA-256 must equal `h` |
+
+What's derived from them ([PROTOCOL.md §2](PROTOCOL.md)):
+
+```
+signaling password = HKDF(k, salt "uss/v2/" + r, info "signaling")   → given to Trystero (step 2)
+group key, auth key = HKDF(k ‖ PBKDF2(passphrase, 600 000 rounds), …) → our own encryption (step 4)
+```
+
 ## Step 1: the problem, two browsers behind NATs
 
 Almost every device sits behind a router doing **NAT**: the device can call out to the internet,
@@ -38,70 +74,173 @@ but nothing can call *in* unless the device opened that path first. A device doe
 own public address. So two browsers can't simply connect to each other.
 
 **WebRTC** is the browser feature for direct browser-to-browser connections. To use it, each side
-must give the other a "business card", called an **SDP** (Session Description), containing:
+must give the other a "business card", called an **SDP** (Session Description). This is a
+shortened real one, for a data channel like ours:
 
-| On the card | What it's for |
-|---|---|
-| **Candidates**: addresses where I might be reachable (local IP, public IP:port) | Where to aim |
-| **ICE credentials**: a short username and password for the connection checks | So stray traffic is ignored |
-| **DTLS fingerprint**: a hash of my encryption certificate | So the other side knows it's really me (our safety codes are built from these) |
+```
+v=0
+o=- 4611731400430051336 2 IN IP4 127.0.0.1
+s=-
+t=0 0
+a=group:BUNDLE 0
+m=application 9 UDP/DTLS/SCTP webrtc-datachannel        ← "I want a data channel over DTLS/UDP"
+c=IN IP4 0.0.0.0
+a=ice-ufrag:Hk8s                                          ← ICE username for connection checks
+a=ice-pwd:3nZq9c0Yt8sWm2pLx4RkVb7e                        ← ICE password for connection checks
+a=ice-options:trickle                                     ← addresses will follow separately
+a=fingerprint:sha-256 B2:41:7C:1F:03:82:24:85:8A:A1:D2:EB:24:6D:36:F3:3C:5D:26:38:5A:5F:B0:B5:E8:D5:C4:C8:07:E2:2F:5B
+a=setup:actpass                                           ← DTLS role (client or server) negotiable
+a=mid:0
+a=sctp-port:5000
+a=max-message-size:262144
+```
 
-One side writes an **offer**, the other replies with an **answer**. WebRTC deliberately doesn't
-say *how* these cards are delivered. That part is called **signaling**, and it's where Nostr comes in.
+The addresses (**candidates**) are sent separately as they're discovered ("trickle ICE"):
+
+```
+candidate:1840965416 1 udp 2122260223 4f1c2a9e-6b3d-4e7a-9c10-2d8e5f7a1b3c.local 54321 typ host generation 0 ufrag Hk8s
+candidate:842163049 1 udp 1686052607 85.1.2.3 51234 typ srflx raddr 0.0.0.0 rport 0 generation 0 ufrag Hk8s
+```
+
+- `typ host`: the device's own address. Browsers hide local IPs behind a random `.local` name (mDNS).
+- `typ srflx` ("server reflexive"): the **public** address the NAT gave us, as seen by a STUN server (step 3).
+- The fingerprint is the hash of the browser's DTLS certificate. Our safety codes are computed
+  from both sides' fingerprints.
+
+WebRTC deliberately doesn't say how these cards are delivered. That part is called **signaling**.
 
 ## Step 2: finding each other through Nostr relays (signaling)
+
+### Nostr in one minute
 
 **Nostr** is an open protocol made of two things:
 - **Relays**: simple WebSocket servers that anyone can run, with hundreds of public, free ones.
   They accept messages and forward them to whoever subscribed. Relays don't talk to each other,
   so a client uses several for redundancy.
-- **Events**: the only message type, a small signed JSON object:
+- **Events**: the only message type, a small signed JSON object (exact fields from the Nostr spec, NIP-01):
 
 ```json
-{ "id": "<sha256 of the fields below>",
-  "pubkey": "<author's public key>",
+{ "id": "27a13171feb2de3a489dba399b8d6a31aa197e7b62633c733f2657ee4d551878",
+  "pubkey": "2a83950b22a552e47c4b621c19bc07cc6a26711118be867d5fa7f25b1823e157",
   "created_at": 1791700000,
-  "kind": 24187,
-  "tags": [["x", "<topic>"]],
-  "content": "<here: an encrypted business card>",
-  "sig": "<Schnorr signature (secp256k1) by pubkey>" }
+  "kind": 22824,
+  "tags": [["x", "ce6b3751177551996a09cc9e67de61f224fa5ffe"]],
+  "content": "{\"peerId\":\"1ZWzQtkzeNWT740wEGd4\",\"nonce\":\"Xq3Lk9Pz\"}",
+  "sig": "983213f22fd61a4fc79037862650e46bed18deec…(128 hex chars)" }
 ```
 
-There are three operations: `EVENT` (publish), `REQ` (subscribe with a filter, e.g. "events of
-kind K tagged x = T, from now on") and `CLOSE` (unsubscribe). **Kinds 20000–29999 are
-*ephemeral*:** relays pass them on to current subscribers and **don't store them**. That's the part
-of Nostr meant for live, throwaway messages like ours.
+- `id` is the SHA-256 of the other fields, and `sig` is a Schnorr signature (secp256k1) by
+  `pubkey`. Trystero makes a **new random Nostr key pair each time the page loads**, so it says
+  nothing about you.
+- Three operations over the WebSocket: `["EVENT", {…}]` (publish), `["REQ", "<sub-id>", {filter}]`
+  (subscribe) and `["CLOSE", "<sub-id>"]`.
+- **Kinds 20000–29999 are *ephemeral*:** relays forward them to current subscribers and **don't
+  store them**. That's the part of Nostr meant for live, throwaway messages like ours.
 
-[Trystero](https://github.com/dmotz/trystero), the library we use, turns this into a meeting place:
+### Topics: how only the right browsers meet
+
+Trystero derives every name from the app ID and room ID (formula from its source; values computed
+for the example room):
+
+```
+room topic   = SHA-1("Trystero@user-sec-tools.share.v2@Q7nmLtvgH6OIiTJ387mbqQ")
+             = ce6b3751177551996a09cc9e67de61f224fa5ffe
+peer topic   = SHA-1("Trystero@user-sec-tools.share.v2@Q7nmLtvgH6OIiTJ387mbqQ@<peerId>")
+event kind   = 20000 + (sum of the topic's character codes mod 10000) = 22824 for the room topic
+```
+
+Each browser also has a random Trystero **peer ID** for the session (e.g. `1ZWzQtkzeNWT740wEGd4`).
+
+### The exchange
 
 ```mermaid
 sequenceDiagram
     autonumber
-    participant A as Alice (host)
+    participant A as Alice (host), peer 1ZWz...
     participant R as Nostr relays (x3)
-    participant B as Bob (guest)
+    participant B as Bob (guest), peer HSNV...
 
-    Note over A,B: Each browser makes a throwaway Nostr key pair at page load.<br/>The link secret gives both the same room topic and the same AES-GCM key for cards.
-    A->>R: REQ: subscribe to the room topic and to Alice's own peer topic
-    A->>R: EVENT on room topic: "I'm here" (peer id), repeated every 60 s
-    Note over B: Bob opens the link (secret after #, never sent to any server)
-    B->>R: REQ: subscribe to the room topic and to Bob's own peer topic
-    B->>R: EVENT on room topic: "I'm here"
-    R-->>A: forwards Bob's "I'm here"
-    A->>R: EVENT on Bob's peer topic: Alice's offer, AES-GCM encrypted
-    R-->>B: forwards the encrypted offer
-    B->>R: EVENT on Alice's peer topic: Bob's answer, AES-GCM encrypted
-    R-->>A: forwards the encrypted answer
-    Note over A,B: Both now hold each other's card. The relays never could read them.
+    Note over A,B: TLS on TCP 443, then an HTTP "Upgrade: websocket" request, then WebSocket frames (WSS)
+    A->>R: REQ sub-a {kinds [22824], tag x [ce6b37...], since now} (room topic)
+    A->>R: REQ sub-a2 {kinds [22724], tag x [2281ba...]} (Alice's peer topic)
+    A->>R: EVENT kind 22824, x=ce6b37... content {"peerId":"1ZWz..."} (every 60 s)
+    Note over B: Bob opens the link. The secret after the hash sign is never sent to any server.
+    B->>R: REQ room topic + Bob's peer topic (kind 22849, x=1b7dd7...)
+    B->>R: EVENT on room topic, content {"peerId":"HSNV..."}
+    R-->>A: EVENT from Bob: {"peerId":"HSNV..."}
+    A->>R: EVENT on Bob's peer topic, {"peerId":"1ZWz...","offerId":"42r_...","offer":"<encrypted SDP>"}
+    R-->>B: Alice's encrypted offer
+    B->>R: EVENT on Alice's peer topic, {"peerId":"HSNV...","offerId":"42r_...","answer":"<encrypted SDP>"}
+    R-->>A: Bob's encrypted answer
+    A->>R: EVENT on Bob's peer topic, {"peerId":"1ZWz...","offerId":"42r_...","candidate":"<encrypted>"}
+    B->>R: EVENT on Alice's peer topic, {"peerId":"HSNV...","offerId":"42r_...","candidate":"<encrypted>"}
+    Note over A,B: Both now hold each other's card and addresses. The relays never could read them.
 ```
 
-- The key that encrypts the cards is `SHA-256(password : appId : roomId)`, where our "password"
-  is a random 256-bit value **derived from the link secret, never from your passphrase**. A relay
-  can't decrypt the cards, and nothing on the relay helps guess the passphrase offline.
-- The topics and event kind are derived from the app name and the room ID, so only browsers with
-  the same link meet.
+The messages in full (Trystero's message shapes, from its source):
+
+```jsonc
+// Subscribe (client → relay)
+["REQ", "f3a9…(64 random chars)", { "kinds": [22824], "#x": ["ce6b3751177551996a09cc9e67de61f224fa5ffe"], "since": 1791700000 }]
+
+// "I'm here" on the room topic: content of the EVENT (in the clear: just a random peer ID)
+{ "peerId": "1ZWzQtkzeNWT740wEGd4", "nonce": "Xq3Lk9Pz" }
+
+// Offer, on Bob's peer topic
+{ "peerId": "1ZWzQtkzeNWT740wEGd4",
+  "offerId": "42r_OMmO6Ax97ucgwd7h",
+  "offer": "130,99,102,10,82,81,74,236,109,6,56,162,158,127,208,12$lGIk1Pv+xDvj0JDc4a0S1AqofLH7gcHK…" }
+//          └──── 16-byte random IV, comma-separated ────┘ └─ AES-GCM ciphertext of the SDP ─┘
+
+// Answer, on Alice's peer topic
+{ "peerId": "HSNVSjwYD0DdUAHv4ZjC", "offerId": "42r_OMmO6Ax97ucgwd7h", "answer": "<IV>$<ciphertext>" }
+
+// ICE candidate, either direction
+{ "peerId": "HSNVSjwYD0DdUAHv4ZjC", "offerId": "42r_OMmO6Ax97ucgwd7h", "candidate": "<IV>$<ciphertext>" }
+```
+
+- **Encrypted:** the SDP in `offer` and `answer`, and each `candidate`, with
+  `AES-GCM(key = SHA-256("<signaling password>:<appId>:<roomId>"))`. The signaling password comes
+  from the link secret `k` **only, never from your passphrase** (step 0). So a relay can't decrypt
+  the cards, and nothing on a relay helps anyone guess the passphrase offline.
+- **In the clear:** the random peer IDs, the offer ID, the topics and the event kinds. They're
+  meaningless without the link.
+
+### Where the relays come from
+
+The relay list is **built into Trystero** (`@trystero-p2p/nostr`, `defaultRelayUrls`): 29 public
+relays run by independent volunteers. Trystero shuffles that list with a seed computed from the
+app ID and takes the first 3 (we set `redundancy: 3`), so every browser using the same tool picks
+the same 3. With Trystero 0.26.0, observed and computed:
+
+| Tool | App ID | The 3 relays (`wss://…`, TCP 443) |
+|---|---|---|
+| Secure Share | `user-sec-tools.share.v2` | `nostr.chaima.info`, `relay.hackshed.dev`, `testr.nymble.world` |
+| Secure Chat | `user-sec-tools.chat.v2` | `relay.bullishbounty.com`, `nostr.christiansass.de`, `relay.nostr.dev.br` |
+
+Updating Trystero can change its built-in list. The end-to-end tests instead use a tiny local
+Nostr relay inside the test server (see the end of this document).
 
 ## Step 3: punching through the NATs (ICE, STUN)
+
+### Where the STUN servers come from
+
+STUN servers are also **built into Trystero** (`@trystero-p2p/core`, `defaultIceServers`), and
+the app doesn't override them:
+
+| STUN server | Operator | Port |
+|---|---|---|
+| `stun:stun.l.google.com:19302` | Google | UDP 19302 |
+| `stun:stun1.l.google.com:19302` | Google | UDP 19302 |
+| `stun:stun2.l.google.com:19302` | Google | UDP 19302 |
+| `stun:stun.cloudflare.com:3478` | Cloudflare | UDP 3478 |
+
+While gathering candidates, the browser asks each of them "what's my public address?" A STUN
+exchange is two small UDP packets: a **Binding Request** and a **Binding Response**, whose
+`XOR-MAPPED-ADDRESS` field holds the public IP:port the server saw (e.g. `85.1.2.3:51234`). That
+address becomes the `srflx` candidate above. STUN servers never see any data.
+
+### Hole punching
 
 ```mermaid
 sequenceDiagram
@@ -112,45 +251,99 @@ sequenceDiagram
     participant NB as Bob's router (NAT)
     participant B as Bob
 
-    A->>ST: "What's my public address?" (via NA)
-    ST-->>A: "You look like 85.1.2.3:51234"
-    B->>ST: same question (via NB)
-    ST-->>B: "You look like 92.4.5.6:40000"
-    Note over A,B: Those addresses went into the cards exchanged in step 2.
-    A->>NB: test packet to 92.4.5.6:40000 (opens a path out through NA)
-    B->>NA: test packet to 85.1.2.3:51234 (opens a path out through NB)
-    Note over NA,NB: Each router now sees a reply to a packet it sent out, so it lets it in:<br/>this is "hole punching".
-    A->>B: connectivity check succeeds
-    A->>B: DTLS handshake: both certificates checked against the fingerprints from the cards
+    A->>ST: STUN Binding Request (UDP 19302, via NA)
+    ST-->>A: Binding Response, XOR-MAPPED-ADDRESS 85.1.2.3:51234
+    B->>ST: Binding Request (via NB)
+    ST-->>B: Binding Response, XOR-MAPPED-ADDRESS 92.4.5.6:40000
+    Note over A,B: Those addresses went into the encrypted candidates of step 2.
+    A->>NB: STUN check to 92.4.5.6:40000, USERNAME "Bobufrag:Hk8s" (opens a path out through NA)
+    B->>NA: STUN check to 85.1.2.3:51234, USERNAME "Hk8s:Bobufrag" (opens a path out through NB)
+    Note over NA,NB: Each router now sees a reply to a packet it sent out, so it lets it in.<br/>This is "hole punching".
+    A->>B: check succeeds (signed with the ICE password from the SDP)
+    A->>B: DTLS handshake on the same UDP ports, certificates checked against the SDP fingerprints
+    A->>B: SCTP association inside DTLS, data channel opened
     Note over A,B: Encrypted data channel open. Direct, no server in between.
 ```
 
-- **STUN** only tells each browser its public address. It never sees any data.
-- This works for most home, office and mobile networks: it was tested with an iPhone on 5G
-  against a computer on wifi.
-- It fails when **both** sides are behind *symmetric* NATs (some corporate networks). That would
-  need a **TURN** relay to carry the traffic, which we deliberately don't run. See
-  [DECISIONS.md](DECISIONS.md).
+### When it fails: symmetric NAT
+
+Hole punching works when a router keeps the **same public port** for a device whatever the
+destination ("endpoint-independent mapping"), which **most home routers** do. A **symmetric** NAT
+gives a *different* public port for every destination. The port the STUN server saw is then not
+the port the other peer would reach, so the checks miss.
+
+- **Home networks:** symmetric NAT is uncommon.
+- **Where it's more common:** corporate networks and firewalls, and some mobile carriers'
+  carrier-grade NAT (CGNAT). Firewalls that block UDP outright have the same effect.
+- **A direct connection usually still works if only *one* side is symmetric** and the other is
+  permissive, as in our real test (iPhone on 5G against a computer on wifi). It fails mainly when
+  **both** sides are restrictive.
+- **How often, overall:** industry estimates put the share of WebRTC sessions that need a relay
+  (TURN) for any reason at roughly **10–25%**, depending heavily on the users' networks. These
+  figures come from vendors and are not precise. A relay is what we deliberately don't run
+  ([DECISIONS.md D5](DECISIONS.md)), so for those users, today, the connection fails.
 
 ## Step 4: our own checks, inside the direct channel
 
-Once the WebRTC channel is open, the app runs its own protocol before anything is shared
-(details in [PROTOCOL.md](PROTOCOL.md)):
+Once the WebRTC data channel is open, the app runs its own protocol before anything is shared
+([PROTOCOL.md](PROTOCOL.md)). These messages travel **inside DTLS** (already encrypted by
+WebRTC). Messages 5 and later are **also** encrypted by the app.
 
 ```mermaid
 sequenceDiagram
     autonumber
     participant A as Alice (host)
     participant B as Bob (guest)
-    A->>B: hello: host public key + fresh number
-    B->>A: hello: guest public key + fresh number + nickname
-    Note over B: Bob checks Alice's key against the fingerprint in the link.<br/>Otherwise she isn't the host, so he stops.
-    A->>B: signature over both fresh numbers (proves Alice holds the host key)
-    B->>A: passphrase proof (HMAC over both fresh numbers, reveals nothing reusable)
-    Note over A: Wrong proof means "wrong passphrase", 5 failures lock the room
-    A->>B: ok
-    Note over A,B: Both screens show the same safety code (from both DTLS certificates).<br/>Chat: Alice approves Bob. Share: delivery starts.
-    A->>B: messages / files: signed by the sender, AES-256-GCM encrypted
+    A->>B: {"v":2,"role":"host","pub":"BME6VIGq...","nonce":"E482dcr0..."}
+    B->>A: {"v":2,"role":"guest","pub":"BBiUZviz...","nonce":"d2Sw9EiW...","nick":"Bob"}
+    Note over B: SHA-256 of Alice's pub must equal h from the link (0UfLJ2Hf...)<br/>Otherwise she isn't the host, so Bob stops.
+    A->>B: {"sig":"-xAzxpHc..."} ECDSA over "uss-host|d2Sw9EiW...|E482dcr0..."
+    B->>A: {"proof":"Cuxa8YKU..."} HMAC over "uss-join|E482dcr0...|d2Sw9EiW...|BBiUZviz...|Bob"
+    Note over A: A wrong proof means a wrong passphrase, and 5 failures lock the room
+    A->>B: {"ok":true}
+    Note over A,B: Both screens show the same safety code (from both DTLS fingerprints).<br/>Chat: Alice approves Bob. Share: delivery starts.
+    A->>B: control "LWxq2UFB..." = AES-GCM of {"t":"welcome"}
+    A->>B: control = AES-GCM of {"t":"roster","members":[...]}
+    B->>A: message "…" = AES-GCM of {"d": message JSON, "s": Bob's signature}
+```
+
+The same messages in full:
+
+```jsonc
+// 1. Host hello (handshake channel, inside DTLS)
+{ "v": 2, "role": "host",
+  "pub": "BME6VIGq4d4D2PcVb-iSIAqNBeFA_3PM8d-oARXFw_u5ShEZ3cuQX9CitaQ18cbYDmLPjh0TSa1bTtKO0PhwAAE",
+  "nonce": "E482dcr0MGEyF6PBhTEXqw" }
+
+// 2. Guest hello
+{ "v": 2, "role": "guest",
+  "pub": "BBiUZvizBAGOuhOsCH4tEUZNeDs017xDcyzwf260ln5muwbrPWIjPvIzYUlLg_F6XPXCo5rrbOkR5IWRdIi9hFw",
+  "nonce": "d2Sw9EiWW0E0eakGBHkd9w", "nick": "Bob" }
+
+// 3. Host proves it holds the key whose fingerprint is h:
+//    ECDSA-P256-SHA256(host key, "uss-host|d2Sw9EiWW0E0eakGBHkd9w|E482dcr0MGEyF6PBhTEXqw")
+{ "sig": "-xAzxpHc4Ydq8zz7PiRuAgA_3J0kh-Nj8ccmN3Z1rOsXqIRXlOO5tdmXI0xSRknO2khH_PcC8G8A8pxWFWmoLg" }
+
+// 4. Guest proves the passphrase without revealing it:
+//    HMAC-SHA256(auth key, "uss-join|E482dcr0MGEyF6PBhTEXqw|d2Sw9EiWW0E0eakGBHkd9w|BBiUZviz…hFw|Bob")
+{ "proof": "Cuxa8YKUQ7ts2Jll6W5lZ4YQDjsQZzjmUKE3aQMtDTg" }
+
+// 5. Result
+{ "ok": true }          // or { "ok": false, "reason": "passphrase" | "locked" | "full" | "nick" | "nick-taken" }
+
+// 6–7. Control messages (host → guest): base64url( 12-byte IV ‖ AES-256-GCM(group key, JSON) )
+"LWxq2UFBDWHmzLfyVkbiGFiPuFwPwlig9WA8PcYLZyresHhDMcP-cBYF_djJeJ2H2NzM76m-MfLJbqDq"
+//   decrypted: { "t": "welcome" }
+//   decrypted: { "t": "roster", "members": [ { "id": "0UfLJ2Hfxmyl2Pbl", "nick": "Alice", "pub": "BME6…", "host": true },
+//                                            { "id": "…", "nick": "Bob", "pub": "BBiU…", "host": false } ] }
+
+// 8. Chat message or Share manifest: encrypted the same way. Decrypted, it's the inner message as
+//    a JSON string `d` plus the sender's ECDSA signature `s` over exactly that string:
+{ "d": "{\"t\":\"text\",\"body\":\"hi Alice\",\"id\":\"gQFn3YU252dSprF1\",\"from\":\"<Bob's member id>\",\"ts\":1791700042000}",
+  "s": "<base64url ECDSA signature by Bob's session key>" }
+
+// Files: the bytes go AES-GCM encrypted as one binary payload. Their name, size, type and SHA-256
+// travel as a signed, encrypted message like 8 (t: "file").
 ```
 
 ## Step 5: leaving the relays
@@ -189,6 +382,42 @@ flowchart TB
 Guests connect **only to the host**, never to each other, so they never learn each other's IP
 addresses. The host relays each message unchanged. The sender's signature travels with it, so the
 host can't alter or forge it.
+
+## Protocols and ports, in order
+
+| # | From → to | Protocol | Port | When | Content |
+|---|---|---|---|---|---|
+| 1 | Browser → `gum0x.github.io` | **HTTPS** (TLS) | TCP 443 | Opening the page | `GET /user-sec-tools/` and the app's files. The `#…` part of the URL is never sent |
+| 2 | Browser → each of the 3 relays | **HTTPS, then upgraded to WSS** | TCP 443 | Opening Share or Chat, while discovery is needed (step 5) | Nostr `REQ` / `EVENT` / `CLOSE` messages, JSON in WebSocket frames inside TLS |
+| 3 | Browser → STUN servers | **STUN** (plain, not encrypted) | UDP 19302 (Google), UDP 3478 (Cloudflare) | While a connection is being set up | Binding Request / Response: only your public address |
+| 4 | Browser ↔ browser | **ICE checks** (STUN messages, authenticated with the ICE password) | UDP, ports the browsers choose (ephemeral, typically 49152–65535) | Setting up the direct path | Connectivity checks |
+| 5 | Browser ↔ browser | **DTLS** (TLS for UDP) | Same UDP ports as 4 | After a check succeeds | Certificates checked against the SDP fingerprints |
+| 6 | Browser ↔ browser | **SCTP inside DTLS** (data channels) | Same UDP ports | The whole session | Our handshake (step 4), then messages and files, which the app also encrypts |
+| – | Browser ↔ your LAN | **mDNS** | UDP 5353 | Peers on the same local network | Resolving the random `.local` names of host candidates |
+
+**Where HTTPS becomes WSS (row 2).** A WebSocket starts life as an ordinary HTTPS request on the
+same TLS connection, which asks to switch protocols:
+
+```http
+GET / HTTP/1.1
+Host: relay.hackshed.dev
+Upgrade: websocket
+Connection: Upgrade
+Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==
+Sec-WebSocket-Version: 13
+Origin: https://gum0x.github.io
+
+HTTP/1.1 101 Switching Protocols
+Upgrade: websocket
+Connection: Upgrade
+Sec-WebSocket-Accept: s3pPLMBiTxaQ9kYGzzhZRbK+xOo=
+```
+
+After the `101 Switching Protocols` reply, the same encrypted connection carries WebSocket frames
+(the Nostr messages) instead of HTTP. The Content Security Policy only allows `wss:` here, never
+plain `ws:`.
+
+**There's no TURN and no other server:** after step 3, the only traffic is UDP between the two browsers.
 
 ## How the tests reproduce this
 
