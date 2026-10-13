@@ -223,6 +223,49 @@ Nostr relay inside the test server (see the end of this document).
 
 ## Step 3: punching through the NATs (ICE, STUN)
 
+### What ICE is
+
+**ICE** (Interactive Connectivity Establishment, RFC 8445) is the procedure WebRTC uses to find
+*a path that actually works* between two browsers. It runs automatically inside each browser, in
+four stages:
+
+1. **Gather candidates**: every address where this browser *might* be reachable.
+2. **Exchange** them with the other side (through the encrypted cards of step 2).
+3. **Check**: try every pair (one of my candidates, one of yours) by sending small test packets
+   both ways.
+4. **Select** the best pair that worked, and keep it alive with occasional packets.
+
+| Candidate type | Where it comes from | Example | Works when |
+|---|---|---|---|
+| `host` | The device's own network interface (hidden behind a random `.local` name) | `4f1c…3c.local:54321` | Both devices are on the same local network |
+| `srflx` (server reflexive) | The public address a STUN server saw (below) | `85.1.2.3:51234` | The NATs allow hole punching: most networks |
+| `relay` | A TURN relay server | `203.0.113.7:3478` | Always, but traffic goes through the relay. **We don't use TURN today** (roadmap 0.10.0) |
+
+### The ICE credentials
+
+Each side's card contains two short random strings:
+
+```
+a=ice-ufrag:Hk8s                        ← username fragment (at least 4 characters)
+a=ice-pwd:3nZq9c0Yt8sWm2pLx4RkVb7e      ← password (at least 22 characters)
+```
+
+- **They're not yours and not an account.** The browser makes them up at random for each
+  connection and throws them away afterwards. You never see or type them.
+- **What they're for:** proving that a test packet comes from *the* peer that received my card,
+  and not from someone on the internet who happens to send packets to my open port.
+  - Every connectivity check is a STUN *Binding Request* from Alice to Bob, carrying
+    `USERNAME = "<Bob's ufrag>:<Alice's ufrag>"` and a `MESSAGE-INTEGRITY` field: an HMAC-SHA1 of
+    the packet keyed with **Bob's `ice-pwd`**.
+  - Bob only answers checks with a valid HMAC under his own password. His answer is signed the
+    same way, so Alice can verify it too.
+- **Why that's safe here:** the credentials travel only inside the cards, which Trystero encrypts
+  on the relays (step 2). A relay operator never learns them, so it can't impersonate either side
+  in the checks.
+- **What they don't do:** they don't encrypt anything. Encryption starts right after, with DTLS
+  (whose certificate fingerprints are also in the cards), and our own handshake (step 4) then
+  proves who the host is and that the guest knows the passphrase.
+
 ### Where the STUN servers come from
 
 STUN servers are also **built into Trystero** (`@trystero-p2p/core`, `defaultIceServers`), and
@@ -276,12 +319,14 @@ the port the other peer would reach, so the checks miss.
 - **Where it's more common:** corporate networks and firewalls, and some mobile carriers'
   carrier-grade NAT (CGNAT). Firewalls that block UDP outright have the same effect.
 - **A direct connection usually still works if only *one* side is symmetric** and the other is
-  permissive, as in our real test (iPhone on 5G against a computer on wifi). It fails mainly when
+  permissive, as in our real-world test across two different networks (mobile data and wifi). It fails mainly when
   **both** sides are restrictive.
 - **How often, overall:** industry estimates put the share of WebRTC sessions that need a relay
   (TURN) for any reason at roughly **10–25%**, depending heavily on the users' networks. These
   figures come from vendors and are not precise. A relay is what we deliberately don't run
-  ([DECISIONS.md D5](DECISIONS.md)), so for those users, today, the connection fails.
+  today ([DECISIONS.md D5](DECISIONS.md)), so for those users the connection currently fails.
+  Fixing that, with an end-to-end encrypted relay fallback, is roadmap item **0.10.0**
+  ([ROADMAP.md](ROADMAP.md)).
 
 ## Step 4: our own checks, inside the direct channel
 
