@@ -71,7 +71,7 @@ All notable changes, one section per version. See [docs/ROADMAP.md](docs/ROADMAP
 
 ## [0.4.0] - 2026-10-12
 
-Feedback from the first real-world test (iPhone on 5G and a computer on wifi; Chat and Share both
+Feedback from the first real-world test (two devices on different networks, mobile data and wifi; Chat and Share both
 worked across NAT).
 
 ### Changed
