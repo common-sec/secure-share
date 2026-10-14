@@ -51,7 +51,7 @@ services:
   # Packages dist/ as a deterministic release tarball in release/ (run `build` first):
   #   docker compose run --rm package vX.Y.Z
   package:
-    image: python:3.14.7-slim-bookworm@sha256:82bc3c539b8813ada9d68c63b40158fa002f7f33de9bf3312a3dfdc0620dff56
+    image: python:3.14.8-slim-bookworm@sha256:48b13b003dda20b16f9442b8475aa05fe21bf6579a8c881db92ffb4d8fd20f83
     <<: *hardening
     user: "1000:1000"
     working_dir: /work
@@ -62,7 +62,7 @@ services:
 
   # Serves the built app exactly as it's deployed (run `build` first).
   web:
-    image: python:3.14.7-slim-bookworm@sha256:82bc3c539b8813ada9d68c63b40158fa002f7f33de9bf3312a3dfdc0620dff56
+    image: python:3.14.8-slim-bookworm@sha256:48b13b003dda20b16f9442b8475aa05fe21bf6579a8c881db92ffb4d8fd20f83
     <<: *hardening
     user: "1000:1000"
     working_dir: /work/dist
