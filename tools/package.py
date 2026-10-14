@@ -1,6 +1,6 @@
 """Package dist/ as a deterministic release tarball: same files in, same bytes out, on any machine.
 
-    docker compose run --rm package v0.6.1     # -> release/secure-sharing-v0.6.1.tar.gz (+ .sha256)
+    docker compose run --rm package v0.6.1     # -> release/commonsec-share-v0.6.1.tar.gz (+ .sha256)
 
 Every header field is set explicitly (sorted names, mode 755 for folders and 644 for files, owner
 0, time 0) because a checkout's permissions differ between machines (e.g. 777 on a Windows drive
@@ -21,7 +21,7 @@ ROOT = Path(__file__).resolve().parents[1]
 def main():
     if len(sys.argv) != 2 or not re.fullmatch(r"v\d+\.\d+\.\d+", sys.argv[1]):
         sys.exit("usage: package.py vX.Y.Z")
-    name = f"secure-sharing-{sys.argv[1]}"
+    name = f"commonsec-share-{sys.argv[1]}"
     dist, out_dir = ROOT / "dist", ROOT / "release"
     if not (dist / "SHA256SUMS").is_file():
         sys.exit("dist/ is missing: run the build first (docker compose run --rm build)")
