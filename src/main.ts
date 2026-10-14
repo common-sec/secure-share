@@ -5,8 +5,8 @@ import * as share from './tools/share.js';
 /** Set at build time by build.mjs: package.json version + short commit, e.g. "0.6.0+1a2b3c4". */
 declare const __APP_VERSION__: string;
 
-export const APP_NAME = 'Secure Sharing';
-const REPOSITORY = 'https://github.com/gum0x/user-sec-tools';
+export const APP_NAME = 'CommonSec Share';
+const REPOSITORY = 'https://github.com/common-sec/secure-share';
 
 interface Route {
   mod: { mount(root: HTMLElement, params: URLSearchParams): (() => void) | void };
@@ -15,9 +15,9 @@ interface Route {
 
 // Secure Share is the home page; the title names the tool in use.
 const routes: Record<string, Route> = {
-  share: { mod: share, title: `Share once · ${APP_NAME}` },
-  chat: { mod: chat, title: `Chat · ${APP_NAME}` },
-  password: { mod: password, title: `Passwords · ${APP_NAME}` },
+  share: { mod: share, title: `${APP_NAME} · Send passwords and files securely` },
+  chat: { mod: chat, title: `Secure Chat · ${APP_NAME}` },
+  password: { mod: password, title: `Password Generator · ${APP_NAME}` },
 };
 
 let cleanup: (() => void) | void;
