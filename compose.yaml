@@ -33,7 +33,7 @@ x-source-ro: &source-ro
 services:
   dev:
     build: { context: ., target: dev }
-    image: user-sec-tools/dev:local
+    image: secure-share/dev:local
     <<: *hardening
     volumes:
       - ./:/work
@@ -42,7 +42,7 @@ services:
   # builds dist/ and build/modules/, then builds again and fails unless the output is identical.
   build:
     build: { context: ., target: dev }
-    image: user-sec-tools/dev:local
+    image: secure-share/dev:local
     <<: *hardening
     volumes:
       - ./:/work
@@ -73,7 +73,7 @@ services:
 
   test-unit:
     build: { context: ., target: test }
-    image: user-sec-tools/test:local
+    image: secure-share/test:local
     <<: *hardening
     working_dir: /work
     volumes: *source-ro
@@ -88,7 +88,7 @@ services:
   # gather no WebRTC candidates at all without a default route.)
   test-e2e:
     build: { context: ., target: test }
-    image: user-sec-tools/test:local
+    image: secure-share/test:local
     <<: *hardening
     working_dir: /work
     volumes: *source-ro
@@ -98,7 +98,7 @@ services:
   # Online: same scenarios against the live public relays and STUN servers (real-world networking).
   test-e2e-public:
     build: { context: ., target: test }
-    image: user-sec-tools/test:local
+    image: secure-share/test:local
     <<: *hardening
     working_dir: /work
     volumes: *source-ro

@@ -112,7 +112,8 @@ rootless Podman.
 ## Name, logo and organisation
 **Status:** ✅ Accepted → 0.8.0
 **Proposal:** a distinctive name and logo for the app, and a dedicated GitHub organisation, an
-umbrella for several security tools whose name is chosen separately (not decided yet): organisation-wide 2FA, rulesets and Allstar policies, several owners, and a clean
+umbrella for several security tools whose name is chosen separately (decided: **CommonSec**, app
+**CommonSec Share**, see decision D21): organisation-wide 2FA, rulesets and Allstar policies, several owners, and a clean
 `<org>.github.io` address. Shortlist and criteria in
 [the 2026-10-12 review](reviews/2026-10-12-ux-product-seo.md#5-name-and-logo).
 
