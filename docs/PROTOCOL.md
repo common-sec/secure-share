@@ -37,7 +37,9 @@ authKey   = HKDF-SHA-256(ikm = base, salt = "uss/v2/" + roomId, info = "auth")  
 
 ## 3. Discovery and transport
 
-- Trystero `appId` = `"user-sec-tools.<app>.v2"`, `<app>` ∈ {`chat`, `share`}. Strategy: Nostr,
+- Trystero `appId` = `"user-sec-tools.<app>.v2"`, `<app>` ∈ {`chat`, `share`}. (This keeps the
+  project's original name on purpose: the `appId` decides which relays peers meet on and must match
+  on both sides, so changing it is a protocol break, kept for a future protocol version.) Strategy: Nostr,
   `relayConfig.redundancy = 3`, `manualReconnection = true`.
 - WebRTC data channels (DTLS + SCTP) carry everything below. Trystero's `onPeerHandshake` hook
   runs the handshake (§4) on a dedicated channel **before** the peer becomes active. A peer whose

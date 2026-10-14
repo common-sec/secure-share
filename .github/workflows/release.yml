@@ -27,7 +27,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          name="release/secure-sharing-${GITHUB_REF_NAME}"
+          name="release/commonsec-share-${GITHUB_REF_NAME}"
           gh release create "${GITHUB_REF_NAME}" --repo "${GITHUB_REPOSITORY}" --verify-tag \
             --title "${GITHUB_REF_NAME}" --notes "See CHANGELOG.md. To verify, rebuild this tag (docs/RELEASES.md) and compare checksums." \
             "${name}.tar.gz" "${name}.tar.gz.sha256" "${name}.SHA256SUMS"
