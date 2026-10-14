@@ -106,7 +106,7 @@ services:
     command: ["python", "tests/e2e/run.py", "--public"]
 
   trufflehog:
-    image: trufflesecurity/trufflehog:3.97.9@sha256:52e67fef4d054ecff5c2ce4b4ae376626d1ef54aa0898b53cac19c25e92e14db
+    image: trufflesecurity/trufflehog:3.99.0@sha256:39ee0643ae620664287bcc95f133f3fc8484590d6ca4e7105d96b90dac4b9f6f
     <<: *hardening
     user: "1000:1000"
     volumes: *source-ro
