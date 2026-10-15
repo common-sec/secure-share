@@ -125,7 +125,10 @@ kept under "History".
 ### D19. Public on GitHub, served by GitHub Pages ✅
 - **Why:** truly free and simple. The repository must be public anyway for free Pages, and to be audited.
 - **Cost:** no visitor statistics; no custom security headers (CSP comes from a `<meta>` tag).
-- **Where:** https://common-sec.github.io/secure-share/ (organisation `common-sec` since 2026-10-14; `share.common-sec.org` planned).
+- **Where:** https://share.common-sec.org/ (since 2026-10-15), a custom domain on the `common-sec`
+  organisation's Pages. DNS: `share` is a CNAME to `common-sec.github.io`; `common-sec.org` is a
+  verified domain of the organisation (so no one else can claim its subdomains on GitHub Pages);
+  HTTPS is enforced. The older `common-sec.github.io/secure-share/` address redirects there.
 - **Revisit:** at the 1.0.0 hosting decision ([IDEAS: Hosting](IDEAS.md#hosting-github-pages-and-alternatives)).
 
 ### D20. Privacy by default, not anonymity ✅
@@ -142,7 +145,7 @@ kept under "History".
   easier to spot; the unhyphenated `commonsec.org` is worth owning as a redirect.
 - **Not renamed:** the protocol's Trystero `appId` (`user-sec-tools.<app>.v2`), since changing it
   would split peers between old and new pages ([PROTOCOL.md](PROTOCOL.md)).
-- **Next:** serve the app at `share.common-sec.org` (custom domain on GitHub Pages); logo.
+- **Done:** the app is served at `https://share.common-sec.org/` (2026-10-15). **Next:** logo.
 
 ### Open
 - **License:** pending the owner's review. Until chosen, the published code is "all rights reserved".
