@@ -2,7 +2,7 @@
 
 *Part of [CommonSec](https://github.com/common-sec): practical security tools, researched in the open.*
 
-**Try it:** https://common-sec.github.io/secure-share/ (soon at `share.common-sec.org`)
+**Try it:** https://share.common-sec.org/
 
 **Share files and secrets directly between browsers, without storing them on anyone's server.**
 

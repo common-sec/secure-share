@@ -54,7 +54,7 @@ to the full commit hash); otherwise `app.js`, which embeds the version, will dif
 Download the served files and check them against the published checksums:
 
 ```bash
-base=https://common-sec.github.io/secure-share
+base=https://share.common-sec.org
 curl -fsS "$base/SHA256SUMS" -o served.SHA256SUMS
 diff served.SHA256SUMS commonsec-share-v0.6.2.SHA256SUMS
 mkdir -p served && cd served
