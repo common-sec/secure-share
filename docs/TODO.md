@@ -53,3 +53,14 @@ happening, trusts it, and succeeds.
 
 Where possible, each item comes with an end-to-end test (the axe-core accessibility checks
 already run on every page).
+
+## Medium priority: support and feedback links
+
+Was roadmap item 0.14.0. Plain links only: no embedded widget, button script, badge or counter
+loaded from a third party ([IDEAS.md](IDEAS.md#support--feedback-links)). The privacy note it
+included moves into the FAQ (roadmap 0.12.0).
+
+- [ ] **L1. Star on GitHub.** A plain link to the repository in the footer.
+- [ ] **L2. Donations.** Patreon and/or Buy Me a Coffee links in the footer.
+- [ ] **L3. Rating.** A "+1 / rate us" link to a public rating page (to be chosen), in the footer
+      and once after a successful share or delivery ("Did this help?"), never as a popup.

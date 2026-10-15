@@ -51,7 +51,7 @@ there's a build system for pinned dependencies anyway, TypeScript gives the same
 noise. Reproducible builds keep "served code = reviewed code" verifiable.
 
 ## Support & feedback links
-**Status:** ✅ Accepted → 0.14.0
+**Status:** 📋 TODO ([TODO.md](TODO.md#medium-priority-support-and-feedback-links)); the privacy note moves into the FAQ (0.12.0)
 **Problem:** there's no way for people to support or rate the project, and no visibility for the portfolio.
 **Proposal:** plain links only (no embedded widgets, buttons, badges or counters loaded from third parties):
 - **Developers:** "★ Star on GitHub" link to the repository. Not GitHub's button script.
@@ -64,7 +64,7 @@ noise. Reproducible builds keep "served code = reviewed code" verifiable.
 **Trade-offs:** none for security. Clicking a link is the user's choice and leaves the app.
 
 ## AI-assisted memorable passphrases
-**Status:** ✅ Accepted → 0.15.0
+**Status:** ✅ Accepted → 1.5.0
 **Problem:** random words are secure but hard to remember as a list. A sentence is easier.
 **Proposal:**
 1. **JS (CSPRNG) chooses** the words from the word list and a number.
@@ -110,7 +110,7 @@ root-equivalent inside WSL.
 rootless Podman.
 
 ## Name, logo and organisation
-**Status:** ✅ Accepted → 0.8.0
+**Status:** ✅ Names, organisation and domain done in 0.7.0; organisation hardening → 0.8.0; logo unscheduled (see the roadmap)
 **Proposal:** a distinctive name and logo for the app, and a dedicated GitHub organisation, an
 umbrella for several security tools whose name is chosen separately (decided: **CommonSec**, app
 **CommonSec Share**, see decision D21): organisation-wide 2FA, rulesets and Allstar policies, several owners, and a clean
@@ -123,7 +123,7 @@ umbrella for several security tools whose name is chosen separately (decided: **
 trust and context, masked received secrets, plain language, accessibility basics.
 
 ## SEO and launch readiness
-**Status:** ✅ Accepted → 0.10.0
+**Status:** ✅ Accepted → 0.12.0 (static pages and SEO); the launch itself is 1.0.0
 **Proposal:** pre-rendered static pages per tool, metadata and social previews, How it works and
 FAQ, sitemap, Search Console and Bing Webmaster Tools, Lighthouse CI, launch checklist.
 
@@ -135,7 +135,7 @@ both reach and SEO.
 ## Usage statistics from access logs
 **Status:** 💡 Proposed
 **Problem:** we don't know whether anyone uses the tools.
-**Proposal:** search impressions and clicks from Google Search Console and Bing Webmaster Tools (no script on the page; planned in 0.11.0). Beyond that, read the static host's aggregate access logs (page and module loads). There's no
+**Proposal:** search impressions and clicks from Google Search Console and Bing Webmaster Tools (no script on the page; planned in 0.12.0). Beyond that, read the static host's aggregate access logs (page and module loads). There's no
 code in the app, and the URL fragment holding secrets is never sent to the host. Optionally, a
 self-hosted, opt-in event counter that stores no IP and no identifier.
 
@@ -163,7 +163,7 @@ does, why the protocol is shaped this way, and what the alternatives (PAKE, Nois
 Argon2) would change. Its outcome could become `docs/HOW_IT_WORKS.md` for users and contributors.
 
 ## Encrypt Share payloads in the `age` format
-**Status:** 💡 Proposed
+**Status:** ✅ Accepted → 0.11.0 (before 1.0, while a breaking protocol change is still a minor version)
 **Proposal:** use the audited, standard `age` format (`typage`) for Share payloads instead of our
 AES-GCM framing. One more dependency, but a standard and interoperable format.
 
@@ -213,19 +213,19 @@ with a local Nostr relay container in CI so real WebRTC and Trystero are exercis
 depending on public relays.
 
 ## DAST and fuzzing (host and clients)
-**Status:** ✅ Accepted → 0.11.0
+**Status:** ✅ Accepted → 1.1.0
 **Proposal:** a pinned OWASP ZAP scan of the served app, plus fuzzing of everything a peer or a
 link can feed into the host and into clients: handshake and protocol messages, files, URL
 parameters, nicknames. Every crash becomes a regression test.
 
 ## OpenSSF Scorecard
-**Status:** ✅ Accepted → 0.12.0
+**Status:** ✅ Accepted → 0.8.0 (Scorecard action and badge) and 1.2.0 (every check cleared)
 **Proposal:** publish the repository, run the Scorecard action, and clear its checks (branch
 protection, signed releases, fuzzing, pinned dependencies, token permissions, and so on). It's an
 independent, visible signal for auditors and users.
 
 ## Security posture management
-**Status:** ✅ Accepted → 0.13.0
+**Status:** ✅ Accepted → 1.2.0 (GitHub basics in 0.8.0)
 **Problem:** security checks are spread over several tools and repository settings. Re-verifying
 hardening that's already done on every commit (the old `static-checks.sh`) is noise, but
 regressions must still be noticed.
@@ -235,7 +235,7 @@ container configs, and a short posture document. Custom Semgrep rules only where
 check fits.
 
 ## Pre-commit checks
-**Status:** 💡 Proposed (to decide in 0.13.0)
+**Status:** 💡 Proposed (to decide in 1.2.0)
 **Problem:** some mistakes are cheaper to stop before they're committed. Above all secrets: once
 pushed, a secret is in history and must be rotated.
 **Options:**
@@ -249,17 +249,17 @@ pushed, a secret is in history and must be rotated.
 **Leaning:** the second, limited to secret scanning, since that's what's irreversible after a push.
 
 ## Safari and Edge coverage
-**Status:** ✅ Accepted → 0.7.0
+**Status:** ✅ Accepted → 0.10.0
 **Proposal:** run the unit and end-to-end tests on WebKit (Safari's engine, used by every iOS
 browser) as well as Chromium and Firefox; add Edge only where it differs from Chromium.
 
 ## Share a generated password in one step
-**Status:** ✅ Accepted → 0.9.0
+**Status:** ✅ Accepted → 1.3.0
 **Proposal:** a "Share securely" button next to each generated password that opens Secure Share
 pre-filled (in memory, never via the URL), with passphrase and one-time link ready.
 
 ## Local version of the app
-**Status:** ✅ Accepted → 0.16.0
+**Status:** ✅ Accepted → 1.4.0
 **Problem:** using the website means trusting whatever it serves on each visit.
 **Proposal:** a local way to run the same app: a PWA, Electron/Tauri, a Docker image, or a single
 self-contained HTML file. The architecture is still to be decided; see the roadmap item.
@@ -277,6 +277,16 @@ self-contained HTML file. The architecture is still to be decided; see the roadm
 - **Free alternatives:** Cloudflare Pages (custom headers, cookieless server-side analytics,
   but Cloudflare sees all traffic); Codeberg Pages (privacy-focused, non-profit); Netlify (custom
   headers, paid analytics).
+
+## Staging environment
+**Status:** ✅ Accepted → 0.9.0
+**Problem:** every push to `master` deploys straight to the public site, so production often runs
+untagged builds whose checksums aren't published, and real-device checks (an iPhone on 5G, two
+networks) have no URL to run against before users get the change.
+**Proposal:** production deploys only from release tags; a separate staging repository (Pages
+serves one site per repository) pulls `master` from this public repository, builds it in the same
+container and serves it at its own address, with no write token, a "staging" banner, `noindex`
+and its own Trystero `appId`.
 
 ## Self-hosted / white-label deployments
 **Status:** 💡 Proposed. A sustainability option: own domain, relays and STUN/TURN for organisations.

@@ -71,7 +71,7 @@ docker compose run --rm test-unit python tests/unit/run.py chromium --filter roo
 Security tests must fail when the protection they guard is removed. For example, deleting the
 signature check in `#verifyEnvelope` (src/lib/room.ts) makes *"a member cannot forge messages as
 another member"* fail. Do such mutation checks by hand when changing the protocol. Systematic
-fuzzing is planned for roadmap 0.12.0.
+fuzzing is planned for roadmap 1.1.0.
 
 ## End-to-end tests
 
