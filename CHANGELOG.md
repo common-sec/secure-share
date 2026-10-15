@@ -4,6 +4,11 @@ All notable changes, one section per version. See [docs/ROADMAP.md](docs/ROADMAP
 
 ## [Unreleased]
 
+### Changed
+- **The site is at https://share.common-sec.org/**, a custom domain on GitHub Pages: verified for
+  the organisation, HTTPS enforced. The previous `common-sec.github.io/secure-share/` address
+  redirects to it. README, decisions (D19, D21), release guide and roadmap updated.
+
 ## [0.6.2] - 2026-10-14
 
 ### Changed

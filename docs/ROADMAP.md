@@ -147,8 +147,9 @@ indexed. See [the UX/product/SEO review](reviews/2026-10-12-ux-product-seo.md#5-
 
 **Progress (2026-10-14):** organisation **CommonSec** (`common-sec` on GitHub, domain
 `common-sec.org`), app **CommonSec Share** (`common-sec/secure-share`), repository moved, site at
-`common-sec.github.io/secure-share/`, names used across the app and docs (decision D21). Still to do:
-logo, `share.common-sec.org`, organisation rulesets and owners.
+`common-sec.github.io/secure-share/`, names used across the app and docs (decision D21).
+**2026-10-15:** served at `https://share.common-sec.org/` (custom domain, verified for the
+organisation, HTTPS enforced). Still to do: logo, organisation rulesets and owners.
 
 **Done when:**
 - the organisation name and the app name are chosen, after a trademark and domain check;
