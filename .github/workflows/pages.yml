@@ -23,6 +23,9 @@ jobs:
         with:
           persist-credentials: false
       - name: Type-check, build, and check the build is reproducible
+        env:
+          # The footer links to this repository (a fork deploys with a link to itself).
+          BUILD_REPOSITORY: ${{ github.server_url }}/${{ github.repository }}
         run: chmod a+rwX . && docker compose run --rm build
       - name: Checksums of what is being deployed
         run: cat dist/SHA256SUMS
