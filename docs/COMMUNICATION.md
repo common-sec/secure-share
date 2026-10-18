@@ -44,13 +44,13 @@ Creating a room makes three random values and puts them in the link, **after the
 never send that part of a URL to any server, not even to the site that serves the app.
 
 ```
-https://gum0x.github.io/user-sec-tools/#/share?r=Q7nmLtvgH6OIiTJ387mbqQ&k=G4laNCs8p9dVdjEwUSRZZ8tAwBdv-cH4tTxzRKiO1nY&h=0UfLJ2Hfxmyl2PblVEoHTrbRx_1MUl2F5lyU-gJIVdY
-└──────────── sent to the server ───────┘└─────────────────────── stays in the browser ───────────────────────────────────────────────────────────────┘
+https://share.common-sec.org/#/share?r=Q7nmLtvgH6OIiTJ387mbqQ&k=G4laNCs8p9dVdjEwUSRZZ8tAwBdv-cH4tTxzRKiO1nY&h=0UfLJ2Hfxmyl2PblVEoHTrbRx_1MUl2F5lyU-gJIVdY
+└─── sent to the server ────┘└─────────────────────── stays in the browser ───────────────────────────────────────────────────────────────┘
 ```
 
 | Parameter | Example | What it is | Used for |
 |---|---|---|---|
-| `#/share` or `#/chat` | `#/share` | Which tool | Picks the screen, and the Trystero app ID: `user-sec-tools.share.v2` or `user-sec-tools.chat.v2` |
+| `#/share` or `#/chat` | `#/share` | Which tool | Picks the screen, and the Trystero app ID: `user-sec-tools.share.v2` or `user-sec-tools.chat.v2` (the project's original name, kept on purpose: changing it would split peers, see [PROTOCOL.md §3](PROTOCOL.md)) |
 | `r`: room ID | `Q7nmLtvgH6OIiTJ387mbqQ` | 16 random bytes, base64url (22 chars) | Names the room: the Nostr topics and key-derivation salts come from it |
 | `k`: link secret | `G4laNCs8…KiO1nY` | 32 random bytes, base64url (43 chars) | Encrypts the business cards on the relays, and, with the passphrase, all data |
 | `h`: host key fingerprint | `0UfLJ2Hf…gJIVdY` | SHA-256 of the host's public key (43 chars) | Lets guests check they reached the real host |
@@ -523,7 +523,7 @@ host can't alter or forge it.
 
 | # | From → to | Protocol | Port | When | Content |
 |---|---|---|---|---|---|
-| 1 | Browser → `gum0x.github.io` | **HTTPS** (TLS) | TCP 443 | Opening the page | `GET /user-sec-tools/` and the app's files. The `#…` part of the URL is never sent |
+| 1 | Browser → `share.common-sec.org` (GitHub Pages) | **HTTPS** (TLS) | TCP 443 | Opening the page | `GET /` and the app's files. The `#…` part of the URL is never sent |
 | 2 | Browser → each of the 3 relays | **HTTPS, then upgraded to WSS** | TCP 443 | Opening Share or Chat, while discovery is needed (step 5) | Nostr `REQ` / `EVENT` / `CLOSE` messages, JSON in WebSocket frames inside TLS |
 | 3 | Browser → STUN servers | **STUN** (plain, not encrypted) | UDP 19302 (Google), UDP 3478 (Cloudflare) | While a connection is being set up | Binding Request / Response: only your public address |
 | 4 | Browser ↔ browser | **ICE checks** (STUN messages, authenticated with the ICE password) | UDP, ports the browsers choose (ephemeral, typically 49152–65535) | Setting up the direct path | Connectivity checks |
@@ -541,7 +541,7 @@ Upgrade: websocket
 Connection: Upgrade
 Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==
 Sec-WebSocket-Version: 13
-Origin: https://gum0x.github.io
+Origin: https://share.common-sec.org
 
 HTTP/1.1 101 Switching Protocols
 Upgrade: websocket
