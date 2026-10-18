@@ -4,9 +4,11 @@ import * as share from './tools/share.js';
 
 /** Set at build time by build.mjs: package.json version + short commit, e.g. "0.6.0+1a2b3c4". */
 declare const __APP_VERSION__: string;
+/** Set at build time by build.mjs from $BUILD_REPOSITORY: where this build's source lives. */
+declare const __REPOSITORY__: string;
 
 export const APP_NAME = 'CommonSec Share';
-const REPOSITORY = 'https://github.com/common-sec/secure-share';
+const REPOSITORY = __REPOSITORY__;
 
 interface Route {
   mod: { mount(root: HTMLElement, params: URLSearchParams): (() => void) | void };
