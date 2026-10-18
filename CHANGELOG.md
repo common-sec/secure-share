@@ -4,6 +4,23 @@ All notable changes, one section per version. See [docs/ROADMAP.md](docs/ROADMAP
 
 ## [Unreleased]
 
+### Changed
+- **The site is at https://share.common-sec.org/**, a custom domain on GitHub Pages: verified for
+  the organisation, HTTPS enforced. The previous `common-sec.github.io/secure-share/` address
+  redirects to it. README, decisions (D19, D21), release guide and roadmap updated.
+
+## [0.6.2] - 2026-10-14
+
+### Changed
+- **New names.** The app is **CommonSec Share**, part of the **CommonSec** organisation
+  ([decision D21](docs/DECISIONS.md)). Header, page titles, README, docs and package name updated;
+  the tools keep their headings (Secure Share, Secure Chat, Password Generator).
+- **New home:** the repository moved to `common-sec/secure-share`; the site is at
+  https://common-sec.github.io/secure-share/ (the old `gum0x.github.io/user-sec-tools` address no
+  longer works). `share.common-sec.org` comes next.
+- Release artifacts are named `commonsec-share-vX.Y.Z` (earlier releases: `secure-sharing-…`).
+- Unchanged on purpose: the protocol's Trystero `appId`, so peers keep finding each other.
+
 ## [0.6.1] - 2026-10-12
 
 ### Fixed

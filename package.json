@@ -1,8 +1,8 @@
 {
-  "name": "user-sec-tools",
-  "version": "0.6.1",
+  "name": "secure-share",
+  "version": "0.6.2",
   "private": true,
-  "description": "Secure Sharing: browser-to-browser encrypted file and secret sharing, no server storage.",
+  "description": "CommonSec Share: browser-to-browser encrypted file and secret sharing, no server storage.",
   "license": "UNLICENSED",
   "type": "module",
   "engines": {

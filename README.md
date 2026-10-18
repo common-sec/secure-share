@@ -1,14 +1,14 @@
-# Secure Sharing
+# CommonSec Share
 
-*(repository: user-sec-tools)*
+*Part of [CommonSec](https://github.com/common-sec): practical security tools, researched in the open.*
 
-**Try it:** https://gum0x.github.io/user-sec-tools/
+**Try it:** https://share.common-sec.org/
 
 **Share files and secrets directly between browsers, without storing them on anyone's server.**
 
 Most ways of sending a password, a key or a confidential file to someone leave a copy behind: in a
 chat history, an email server, a cloud drive, or a "one-time secret" service that stores it until
-it's read. Secure Sharing moves the data **straight from one browser to the other**, encrypted end to
+it's read. CommonSec Share moves the data **straight from one browser to the other**, encrypted end to
 end, and keeps nothing afterwards. It's a static web page with no backend, no accounts, and no
 tracking. You can read all of it, run it locally, or host it yourself.
 
