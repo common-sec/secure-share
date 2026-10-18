@@ -58,7 +58,7 @@ already run on every page).
 
 Was roadmap item 0.14.0. Plain links only: no embedded widget, button script, badge or counter
 loaded from a third party ([IDEAS.md](IDEAS.md#support--feedback-links)). The privacy note it
-included moves into the FAQ (roadmap 0.12.0).
+included moves into the FAQ (roadmap 0.13.0).
 
 - [ ] **L1. Star on GitHub.** A plain link to the repository in the footer.
 - [ ] **L2. Donations.** Patreon and/or Buy Me a Coffee links in the footer.

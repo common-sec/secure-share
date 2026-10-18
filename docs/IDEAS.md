@@ -51,7 +51,7 @@ there's a build system for pinned dependencies anyway, TypeScript gives the same
 noise. Reproducible builds keep "served code = reviewed code" verifiable.
 
 ## Support & feedback links
-**Status:** 📋 TODO ([TODO.md](TODO.md#medium-priority-support-and-feedback-links)); the privacy note moves into the FAQ (0.12.0)
+**Status:** 📋 TODO ([TODO.md](TODO.md#medium-priority-support-and-feedback-links)); the privacy note moves into the FAQ (0.13.0)
 **Problem:** there's no way for people to support or rate the project, and no visibility for the portfolio.
 **Proposal:** plain links only (no embedded widgets, buttons, badges or counters loaded from third parties):
 - **Developers:** "★ Star on GitHub" link to the repository. Not GitHub's button script.
@@ -123,7 +123,7 @@ umbrella for several security tools whose name is chosen separately (decided: **
 trust and context, masked received secrets, plain language, accessibility basics.
 
 ## SEO and launch readiness
-**Status:** ✅ Accepted → 0.12.0 (static pages and SEO); the launch itself is 1.0.0
+**Status:** ✅ Accepted → 0.13.0 (static pages and SEO); the launch itself is 1.0.0
 **Proposal:** pre-rendered static pages per tool, metadata and social previews, How it works and
 FAQ, sitemap, Search Console and Bing Webmaster Tools, Lighthouse CI, launch checklist.
 
@@ -135,7 +135,7 @@ both reach and SEO.
 ## Usage statistics from access logs
 **Status:** 💡 Proposed
 **Problem:** we don't know whether anyone uses the tools.
-**Proposal:** search impressions and clicks from Google Search Console and Bing Webmaster Tools (no script on the page; planned in 0.12.0). Beyond that, read the static host's aggregate access logs (page and module loads). There's no
+**Proposal:** search impressions and clicks from Google Search Console and Bing Webmaster Tools (no script on the page; planned in 0.13.0). Beyond that, read the static host's aggregate access logs (page and module loads). There's no
 code in the app, and the URL fragment holding secrets is never sent to the host. Optionally, a
 self-hosted, opt-in event counter that stores no IP and no identifier.
 
@@ -201,7 +201,7 @@ encrypted); it needs server storage, abuse controls and size limits; and it isn'
 A product decision first, then a technical one.
 
 ## Optional TURN relay
-**Status:** 💡 Proposed
+**Status:** ✅ Accepted → 0.12.0, as part of connectivity on restrictive networks
 **Problem:** peers behind strict NATs or firewalls can't connect.
 **Proposal:** an opt-in TURN server (self-hosted, or a paid service as a sustainability option). It
 only carries data that is already end-to-end encrypted.
@@ -281,8 +281,8 @@ self-contained HTML file. The architecture is still to be decided; see the roadm
 ## Staging environment
 **Status:** ✅ Accepted → 0.9.0
 **Problem:** every push to `master` deploys straight to the public site, so production often runs
-untagged builds whose checksums aren't published, and real-device checks (an iPhone on 5G, two
-networks) have no URL to run against before users get the change.
+untagged builds whose checksums aren't published, and real-device checks (two devices on
+different networks) have no URL to run against before users get the change.
 **Proposal:** production deploys only from release tags; a separate staging repository (Pages
 serves one site per repository) pulls `master` from this public repository, builds it in the same
 container and serves it at its own address, with no write token, a "staging" banner, `noindex`

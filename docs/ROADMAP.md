@@ -42,8 +42,9 @@ here once chosen.
 | 0.9.0 | **Staging and tagged production**: a staging site that follows `master`; production deployed only from release tags | Planned |
 | 0.10.0 | **Safari and Edge coverage**: unit and end-to-end tests also on WebKit (Safari's engine, and every iOS browser), Edge where it differs from Chromium | Planned |
 | 0.11.0 | **Standard encryption format**: Share payloads in the audited `age` format instead of our own framing (breaking) | Planned |
-| 0.12.0 | **Static pages and SEO**: pre-rendered static pages, metadata and social previews, How it works and FAQ, sitemap, Search Console | Planned |
-| 0.13.0 | **Pre-launch security review**: full protocol review by someone outside the project, and every security finding fixed | Planned |
+| 0.12.0 | **Connectivity on restrictive networks**: users behind symmetric NAT or UDP-blocking firewalls can still connect, through an end-to-end encrypted relay fallback | Planned |
+| 0.13.0 | **Static pages and SEO**: pre-rendered static pages, metadata and social previews, How it works and FAQ, sitemap, Search Console | Planned |
+| 0.14.0 | **Pre-launch security review**: full protocol review by someone outside the project, and every security finding fixed | Planned |
 | 1.0.0 | **Public launch**: production hosting and headers, release checklist, announcement | Planned |
 | 1.1.0 | **DAST and fuzzing**: dynamic scanning of the served app, plus fuzzing of host and client (protocol and UI inputs) | Planned |
 | 1.2.0 | **Security posture management**: every security check and repository setting tracked continuously, in one place; all Scorecard checks cleared | Planned |
@@ -57,7 +58,8 @@ security basics come first: the repository and its settings (supply chain is the
 [THREAT_MODEL.md](THREAT_MODEL.md#9-supply-chain-the-static-host-the-npm-packages-the-build)),
 then a safe way to ship (staging, tagged production), then testing on the browsers people use,
 then the one breaking protocol change, which is cheap before 1.0 and a major version after it.
-Static pages and SEO follow. The full security review comes **just before launch**, so it reviews
+Then the relay fallback, so people on restrictive networks can connect at launch, and the static
+pages and SEO. The full security review comes **just before launch**, so it reviews
 what actually ships. DAST and fuzzing add depth after launch; they aren't the main controls in the
 threat model. The logo needs iterations with people and doesn't affect usability, so it isn't on
 the critical path. The high-priority UX fixes in [TODO.md](TODO.md) go in as patches between
@@ -94,7 +96,7 @@ by the Dependabot cooldown; CI runs the same containers; docs/DEVELOPMENT.md exp
   Crypto, WebRTC and IndexedDB live) and the end-to-end tests.
 
 ### 0.4.0: First real-world test feedback ✅
-**Context:** first test of the published site, an iPhone on 5G against a computer on wifi, with
+**Context:** first test of the published site, between two devices on different networks (mobile data and wifi), with
 both Secure Chat and Secure Share working across NAT.
 **Done when:**
 - **Secure Share is the home page**, with short guidance pointing to Secure Chat when several
@@ -221,7 +223,31 @@ a known construction rather than ours. See
 - unit and end-to-end tests cover the new format, including interoperability with the reference
   `age` tool for Share payloads.
 
-### 0.12.0: Static pages and SEO
+### 0.12.0: Connectivity on restrictive networks
+**Context:** direct connections work for most networks, but fail when both sides are behind
+restrictive NATs (symmetric NAT, common on corporate networks and some mobile carriers) or when a
+firewall blocks UDP. Industry estimates put the share of WebRTC sessions that need a relay at
+roughly 10–25%. Today those users simply can't connect ([COMMUNICATION.md](COMMUNICATION.md),
+[DECISIONS.md D5](DECISIONS.md)).
+**Goal:** those users can still share securely, without weakening end-to-end encryption, and
+everyone else keeps direct connections.
+**Done when:**
+- **clear failure handling:** the app notices when no direct path is found (ICE fails or times
+  out) and tells users plainly what happened and what to try (another network, mobile data);
+- **diagnostics:** a short, private connection report (which address types were found, whether
+  UDP is blocked) to tell "restrictive NAT" from other failures;
+- **relay fallback (TURN):** used only when a direct path fails. It carries traffic that is already
+  DTLS-encrypted *and* encrypted by the app, so it can't read anything. It's reachable over UDP and
+  over TLS on TCP 443, for firewalls that only allow HTTPS-like traffic;
+- **relay provider decided**, preferring zero cost: self-hosted (e.g. coturn), or a free tier of a
+  managed TURN service. What the relay operator sees (IP addresses, timing, volume) is documented
+  in THREAT_MODEL.md;
+- **no open relay for abuse:** short-lived, per-session TURN credentials;
+- an **end-to-end test** where the direct path is blocked and the session must succeed through a
+  local TURN container;
+- COMMUNICATION.md, DECISIONS.md (D5) and THREAT_MODEL.md updated.
+
+### 0.13.0: Static pages and SEO
 **Goal:** people searching for how to send a password or a sensitive file securely find the app,
 and shared links show a trustworthy preview. See
 [the review](reviews/2026-10-12-ux-product-seo.md#7-seo-and-discoverability) and
@@ -240,12 +266,13 @@ and shared links show a trustworthy preview. See
   without any tracking script);
 - Lighthouse CI (pinned container) runs in CI with budgets for SEO, accessibility and performance.
 
-### 0.13.0: Pre-launch security review
+### 0.14.0: Pre-launch security review
 **Goal:** what ships at 1.0 has been reviewed as a whole, by someone outside the project, and
 nothing known is left open.
 **Done when:**
 - docs/PROTOCOL.md, the threat model and the code that implements them have been reviewed by
-  someone outside the project, after 0.11.0 so the review covers the final format;
+  someone outside the project, after 0.11.0 and 0.12.0 so the review covers the final format and
+  the relay fallback;
 - a full internal pass over the threat model checks each mitigation against the code and tests;
 - every finding is fixed, or accepted with a documented reason; each fix comes with a regression
   test;
