@@ -7,7 +7,9 @@
 // dist/ contains index.html, app.js, chunks/ (Trystero and its dependencies, from the lockfile:
 // nothing is fetched from a CDN at run time), styles.css, and SHA256SUMS. The build is deterministic: same commit, same
 // lockfile -> same bytes. The version shown in the app is package.json's version plus the short
-// commit, read straight from .git (no git binary needed) or from $BUILD_COMMIT.
+// commit, read straight from .git (no git binary needed) or from $BUILD_COMMIT. The footer links it
+// to that commit in $BUILD_REPOSITORY (default: this project's GitHub repository), so a fork or a
+// self-hosted copy points at its own source.
 import { build } from 'esbuild';
 import { createHash } from 'node:crypto';
 import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
@@ -32,6 +34,15 @@ function gitCommit() {
 
 const commit = gitCommit().slice(0, 7);
 const version = `${pkg.version}+${commit}`;
+
+// Where this build's source lives. Part of the output, so a rebuild must use the same value.
+const repository = (process.env.BUILD_REPOSITORY || 'https://github.com/common-sec/secure-share').replace(/\/+$/, '');
+if (!/^https:\/\/[^\s"'<>]+$/.test(repository)) {
+  console.error(`BUILD_REPOSITORY must be an https:// URL, got: ${repository}`);
+  process.exit(1);
+}
+
+const define = { __APP_VERSION__: JSON.stringify(version), __REPOSITORY__: JSON.stringify(repository) };
 
 const listFiles = (dir) => readdirSync(dir).flatMap((name) => {
   const p = join(dir, name);
@@ -58,7 +69,7 @@ async function buildApp(outdir) {
     sourcemap: false,
     charset: 'utf8',
     legalComments: 'eof',
-    define: { __APP_VERSION__: JSON.stringify(version) },
+    define,
     logLevel: 'warning',
   });
   copyFileSync('src/index.html', join(outdir, 'index.html'));
@@ -80,14 +91,14 @@ async function buildModules(outdir) {
     format: 'esm',
     target: 'es2022',
     platform: 'browser',
-    define: { __APP_VERSION__: JSON.stringify(version) },
+    define,
     logLevel: 'warning',
   });
 }
 
 const sums = await buildApp('dist');
 await buildModules('build/modules');
-console.log(`built dist/ for ${version}\n${sums}`);
+console.log(`built dist/ for ${version} (source: ${repository})\n${sums}`);
 
 if (process.argv.includes('--check')) {
   const again = mkdtempSync(join(tmpdir(), 'uss-rebuild-'));

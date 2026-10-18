@@ -47,7 +47,10 @@ diff release/commonsec-share-v0.6.2.tar.gz.sha256 commonsec-share-v0.6.2.tar.gz.
 ```
 
 The commit is read from `.git`, so build from a git checkout of the tag (or set `BUILD_COMMIT`
-to the full commit hash); otherwise `app.js`, which embeds the version, will differ.
+to the full commit hash); otherwise `app.js`, which embeds the version, will differ. It also
+embeds the source repository linked from the footer: leave `BUILD_REPOSITORY` unset for an
+official release, or set it to the fork's URL (`https://github.com/<owner>/<repo>`) to rebuild a
+fork's release.
 
 ## Check what the site serves
 
