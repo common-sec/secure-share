@@ -8,6 +8,10 @@ All notable changes, one section per version. See [docs/ROADMAP.md](docs/ROADMAP
 - **The site is at https://share.common-sec.org/**, a custom domain on GitHub Pages: verified for
   the organisation, HTTPS enforced. The previous `common-sec.github.io/secure-share/` address
   redirects to it. README, decisions (D19, D21), release guide and roadmap updated.
+- **Anyone can deploy their own copy:** the repository the footer links to is a build variable,
+  `BUILD_REPOSITORY` (default `https://github.com/common-sec/secure-share`); the Pages and Release
+  workflows set it to the repository they run in, so a fork links to itself. `docker compose run
+  --rm build` now also passes `BUILD_COMMIT` through, as the release guide already said it did.
 
 ## [0.6.2] - 2026-10-14
 

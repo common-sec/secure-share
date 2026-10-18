@@ -50,6 +50,20 @@ The build stamps the version (`package.json` version + short commit, read from `
 `$BUILD_COMMIT`) into the app's footer. `npm run build:check` builds twice and fails if the
 checksums differ; see [RELEASES.md](RELEASES.md) for verifying a published release.
 
+### Deploying your own copy
+
+The app is static: build it and serve `dist/` from any web server. The footer links the version
+to its commit in `$BUILD_REPOSITORY`, by default `https://github.com/common-sec/secure-share`.
+Point it at your own source when you deploy a fork or a modified copy (an `https://` URL; the
+link is `<repository>/commit/<hash>`):
+
+```bash
+BUILD_REPOSITORY=https://github.com/you/secure-share docker compose run --rm build
+```
+
+The Pages and Release workflows set it to the repository they run in, so a fork on GitHub links
+to itself with no change.
+
 ## How it's put together
 
 - **Two small images are built** from `Dockerfile`:
