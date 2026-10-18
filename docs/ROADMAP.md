@@ -40,13 +40,14 @@ here once chosen.
 | 0.7.0 | **Safari and Edge coverage**: unit and end-to-end tests also on WebKit (Safari's engine, and every iOS browser), Edge where it differs from Chromium | Next |
 | 0.8.0 | **Name, logo and organisation**: a distinctive app name, logo and favicon; move the repository to a dedicated GitHub organisation (an umbrella for several security tools) | Planned |
 | 0.9.0 | **Share a generated password**: a button on the password generator opens a one-way Secure Share with it, passphrase and link ready | Planned |
-| 0.10.0 | **SEO and launch readiness**: pre-rendered static pages, metadata and social previews, How it works and FAQ, sitemap, Search Console | Planned |
-| 0.11.0 | **DAST and fuzzing**: dynamic scanning of the served app, plus fuzzing of host and client (protocol and UI inputs) | Planned |
-| 0.12.0 | **OpenSSF Scorecard**: publish the repository and clear the Scorecard checks | Planned |
-| 0.13.0 | **Security posture management**: track every security check and repository setting continuously, in one place | Planned |
-| 0.14.0 | **Support & feedback links**: GitHub star, donations, "+1" rating; short privacy note | Planned |
-| 0.15.0 | **AI-assisted memorable passphrases** (on-device model, entropy kept by the CSPRNG) | Planned |
-| 0.16.0 | **Local version of the app** (architecture to define: PWA, Electron, Docker image, single file) | Planned |
+| 0.10.0 | **Connectivity on restrictive networks**: users behind symmetric NAT or UDP-blocking firewalls can still connect, through an end-to-end encrypted relay fallback | Planned |
+| 0.11.0 | **SEO and launch readiness**: pre-rendered static pages, metadata and social previews, How it works and FAQ, sitemap, Search Console | Planned |
+| 0.12.0 | **DAST and fuzzing**: dynamic scanning of the served app, plus fuzzing of host and client (protocol and UI inputs) | Planned |
+| 0.13.0 | **OpenSSF Scorecard**: publish the repository and clear the Scorecard checks | Planned |
+| 0.14.0 | **Security posture management**: track every security check and repository setting continuously, in one place | Planned |
+| 0.15.0 | **Support & feedback links**: GitHub star, donations, "+1" rating; short privacy note | Planned |
+| 0.16.0 | **AI-assisted memorable passphrases** (on-device model, entropy kept by the CSPRNG) | Planned |
+| 0.17.0 | **Local version of the app** (architecture to define: PWA, Electron, Docker image, single file) | Planned |
 | 1.0.0 | **Public release**: license, production deployment with security headers, release checklist, external protocol review | Planned |
 
 ### 0.2.0: Tests run anywhere ✅
@@ -74,13 +75,13 @@ by the Dependabot cooldown; CI runs the same containers; docs/DEVELOPMENT.md exp
   Python packages baked in under `pip.conf` rules, replacing the `test-deps` install step;
 - unit tests live in `tests/unit/` and run as the `test-unit` service (no network);
 - `scripts/static-checks.sh` and the `checks` service are removed: the repository hardening they
-  re-checked is done, and ongoing tracking moves to posture management (0.13.0);
+  re-checked is done, and ongoing tracking moves to posture management (0.14.0);
 - the Claude Code preview (`.claude/launch.json`) starts the app through `docker compose up web`;
 - docs/TESTING.md explains how Playwright runs both the unit tests (inside the browser, where Web
   Crypto, WebRTC and IndexedDB live) and the end-to-end tests.
 
 ### 0.4.0: First real-world test feedback ✅
-**Context:** first test of the published site, an iPhone on 5G against a computer on wifi, with
+**Context:** first test of the published site, between two devices on different networks (mobile data and wifi), with
 both Secure Chat and Secure Share working across NAT.
 **Done when:**
 - **Secure Share is the home page**, with short guidance pointing to Secure Chat when several
@@ -171,7 +172,31 @@ organisation, HTTPS enforced). Still to do: logo, organisation rulesets and owne
 - the password is handed over **in memory only**: never in the URL, history, storage or logs;
 - covered by an end-to-end test (generate → share → receive the same password).
 
-### 0.10.0: SEO and launch readiness
+### 0.10.0: Connectivity on restrictive networks
+**Context:** direct connections work for most networks, but fail when both sides are behind
+restrictive NATs (symmetric NAT, common on corporate networks and some mobile carriers) or when a
+firewall blocks UDP. Industry estimates put the share of WebRTC sessions that need a relay at
+roughly 10–25%. Today those users simply can't connect ([COMMUNICATION.md](COMMUNICATION.md),
+[DECISIONS.md D5](DECISIONS.md)).
+**Goal:** those users can still share securely, without weakening end-to-end encryption, and
+everyone else keeps direct connections.
+**Done when:**
+- **clear failure handling:** the app notices when no direct path is found (ICE fails or times
+  out) and tells users plainly what happened and what to try (another network, mobile data);
+- **diagnostics:** a short, private connection report (which address types were found, whether
+  UDP is blocked) to tell "restrictive NAT" from other failures;
+- **relay fallback (TURN):** used only when a direct path fails. It carries traffic that is already
+  DTLS-encrypted *and* encrypted by the app, so it can't read anything. It's reachable over UDP and
+  over TLS on TCP 443, for firewalls that only allow HTTPS-like traffic;
+- **relay provider decided**, preferring zero cost: self-hosted (e.g. coturn), or a free tier of a
+  managed TURN service. What the relay operator sees (IP addresses, timing, volume) is documented
+  in THREAT_MODEL.md;
+- **no open relay for abuse:** short-lived, per-session TURN credentials;
+- an **end-to-end test** where the direct path is blocked and the session must succeed through a
+  local TURN container;
+- COMMUNICATION.md, DECISIONS.md (D5) and THREAT_MODEL.md updated.
+
+### 0.11.0: SEO and launch readiness
 **Goal:** people searching for how to send a password or a sensitive file securely find the app,
 and shared links show a trustworthy preview. See
 [the review](reviews/2026-10-12-ux-product-seo.md#7-seo-and-discoverability).
@@ -188,7 +213,7 @@ and shared links show a trustworthy preview. See
 - a launch checklist lists the channels (Show HN, Reddit, Product Hunt, AlternativeTo, privacy
   tool directories) and what each requires.
 
-### 0.11.0: DAST and fuzzing
+### 0.12.0: DAST and fuzzing
 **Goal:** attack the running app the way an outsider would, on both sides of a connection.
 **Done when:**
 - **DAST:** a pinned OWASP ZAP container scans the served app (baseline, plus an active scan
@@ -202,7 +227,7 @@ and shared links show a trustworthy preview. See
   and file names, on both host and client pages;
 - a time-boxed fuzz run in CI, longer runs on demand, and every crash reproduced as a regression test.
 
-### 0.12.0: OpenSSF Scorecard
+### 0.13.0: OpenSSF Scorecard
 **Goal:** a public repository that scores well on the [OpenSSF Scorecard](https://securityscorecards.dev),
 as a visible, independent signal of supply-chain hygiene.
 **Done when:**
@@ -215,7 +240,7 @@ as a visible, independent signal of supply-chain hygiene.
   CI-Tests, Vulnerabilities, Dangerous-Workflow, Binary-Artifacts, Maintained;
 - the OpenSSF Best Practices badge is started.
 
-### 0.13.0: Security posture management
+### 0.14.0: Security posture management
 **Goal:** know at any time which security checks run, which pass, and which repository settings
 protect the project, without re-checking hardening by hand on every commit.
 **Done when:**
@@ -234,21 +259,21 @@ protect the project, without re-checking hardening by hand on every commit.
   the tool that checks it, and its status;
 - pre-commit automation is decided (see [IDEAS.md](IDEAS.md#pre-commit-checks)).
 
-### 0.14.0: Support & feedback links
+### 0.15.0: Support & feedback links
 **Goal:** let developers star the project, users donate or leave a rating, without any embedded
 third-party script, image or cookie.
 **Done when:** plain links (GitHub, Patreon / Buy Me a Coffee, a rating site) appear in the footer
 and after a successful share, and a short "privacy by default" note explains what the app does
 and doesn't collect.
 
-### 0.15.0: AI-assisted memorable passphrases
+### 0.16.0: AI-assisted memorable passphrases
 **Goal:** an optional "make it a sentence" mode in which an on-device model turns CSPRNG-chosen
 words and a number into a memorable phrase, before the usual random variation rules.
 **Done when:** the design in [IDEAS.md](IDEAS.md#ai-assisted-memorable-passphrases) is
 implemented, the output is validated to contain every chosen word, the shown strength counts only
 CSPRNG choices, and it falls back cleanly when no on-device model is available.
 
-### 0.16.0: Local version of the app
+### 0.17.0: Local version of the app
 **Goal:** the same app usable without trusting a website at run time: installed or run locally.
 **Architecture to define**, comparing:
 - **PWA**: installable from the site, works offline after the first visit. Still delivered by the

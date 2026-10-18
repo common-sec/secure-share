@@ -51,7 +51,7 @@ there's a build system for pinned dependencies anyway, TypeScript gives the same
 noise. Reproducible builds keep "served code = reviewed code" verifiable.
 
 ## Support & feedback links
-**Status:** ✅ Accepted → 0.14.0
+**Status:** ✅ Accepted → 0.15.0
 **Problem:** there's no way for people to support or rate the project, and no visibility for the portfolio.
 **Proposal:** plain links only (no embedded widgets, buttons, badges or counters loaded from third parties):
 - **Developers:** "★ Star on GitHub" link to the repository. Not GitHub's button script.
@@ -64,7 +64,7 @@ noise. Reproducible builds keep "served code = reviewed code" verifiable.
 **Trade-offs:** none for security. Clicking a link is the user's choice and leaves the app.
 
 ## AI-assisted memorable passphrases
-**Status:** ✅ Accepted → 0.15.0
+**Status:** ✅ Accepted → 0.16.0
 **Problem:** random words are secure but hard to remember as a list. A sentence is easier.
 **Proposal:**
 1. **JS (CSPRNG) chooses** the words from the word list and a number.
@@ -123,7 +123,7 @@ umbrella for several security tools whose name is chosen separately (decided: **
 trust and context, masked received secrets, plain language, accessibility basics.
 
 ## SEO and launch readiness
-**Status:** ✅ Accepted → 0.10.0
+**Status:** ✅ Accepted → 0.11.0
 **Proposal:** pre-rendered static pages per tool, metadata and social previews, How it works and
 FAQ, sitemap, Search Console and Bing Webmaster Tools, Lighthouse CI, launch checklist.
 
@@ -201,7 +201,7 @@ encrypted); it needs server storage, abuse controls and size limits; and it isn'
 A product decision first, then a technical one.
 
 ## Optional TURN relay
-**Status:** 💡 Proposed
+**Status:** ✅ Accepted → 0.10.0, as part of connectivity on restrictive networks
 **Problem:** peers behind strict NATs or firewalls can't connect.
 **Proposal:** an opt-in TURN server (self-hosted, or a paid service as a sustainability option). It
 only carries data that is already end-to-end encrypted.
@@ -213,19 +213,19 @@ with a local Nostr relay container in CI so real WebRTC and Trystero are exercis
 depending on public relays.
 
 ## DAST and fuzzing (host and clients)
-**Status:** ✅ Accepted → 0.11.0
+**Status:** ✅ Accepted → 0.12.0
 **Proposal:** a pinned OWASP ZAP scan of the served app, plus fuzzing of everything a peer or a
 link can feed into the host and into clients: handshake and protocol messages, files, URL
 parameters, nicknames. Every crash becomes a regression test.
 
 ## OpenSSF Scorecard
-**Status:** ✅ Accepted → 0.12.0
+**Status:** ✅ Accepted → 0.13.0
 **Proposal:** publish the repository, run the Scorecard action, and clear its checks (branch
 protection, signed releases, fuzzing, pinned dependencies, token permissions, and so on). It's an
 independent, visible signal for auditors and users.
 
 ## Security posture management
-**Status:** ✅ Accepted → 0.13.0
+**Status:** ✅ Accepted → 0.14.0
 **Problem:** security checks are spread over several tools and repository settings. Re-verifying
 hardening that's already done on every commit (the old `static-checks.sh`) is noise, but
 regressions must still be noticed.
@@ -235,7 +235,7 @@ container configs, and a short posture document. Custom Semgrep rules only where
 check fits.
 
 ## Pre-commit checks
-**Status:** 💡 Proposed (to decide in 0.13.0)
+**Status:** 💡 Proposed (to decide in 0.14.0)
 **Problem:** some mistakes are cheaper to stop before they're committed. Above all secrets: once
 pushed, a secret is in history and must be rotated.
 **Options:**
@@ -259,7 +259,7 @@ browser) as well as Chromium and Firefox; add Edge only where it differs from Ch
 pre-filled (in memory, never via the URL), with passphrase and one-time link ready.
 
 ## Local version of the app
-**Status:** ✅ Accepted → 0.16.0
+**Status:** ✅ Accepted → 0.17.0
 **Problem:** using the website means trusting whatever it serves on each visit.
 **Proposal:** a local way to run the same app: a PWA, Electron/Tauri, a Docker image, or a single
 self-contained HTML file. The architecture is still to be decided; see the roadmap item.

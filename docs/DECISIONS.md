@@ -40,11 +40,11 @@ kept under "History".
   when the room is locked or full, and Trystero's automatic reconnection is paused.
 - **Why:** relays see IP addresses and timing; less exposure, fewer third parties.
 
-### D5. No TURN relay ✅
+### D5. No TURN relay (for now) 🔄
 - **Why:** no third party carries data, and there's zero cost. Direct connections work on most
-  home, office and mobile networks (verified: iPhone on 5G against a computer on wifi).
+  home, office and mobile networks (verified in a real-world test across two different networks, mobile data and wifi).
 - **Cost:** two peers both behind strict, symmetric NATs can't connect.
-- **Revisit if:** users report failures ([IDEAS: Optional TURN relay](IDEAS.md#optional-turn-relay)). Data would stay end-to-end encrypted.
+- **Next:** roadmap 0.10.0 adds an end-to-end encrypted relay fallback, used only when no direct path works, plus clear failure messages ([ROADMAP.md](ROADMAP.md)).
 
 ### D6. Chat is a star through the host ✅
 - **Why:** guests never learn each other's IP addresses; only the host admits people; fewer connections.
