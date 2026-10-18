@@ -7,7 +7,8 @@ messages are in [PROTOCOL.md](PROTOCOL.md).
 
 **About the examples:** every message below has the exact *format* the app and Trystero use:
 field names, encodings and lengths. The *values* are made up (random), except where marked as
-real (relay host names, STUN servers, the topic computation).
+real (relay host names, STUN servers, the topic computation). Public IP addresses come from the
+ranges reserved for documentation (RFC 5737), so none belongs to a real network.
 
 ## The big picture
 
@@ -57,7 +58,7 @@ https://share.common-sec.org/#/share?r=Q7nmLtvgH6OIiTJ387mbqQ&k=G4laNCs8p9dVdjEw
 
 | Not in the link | Example | What it is |
 |---|---|---|
-| **Passphrase** | `Stone~Behind~Karrotish42` | Shared separately (e.g. read out on a call). Proven inside the direct channel; never sent anywhere |
+| **Passphrase** | `Stone~Behind~Karrotish42` (an example: never use a published passphrase) | Shared separately (e.g. read out on a call). Proven inside the direct channel; never sent anywhere |
 | Host public key | `BME6VIGq4d4D2PcV…0PhwAAE` (87 chars) | The host's ECDSA P-256 public key, sent in the handshake (step 4). Its SHA-256 must equal `h` |
 
 What's derived from them ([PROTOCOL.md §2](PROTOCOL.md)):
