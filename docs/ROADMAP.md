@@ -37,18 +37,33 @@ here once chosen.
 | 0.4.0 | **First real-world test feedback**: Secure Share as the home page, clearer naming, stronger and masked room passphrases with a strength meter | ✅ Done |
 | 0.5.0 | **End-to-end tests**: real UI flows across several browsers over real WebRTC, with Playwright | ✅ Done |
 | 0.6.0 | **Reproducible TypeScript build**: pinned, locked dependencies bundled at build time, no runtime CDN | ✅ Done |
-| 0.7.0 | **Safari and Edge coverage**: unit and end-to-end tests also on WebKit (Safari's engine, and every iOS browser), Edge where it differs from Chromium | Next |
-| 0.8.0 | **Name, logo and organisation**: a distinctive app name, logo and favicon; move the repository to a dedicated GitHub organisation (an umbrella for several security tools) | Planned |
-| 0.9.0 | **Share a generated password**: a button on the password generator opens a one-way Secure Share with it, passphrase and link ready | Planned |
-| 0.10.0 | **Connectivity on restrictive networks**: users behind symmetric NAT or UDP-blocking firewalls can still connect, through an end-to-end encrypted relay fallback | Planned |
-| 0.11.0 | **SEO and launch readiness**: pre-rendered static pages, metadata and social previews, How it works and FAQ, sitemap, Search Console | Planned |
-| 0.12.0 | **DAST and fuzzing**: dynamic scanning of the served app, plus fuzzing of host and client (protocol and UI inputs) | Planned |
-| 0.13.0 | **OpenSSF Scorecard**: publish the repository and clear the Scorecard checks | Planned |
-| 0.14.0 | **Security posture management**: track every security check and repository setting continuously, in one place | Planned |
-| 0.15.0 | **Support & feedback links**: GitHub star, donations, "+1" rating; short privacy note | Planned |
-| 0.16.0 | **AI-assisted memorable passphrases** (on-device model, entropy kept by the CSPRNG) | Planned |
-| 0.17.0 | **Local version of the app** (architecture to define: PWA, Electron, Docker image, single file) | Planned |
-| 1.0.0 | **Public release**: license, production deployment with security headers, release checklist, external protocol review | Planned |
+| 0.7.0 | **Names, organisation and domain**: CommonSec organisation, CommonSec Share app, served at `share.common-sec.org` | ✅ Done (to tag) |
+| 0.8.0 | **GitHub hardening basics**: license, organisation 2FA and owners, rulesets, GitHub's built-in protections, workflow linters, Scorecard, findings in code scanning | Next |
+| 0.9.0 | **Staging and tagged production**: a staging site that follows `master`; production deployed only from release tags | Planned |
+| 0.10.0 | **Safari and Edge coverage**: unit and end-to-end tests also on WebKit (Safari's engine, and every iOS browser), Edge where it differs from Chromium | Planned |
+| 0.11.0 | **Standard encryption format**: Share payloads in the audited `age` format instead of our own framing (breaking) | Planned |
+| 0.12.0 | **Connectivity on restrictive networks**: users behind symmetric NAT or UDP-blocking firewalls can still connect, through an end-to-end encrypted relay fallback | Planned |
+| 0.13.0 | **Static pages and SEO**: pre-rendered static pages, metadata and social previews, How it works and FAQ, sitemap, Search Console | Planned |
+| 0.14.0 | **Pre-launch security review**: full protocol review by someone outside the project, and every security finding fixed | Planned |
+| 1.0.0 | **Public launch**: production hosting and headers, release checklist, announcement | Planned |
+| 1.1.0 | **DAST and fuzzing**: dynamic scanning of the served app, plus fuzzing of host and client (protocol and UI inputs) | Planned |
+| 1.2.0 | **Security posture management**: every security check and repository setting tracked continuously, in one place; all Scorecard checks cleared | Planned |
+| 1.3.0 | **Share a generated password**: a button on the password generator opens a one-way Secure Share with it, passphrase and link ready | Planned |
+| 1.4.0 | **Local version of the app** (architecture to define: PWA, Electron, Docker image, single file) | Planned |
+| 1.5.0 | **AI-assisted memorable passphrases** (on-device model, entropy kept by the CSPRNG) | Planned |
+| — | **Logo and visual identity**: no version and no deadline (see below) | Unscheduled |
+
+**Why this order (2026-10-15):** the site is already public at `share.common-sec.org`, so the
+security basics come first: the repository and its settings (supply chain is the main threat in
+[THREAT_MODEL.md](THREAT_MODEL.md#9-supply-chain-the-static-host-the-npm-packages-the-build)),
+then a safe way to ship (staging, tagged production), then testing on the browsers people use,
+then the one breaking protocol change, which is cheap before 1.0 and a major version after it.
+Then the relay fallback, so people on restrictive networks can connect at launch, and the static
+pages and SEO. The full security review comes **just before launch**, so it reviews
+what actually ships. DAST and fuzzing add depth after launch; they aren't the main controls in the
+threat model. The logo needs iterations with people and doesn't affect usability, so it isn't on
+the critical path. The high-priority UX fixes in [TODO.md](TODO.md) go in as patches between
+items, before launch.
 
 ### 0.2.0: Tests run anywhere ✅
 
@@ -75,7 +90,7 @@ by the Dependabot cooldown; CI runs the same containers; docs/DEVELOPMENT.md exp
   Python packages baked in under `pip.conf` rules, replacing the `test-deps` install step;
 - unit tests live in `tests/unit/` and run as the `test-unit` service (no network);
 - `scripts/static-checks.sh` and the `checks` service are removed: the repository hardening they
-  re-checked is done, and ongoing tracking moves to posture management (0.14.0);
+  re-checked is done, and ongoing tracking moves to posture management (now 1.2.0, basics in 0.8.0);
 - the Claude Code preview (`.claude/launch.json`) starts the app through `docker compose up web`;
 - docs/TESTING.md explains how Playwright runs both the unit tests (inside the browser, where Web
   Crypto, WebRTC and IndexedDB live) and the end-to-end tests.
@@ -124,7 +139,59 @@ how auditors check that the served files come from the reviewed source.
 - the app shows its **build version** (release tag plus short commit) in the footer, matching
   the published checksums, so users and auditors can tell exactly which build they're running.
 
-### 0.7.0: Safari and Edge coverage
+### 0.7.0: Names, organisation and domain ✅
+**Why early:** the public address changes, so this had to happen before anything is announced or
+indexed. See [the UX/product/SEO review](reviews/2026-10-12-ux-product-seo.md#5-name-and-logo).
+**Done:**
+- organisation **CommonSec** (`common-sec` on GitHub, domain `common-sec.org`), an umbrella for
+  several security tools, and app **CommonSec Share** (`common-sec/secure-share`), chosen after a
+  trademark and domain check (decision D21);
+- the repository lives in the organisation, and the site is served at
+  `https://share.common-sec.org/` (custom domain verified for the organisation, HTTPS enforced);
+- the app, README and docs use the new names consistently.
+
+Moved out on 2026-10-15: organisation 2FA, rulesets and owners go to 0.8.0; the logo has its own
+unscheduled item at the end.
+
+### 0.8.0: GitHub hardening basics
+**Goal:** the repository and organisation that produce the site are protected, because whoever
+can push to `master` or change a workflow controls what every user runs. Settings and existing,
+pinned tools only; the continuous tracking of all of it comes in 1.2.0.
+**Done when:**
+- the repository has a **license** (chosen and recorded as a decision);
+- the organisation requires **2FA**, has **at least two owners** or a documented recovery path;
+- **rulesets** on `master`: no direct pushes or force pushes, pull requests with a required review,
+  required CI checks, signed commits; tags `v*` protected;
+- GitHub's built-in protections are on: **secret scanning with push protection**, Dependabot
+  alerts, **private vulnerability reporting** (linked from SECURITY.md);
+- workflows: least-privilege `permissions` everywhere (already the rule), checked by **zizmor**
+  and **actionlint** in pinned containers in CI; a `CODEOWNERS` file for workflows, build and
+  protocol code;
+- existing scanners (Semgrep, Trivy, TruffleHog) upload **SARIF to GitHub code scanning**;
+- the **OpenSSF Scorecard** action (pinned by SHA) runs on a schedule with a README badge; every
+  failing check is either fixed or listed with a reason for 1.2.0;
+- docs/DEVELOPMENT.md lists the settings, so they can be re-checked after any change.
+
+### 0.9.0: Staging and tagged production
+**Goal:** nothing reaches users without being tried on a real, public URL first, and what
+production serves is always a tagged, reproducible release whose checksums are published.
+**Why a separate repository:** GitHub Pages serves one site per repository, so staging can't be a
+subdomain of this one.
+**Done when:**
+- **production** (`share.common-sec.org`) is deployed only from release tags, in the same workflow
+  as the GitHub Release, so the served files match the published `SHA256SUMS`; pushes to `master`
+  no longer deploy it;
+- **staging** is a separate repository (e.g. `common-sec/secure-share-staging`) whose workflow
+  checks out this public repository's `master`, builds it in the same pinned container and
+  deploys it to its own Pages (e.g. `staging.share.common-sec.org`). It **pulls** the source, so
+  no token with write access to either repository is needed; it runs on demand and on a schedule;
+- staging can't be mistaken for production: a visible "staging" banner, `noindex` and no
+  sitemap, and its own Trystero `appId`, so staging and production peers never meet while the
+  protocol changes;
+- docs/RELEASES.md describes the flow: merge → staging → manual checks → tag → production; the
+  release checklist runs against staging; a decision entry records it.
+
+### 0.10.0: Safari and Edge coverage
 **Goal:** the app is tested on the engines people actually use, notably iPhones: every iOS
 browser runs on WebKit, Safari's engine.
 **Done when:**
@@ -132,47 +199,31 @@ browser runs on WebKit, Safari's engine.
   pinned test image), including cross-engine pairs such as a WebKit guest with a Chromium host;
 - differences in WebRTC, Web Crypto, IndexedDB, Web Locks, downloads or the clipboard are fixed,
   or documented with a workaround;
-- the release checklist includes a manual check on a **real iPhone with Safari** (Playwright's
-  WebKit is close to Safari, but not identical);
+- the release checklist includes a manual check on a **real iPhone with Safari** against staging
+  (Playwright's WebKit is close to Safari, but not identical);
 - **Edge**: it uses Chromium's engine, so the Chromium runs cover it; a dedicated Edge run (amd64
   only in containers) is added only if a real difference shows up. A manual check on Edge for
   Windows goes in the release checklist.
 
-### 0.8.0: Name, logo and organisation
-**Why early:** the public address changes, so this must happen before anything is announced or
-indexed. See [the UX/product/SEO review](reviews/2026-10-12-ux-product-seo.md#5-name-and-logo).
-**Two separate names:**
-- the **organisation**: an umbrella for several security tools and repositories (this app is
-  the first), so its name must not be tied to sharing. *Not decided yet.*
-- this **app**: its own product name (shortlist in the review).
-
-**Progress (2026-10-14):** organisation **CommonSec** (`common-sec` on GitHub, domain
-`common-sec.org`), app **CommonSec Share** (`common-sec/secure-share`), repository moved, site at
-`common-sec.github.io/secure-share/`, names used across the app and docs (decision D21).
-**2026-10-15:** served at `https://share.common-sec.org/` (custom domain, verified for the
-organisation, HTTPS enforced). Still to do: logo, organisation rulesets and owners.
-
+### 0.11.0: Standard encryption format
+**Goal:** encrypt with a standard, audited format instead of our own framing, so reviewers check
+a known construction rather than ours. See
+[IDEAS.md](IDEAS.md#encrypt-share-payloads-in-the-age-format).
+**Why before launch:** it changes the wire format, so old links and peers stop working. Before
+1.0 that's a minor version; after it, a major one.
 **Done when:**
-- the organisation name and the app name are chosen, after a trademark and domain check;
-- a logo exists for the app (and, if wanted, a mark for the organisation) as SVG plus favicon,
-  `apple-touch-icon`, manifest icons and a 1200 × 630 social image;
-- the repository lives in the organisation with 2FA required, organisation rulesets (protected
-  default branch, required reviews, signed commits), and at least two owners or a documented
-  recovery path;
-- the site is served from the organisation's Pages: `https://<org>.github.io/<app>/` for this
-  app, with `https://<org>.github.io/` as a small portal listing the organisation's tools; all
-  links, docs and badges are updated;
-- the app, README and docs use the new name consistently.
+- Share payloads use the **`age` format** (the `typage` library, pinned and bundled like
+  Trystero); the key schedule is reviewed at the same time (e.g. scrypt as in `age`'s passphrase
+  recipient, or our PBKDF2-derived key as an X25519 or symmetric recipient), and the choice is
+  recorded as a decision;
+- Chat's message framing is assessed for the same change; it either moves too or the reason it
+  stays is documented;
+- docs/PROTOCOL.md and the threat model are updated, the protocol version is bumped, and the
+  release notes mark the change as breaking;
+- unit and end-to-end tests cover the new format, including interoperability with the reference
+  `age` tool for Share payloads.
 
-### 0.9.0: Share a generated password
-**Goal:** generate a password and send it safely in one step.
-**Done when:**
-- each generated password has a **"Share securely"** button that opens Secure Share with the
-  password as the text, a passphrase generated, and the one-time link ready to create;
-- the password is handed over **in memory only**: never in the URL, history, storage or logs;
-- covered by an end-to-end test (generate → share → receive the same password).
-
-### 0.10.0: Connectivity on restrictive networks
+### 0.12.0: Connectivity on restrictive networks
 **Context:** direct connections work for most networks, but fail when both sides are behind
 restrictive NATs (symmetric NAT, common on corporate networks and some mobile carriers) or when a
 firewall blocks UDP. Industry estimates put the share of WebRTC sessions that need a relay at
@@ -196,24 +247,50 @@ everyone else keeps direct connections.
   local TURN container;
 - COMMUNICATION.md, DECISIONS.md (D5) and THREAT_MODEL.md updated.
 
-### 0.11.0: SEO and launch readiness
+### 0.13.0: Static pages and SEO
 **Goal:** people searching for how to send a password or a sensitive file securely find the app,
 and shared links show a trustworthy preview. See
-[the review](reviews/2026-10-12-ux-product-seo.md#7-seo-and-discoverability).
+[the review](reviews/2026-10-12-ux-product-seo.md#7-seo-and-discoverability) and
+[the static site assessment](reviews/2026-10-13-static-site-generation.md).
 **Done when:**
 - every tool has a real, **pre-rendered static page** (`/`, `/chat/`, `/passwords/`) whose
   content is in the HTML without JavaScript, plus `/how-it-works/` and `/faq/`; room secrets stay
   in the URL fragment;
 - each page has a keyword-led title, meta description, canonical URL, Open Graph and Twitter card
-  tags, and the social image; `WebApplication` and `FAQPage` structured data;
+  tags, and a social image (a placeholder until the logo exists); `WebApplication` and `FAQPage`
+  structured data;
 - `robots.txt`, `sitemap.xml`, favicon set, web manifest and `theme-color`;
+- a short **privacy note** (in the FAQ) says what the app sends where and that it uses no cookies
+  or trackers;
 - the site is verified in Google Search Console and Bing Webmaster Tools (search impressions
   without any tracking script);
-- Lighthouse CI (pinned container) runs in CI with budgets for SEO, accessibility and performance;
-- a launch checklist lists the channels (Show HN, Reddit, Product Hunt, AlternativeTo, privacy
-  tool directories) and what each requires.
+- Lighthouse CI (pinned container) runs in CI with budgets for SEO, accessibility and performance.
 
-### 0.12.0: DAST and fuzzing
+### 0.14.0: Pre-launch security review
+**Goal:** what ships at 1.0 has been reviewed as a whole, by someone outside the project, and
+nothing known is left open.
+**Done when:**
+- docs/PROTOCOL.md, the threat model and the code that implements them have been reviewed by
+  someone outside the project, after 0.11.0 and 0.12.0 so the review covers the final format and
+  the relay fallback;
+- a full internal pass over the threat model checks each mitigation against the code and tests;
+- every finding is fixed, or accepted with a documented reason; each fix comes with a regression
+  test;
+- open code scanning and Scorecard findings are triaged the same way.
+
+### 1.0.0: Public launch
+**Goal:** announce the app, once security basics, testing, the protocol and the static pages are
+done.
+**Done when:**
+- production hosting is decided (see [IDEAS.md](IDEAS.md#hosting-github-pages-and-alternatives)):
+  HSTS, CSP and `nosniff` as headers where the host allows it, or the documented compensations
+  (CSP `<meta>`, frame-busting) where it doesn't;
+- the release checklist (on staging) includes manual WebRTC tests across two networks, a real
+  iPhone and Edge on Windows;
+- a launch checklist lists the channels (Show HN, Reddit, Product Hunt, AlternativeTo, privacy
+  tool directories) and what each requires, and the announcement goes out.
+
+### 1.1.0: DAST and fuzzing
 **Goal:** attack the running app the way an outsider would, on both sides of a connection.
 **Done when:**
 - **DAST:** a pinned OWASP ZAP container scans the served app (baseline, plus an active scan
@@ -227,53 +304,32 @@ and shared links show a trustworthy preview. See
   and file names, on both host and client pages;
 - a time-boxed fuzz run in CI, longer runs on demand, and every crash reproduced as a regression test.
 
-### 0.13.0: OpenSSF Scorecard
-**Goal:** a public repository that scores well on the [OpenSSF Scorecard](https://securityscorecards.dev),
-as a visible, independent signal of supply-chain hygiene.
-**Done when:**
-- the repository is public on GitHub, with a license;
-- the Scorecard GitHub Action (pinned by SHA) runs on a schedule and publishes results, with a
-  badge in the README;
-- each check is cleared or has a documented reason: Pinned-Dependencies, Token-Permissions,
-  Dependency-Update-Tool, SAST, Fuzzing, Security-Policy, License, Branch-Protection,
-  Code-Review, Signed-Releases (signed tags / release artifacts with provenance),
-  CI-Tests, Vulnerabilities, Dangerous-Workflow, Binary-Artifacts, Maintained;
-- the OpenSSF Best Practices badge is started.
-
-### 0.14.0: Security posture management
+### 1.2.0: Security posture management
 **Goal:** know at any time which security checks run, which pass, and which repository settings
-protect the project, without re-checking hardening by hand on every commit.
+protect the project, without re-checking hardening by hand on every commit. Builds on the basics
+of 0.8.0.
 **Done when:**
-- the tools are evaluated and chosen, preferring existing checks over custom rules:
-  - OpenSSF Scorecard and Allstar (repository policy enforcement);
-  - zizmor and actionlint (GitHub Actions security);
+- the remaining tools are evaluated and chosen, preferring existing checks over custom rules:
+  - Allstar (repository policy enforcement);
   - Checkov or Trivy config (Dockerfile, compose, workflows);
   - OSV-Scanner (dependencies, alongside Trivy);
   - legitify (GitHub repository and organisation settings);
   - custom Semgrep rules, only for what nothing else covers;
-- scanner results (Semgrep, Trivy, TruffleHog, …) are uploaded as SARIF to GitHub code scanning,
-  so findings are tracked, triaged and visible in one place;
-- GitHub's built-in protections are enabled and documented: secret scanning with push
-  protection, Dependabot alerts, private vulnerability reporting, branch rulesets;
+- every **OpenSSF Scorecard** check is cleared or has a documented reason (Signed-Releases with
+  provenance, Fuzzing from 1.1.0, …), and the OpenSSF Best Practices badge is started;
 - a scheduled workflow re-runs the posture checks, and docs/SECURITY_POSTURE.md lists each control,
   the tool that checks it, and its status;
 - pre-commit automation is decided (see [IDEAS.md](IDEAS.md#pre-commit-checks)).
 
-### 0.15.0: Support & feedback links
-**Goal:** let developers star the project, users donate or leave a rating, without any embedded
-third-party script, image or cookie.
-**Done when:** plain links (GitHub, Patreon / Buy Me a Coffee, a rating site) appear in the footer
-and after a successful share, and a short "privacy by default" note explains what the app does
-and doesn't collect.
+### 1.3.0: Share a generated password
+**Goal:** generate a password and send it safely in one step.
+**Done when:**
+- each generated password has a **"Share securely"** button that opens Secure Share with the
+  password as the text, a passphrase generated, and the one-time link ready to create;
+- the password is handed over **in memory only**: never in the URL, history, storage or logs;
+- covered by an end-to-end test (generate → share → receive the same password).
 
-### 0.16.0: AI-assisted memorable passphrases
-**Goal:** an optional "make it a sentence" mode in which an on-device model turns CSPRNG-chosen
-words and a number into a memorable phrase, before the usual random variation rules.
-**Done when:** the design in [IDEAS.md](IDEAS.md#ai-assisted-memorable-passphrases) is
-implemented, the output is validated to contain every chosen word, the shown strength counts only
-CSPRNG choices, and it falls back cleanly when no on-device model is available.
-
-### 0.17.0: Local version of the app
+### 1.4.0: Local version of the app
 **Goal:** the same app usable without trusting a website at run time: installed or run locally.
 **Architecture to define**, comparing:
 - **PWA**: installable from the site, works offline after the first visit. Still delivered by the
@@ -287,8 +343,16 @@ CSPRNG choices, and it falls back cleanly when no on-device model is available.
 **Done when:** the options are compared in docs, one or more are chosen and shipped, and releases
 are reproducible and verifiable (checksums or signatures).
 
-### 1.0.0: Public release
-**Goal:** ready to publish and be audited.
-**Done when:** a license is chosen; the app is deployed on a static host with HSTS, CSP and
-`nosniff` headers; there's a release checklist including manual WebRTC tests across two networks;
-and docs/PROTOCOL.md has been reviewed by someone outside the project.
+### 1.5.0: AI-assisted memorable passphrases
+**Goal:** an optional "make it a sentence" mode in which an on-device model turns CSPRNG-chosen
+words and a number into a memorable phrase, before the usual random variation rules.
+**Done when:** the design in [IDEAS.md](IDEAS.md#ai-assisted-memorable-passphrases) is
+implemented, the output is validated to contain every chosen word, the shown strength counts only
+CSPRNG choices, and it falls back cleanly when no on-device model is available.
+
+### Unscheduled: Logo and visual identity
+**Why no version:** it needs several iterations and feedback from people, and it doesn't affect
+usability, so nothing waits for it. Pages use a placeholder social image until it's ready.
+**Done when:** a logo exists for the app (and, if wanted, a mark for the organisation) as SVG plus
+favicon, `apple-touch-icon`, manifest icons and a 1200 × 630 social image, and they replace the
+placeholders. Released as a patch of whichever version is current.

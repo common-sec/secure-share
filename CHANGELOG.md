@@ -8,6 +8,14 @@ All notable changes, one section per version. See [docs/ROADMAP.md](docs/ROADMAP
 - **The site is at https://share.common-sec.org/**, a custom domain on GitHub Pages: verified for
   the organisation, HTTPS enforced. The previous `common-sec.github.io/secure-share/` address
   redirects to it. README, decisions (D19, D21), release guide and roadmap updated.
+- **Roadmap reordered** for a site that is already public: GitHub hardening basics (0.8.0),
+  staging and production from release tags only (0.9.0), Safari/WebKit (0.10.0), the standard
+  `age` encryption format (0.11.0, breaking), an end-to-end encrypted relay fallback for
+  restrictive networks (0.12.0), static pages and SEO (0.13.0), a pre-launch security review
+  (0.14.0), then the public launch as 1.0.0. DAST and fuzzing, full posture management, sharing a
+  generated password, the local version and AI passphrases follow 1.0. The names,
+  organisation and domain item is closed as 0.7.0; the logo is unscheduled; support links became
+  TODO items.
 - **Anyone can deploy their own copy:** the repository the footer links to is a build variable,
   `BUILD_REPOSITORY` (default `https://github.com/common-sec/secure-share`); the Pages and Release
   workflows set it to the repository they run in, so a fork links to itself. `docker compose run
