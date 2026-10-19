@@ -75,5 +75,8 @@ the commit shown in the footer in that case.
 1. Finish the roadmap item: tests pass locally and in CI, docs and [CHANGELOG.md](../CHANGELOG.md) updated.
 2. Set `version` in `package.json` (and the lockfile: `npm install --package-lock-only` in the
    `dev` container), commit.
-3. Tag and push: `git tag -a vX.Y.Z -m "X.Y.Z: <feature>" && git push origin master vX.Y.Z`.
-4. The Release workflow builds, checks reproducibility and publishes the release with checksums.
+3. Manual checks against staging (Playwright covers the engines, not the real browsers): on a
+   **real iPhone with Safari** and on **Edge for Windows**, send a Share with a file to another
+   device (recipient downloads it), join a Chat and exchange a message, and use a Copy button.
+4. Tag and push: `git tag -a vX.Y.Z -m "X.Y.Z: <feature>" && git push origin master vX.Y.Z`.
+5. The Release workflow builds, checks reproducibility and publishes the release with checksums.

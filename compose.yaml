@@ -5,7 +5,7 @@
 #   docker compose run --rm build             npm ci + type-check + build dist/ + reproducibility check
 #   docker compose run --rm dev               shell in the Node dev image (npm, scripts)
 #   docker compose up web                     serve the built app (dist/) on http://127.0.0.1:8080
-#   docker compose run --rm test-unit         unit tests in Chromium + Firefox (no network)
+#   docker compose run --rm test-unit         unit tests in Chromium, Firefox and WebKit (no network)
 #   docker compose run --rm test-e2e          end-to-end tests, local relay, no third-party requests
 #   docker compose run --rm test-e2e-public   end-to-end tests over the real public relays and STUN
 #   docker compose run --rm trufflehog        secrets in the working tree and all of git history
@@ -84,7 +84,7 @@ services:
     volumes: *source-ro
     network_mode: none                 # unit tests need no network: loopback server + fake transport
     shm_size: 1gb                      # Chromium uses /dev/shm heavily
-    command: ["python", "tests/unit/run.py", "chromium", "firefox"]
+    command: ["python", "tests/unit/run.py", "chromium", "firefox", "webkit"]
 
   # End-to-end: users' flows through the real UI over real WebRTC (see docs/TESTING.md), against
   # the built app (run `build` first). Discovery uses the local relay in the test server and ICE

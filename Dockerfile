@@ -21,4 +21,4 @@ ENV PYTHONPATH=/opt/pydeps \
     PYTHONDONTWRITEBYTECODE=1
 WORKDIR /work
 USER pwuser
-CMD ["python", "tests/unit/run.py", "chromium", "firefox"]
+CMD ["python", "tests/unit/run.py", "chromium", "firefox", "webkit"]

@@ -7,14 +7,16 @@ Trystero and a Nostr relay for discovery, as on the live site.
     docker compose run --rm test-e2e            # local relay, host-only ICE (default, CI)
     docker compose run --rm test-e2e-public     # online: the real public relays and STUN servers
 
-    python tests/e2e/run.py [--public] [--filter text] [--browsers chromium,firefox]
+    python tests/e2e/run.py [--public] [--filter text] [--browsers chromium,firefox,webkit]
 
 Default mode serves the app and a minimal Nostr relay from one local server (tests/e2e/server.py)
 and points the app at it through test-only hooks injected before the page loads; ICE uses host
-candidates only, so no STUN server or public relay is involved. Every request the browsers make
-to anything but the local server (HTTP or WebSocket) is blocked and fails the scenario: the built
-app must work without any third-party origin. Public mode injects nothing: the app behaves
-exactly as on the live site. Both test the built app (dist/), so run the `build` service first.
+candidates only, so no public STUN server or relay is involved (WebKit, which hides host
+candidates behind mDNS names, gets a STUN server in the test container: see server.stun_serve).
+Every request the browsers make to anything but the local server (HTTP or WebSocket) is blocked
+and fails the scenario: the built app must work without any third-party origin. Public mode
+injects nothing: the app behaves exactly as on the live site. Both test the built app (dist/),
+so run the `build` service first.
 """
 import argparse
 import json
@@ -27,7 +29,7 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
-from server import serve  # noqa: E402
+from server import serve, stun_serve  # noqa: E402
 
 try:
     from playwright.sync_api import expect, sync_playwright
@@ -54,13 +56,16 @@ class Env:
         self.browsers, self.contexts = {}, []
         self.blocked = []    # third-party requests the app attempted (local mode)
         relay = base.replace("http://", "ws://") + "/relay"
-        self.init_script = None if public else (
-            f"window.__USS_TEST_RELAYS__ = {json.dumps([relay])}; window.__USS_TEST_ICE_SERVERS__ = [];")
+        hooks = f"window.__USS_TEST_RELAYS__ = {json.dumps([relay])}; window.__USS_TEST_ICE_SERVERS__ = "
+        self.init_script = None if public else hooks + "[];"
+        self.webkit_init_script = None if public else hooks + json.dumps([{"urls": stun_serve()}]) + ";"
 
     def browser(self, name):
         if name not in self.browsers:
             if name == "firefox":
                 self.browsers[name] = self.pw.firefox.launch(firefox_user_prefs=None if self.public else FIREFOX_PREFS)
+            elif name == "webkit":
+                self.browsers[name] = self.pw.webkit.launch()
             else:
                 self.browsers[name] = self.pw.chromium.launch(args=[] if self.public else CHROMIUM_ARGS)
         return self.browsers[name]
@@ -72,7 +77,7 @@ class Env:
             # Guards first: WebSocket routing patches the page, and must be in place before any script.
             ctx.route(lambda url: not self.local(url), self.block_http)
             ctx.route_web_socket(lambda url: not self.local(url), self.block_ws)
-            ctx.add_init_script(self.init_script)
+            ctx.add_init_script(self.webkit_init_script if browser == "webkit" else self.init_script)
         self.contexts.append(ctx)
         page = ctx.new_page()
         page.on("pageerror", lambda e: print(f"      [{browser}] page error: {e}"))
@@ -215,18 +220,19 @@ def audit(page, state):
 
 
 # ---------------------------------------------------------------- scenarios
-TESTS = []
+ENGINES = ("chromium", "firefox", "webkit")
+TESTS = []    # (name, function, its argument, engines used)
 
 
 def scenario(name, browsers=("chromium",)):
     def register(fn):
         for b in browsers:
-            TESTS.append((f"{name} [{b}]", fn, b))
+            TESTS.append((f"{name} [{b}]", fn, b, (b,)))
         return fn
     return register
 
 
-@scenario("share: text and a file are delivered once, then the link is dead", browsers=("chromium", "firefox"))
+@scenario("share: text and a file are delivered once, then the link is dead", browsers=("chromium", "firefox", "webkit"))
 def share_happy_path(env, b):
     sender, recipient = env.person(b), env.person(b)
     secret_file = file_payload("keys.bin", 300_000)
@@ -279,7 +285,7 @@ def share_with_approval(env, b):
 
 
 @scenario("chat: approve guests, messages and files relay through the host, remove a member",
-          browsers=("chromium", "firefox"))
+          browsers=("chromium", "firefox", "webkit"))
 def chat_group(env, b):
     host, bob, carol = env.person(b), env.person(b), env.person(b)
     host.goto(env.app + "#/chat")
@@ -342,17 +348,44 @@ def chat_locked(env, b):
     expect(late.get_by_text("Looking for the host")).to_be_visible()
 
 
-@scenario("chat across browsers: Chromium host, Firefox guest", browsers=("chromium",))
-def chat_cross_browser(env, b):
-    host, guest = env.person("chromium"), env.person("firefox")
+# Every ordered pair of different engines, for both flows: the roles aren't symmetric (the host
+# relays for its guests, the sender offers and the recipient asks), so A → B and B → A both count.
+CROSS_PAIRS = [(a, b) for a in ENGINES for b in ENGINES if a != b]
+
+
+def cross_scenario(name):
+    def register(fn):
+        for a, b in CROSS_PAIRS:
+            TESTS.append((f"{name} [{a} → {b}]", fn, (a, b), (a, b)))
+        return fn
+    return register
+
+
+@cross_scenario("share across browsers: text and a file delivered")
+def share_cross_browser(env, pair):
+    a, b = pair
+    sender, recipient = env.person(a), env.person(b)
+    secret_file = file_payload("notes.bin", 200_000)
+    link, passphrase = share_send(env, sender, f"from {a} to {b}", [secret_file])
+    share_open(recipient, link, passphrase)
+    expect(recipient.get_by_text("Received ✓")).to_be_visible()
+    assert recipient.locator("pre.secret").inner_text() == f"from {a} to {b}"
+    assert download(recipient, ".file-card", "notes.bin") == secret_file["buffer"]
+    expect(sender.get_by_text("Delivered ✓")).to_be_visible()
+
+
+@cross_scenario("chat across browsers: guest admitted, messages both ways")
+def chat_cross_browser(env, pair):
+    a, b = pair
+    host, guest = env.person(a), env.person(b)
     link, passphrase = chat_create(env, host, "Alice")
-    chat_join(guest, link, "Fox", passphrase)
-    approve(host, "Fox")
+    chat_join(guest, link, "Bob", passphrase)
+    approve(host, "Bob")
     admitted(guest)
-    say(guest, "hi from Firefox")
-    sees(host, "hi from Firefox")
-    say(host, "hi from Chromium")
-    sees(guest, "hi from Chromium")
+    say(guest, f"hi from {b}")
+    sees(host, f"hi from {b}")
+    say(host, f"hi from {a}")
+    sees(guest, f"hi from {a}")
 
 
 @scenario("passwords page passes the accessibility checks")
@@ -368,20 +401,20 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--public", action="store_true", help="use the real public relays and STUN servers")
     parser.add_argument("--filter", default="")
-    parser.add_argument("--browsers", default="chromium,firefox", help="browsers allowed to run scenarios")
+    parser.add_argument("--browsers", default=",".join(ENGINES), help="browsers allowed to run scenarios")
     args = parser.parse_args()
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
     allowed = set(args.browsers.split(","))
-    selected = [t for t in TESTS if args.filter in t[0] and t[2] in allowed]
+    selected = [t for t in TESTS if args.filter in t[0] and set(t[3]) <= allowed]
     server, base = serve()
     print(f"e2e: {len(selected)} scenarios, {'public relays + STUN' if args.public else 'local relay, host-only ICE'}\n")
     failed = 0
     with sync_playwright() as p:
         env = Env(p, base, args.public)
         try:
-            for name, fn, b in selected:
+            for name, fn, b, _ in selected:
                 start = time.time()
                 try:
                     env.blocked = []

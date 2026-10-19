@@ -27,7 +27,7 @@ Run from the repository root (in WSL on Windows):
 | `docker compose run --rm build` | `npm ci`, type-check, build `dist/` and check a second build is byte-identical |
 | `docker compose up web` | Serve the built app (`dist/`) at http://127.0.0.1:8080 |
 | `docker compose run --rm dev` | Shell in the Node dev image (npm, scripts) |
-| `docker compose run --rm test-unit` | Unit tests in Chromium + Firefox, **no network** (see [TESTING.md](TESTING.md)) |
+| `docker compose run --rm test-unit` | Unit tests in Chromium, Firefox and WebKit, **no network** (see [TESTING.md](TESTING.md)) |
 | `docker compose run --rm test-e2e` | End-to-end tests of `dist/` through the real UI, local relay, **third-party requests blocked** |
 | `docker compose run --rm test-e2e-public` | End-to-end tests over the real public relays and STUN |
 | `docker compose run --rm trufflehog` | Secrets in the working tree and in every commit of git history |

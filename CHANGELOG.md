@@ -5,6 +5,14 @@ All notable changes, one section per version. See [docs/ROADMAP.md](docs/ROADMAP
 ## [Unreleased]
 
 ### Added
+- **Safari's engine is tested.** The unit and end-to-end suites also run on **WebKit** (Safari, and
+  every browser on iPhone and iPad), and every pair of different engines is tested in both
+  directions, for Share (sender → recipient) and Chat (host → guest). All 50 unit tests and every end-to-end
+  scenario pass unchanged on WebKit: no app change was needed. WebKit hides host ICE candidates
+  behind mDNS names, so the end-to-end test server also runs a tiny local STUN server for WebKit
+  contexts; nothing leaves the container. Edge is covered by the Chromium runs (same engine); the
+  release checklist now includes manual checks on a real iPhone with Safari and on Edge for
+  Windows. See [docs/TESTING.md](docs/TESTING.md#browsers-and-engines).
 - **The sender's screen can stay on while waiting:** an opt-in "Keep the screen on while waiting"
   option (Screen Wake Lock, off by default, with a warning not to leave the device unattended;
   taken again when the tab comes back). The form explains before the link exists that the page

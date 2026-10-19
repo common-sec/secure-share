@@ -40,7 +40,7 @@ here once chosen.
 | 0.7.0 | **Names, organisation and domain**: CommonSec organisation, CommonSec Share app, served at `share.common-sec.org` | ✅ Done (to tag) |
 | 0.8.0 | **GitHub hardening basics**: license, organisation 2FA and owners, rulesets, GitHub's built-in protections, workflow linters, Scorecard, findings in code scanning | Next |
 | 0.9.0 | **Staging and tagged production**: a staging site that follows `master`; production deployed only from release tags | Planned |
-| 0.10.0 | **Safari and Edge coverage**: unit and end-to-end tests also on WebKit (Safari's engine, and every iOS browser), Edge where it differs from Chromium | Planned |
+| 0.10.0 | **Safari and Edge coverage**: unit and end-to-end tests also on WebKit (Safari's engine, and every iOS browser), Edge where it differs from Chromium | In progress |
 | 0.11.0 | **Standard encryption format**: Share payloads in the audited `age` format instead of our own framing (breaking) | Planned |
 | 0.12.0 | **Connectivity on restrictive networks**: users behind symmetric NAT or UDP-blocking firewalls can still connect, through an end-to-end encrypted relay fallback | Planned |
 | 0.13.0 | **Static pages and SEO**: pre-rendered static pages, metadata and social previews, How it works and FAQ, sitemap, Search Console | Planned |

@@ -7,13 +7,16 @@ then EOSE, then live events) and CLOSE. Filters: ids, authors, kinds, since, unt
 It does not verify signatures: it is a test double for a public relay, which also can't read
 anything, since Trystero encrypts what it publishes.
 
-Standard library only (RFC 6455 WebSocket framing implemented below).
+It also runs a minimal STUN server (stun_serve) for WebKit: see that function.
+
+Standard library only (RFC 6455 WebSocket framing and the RFC 8489 Binding response below).
 """
 import base64
 import functools
 import hashlib
 import http.server
 import json
+import socket
 import struct
 import sys
 import threading
@@ -172,6 +175,46 @@ class TestHandler(Handler):
         finally:
             self.relay.disconnect(conn)
             self.close_connection = True
+
+
+# ---------------------------------------------------------------- STUN (for WebKit)
+STUN_MAGIC = 0x2112A442
+
+
+def stun_serve():
+    """Starts a minimal STUN server (RFC 8489 Binding only); returns its "stun:ip:port" URL.
+
+    WebKit, like Safari, always hides its host ICE candidates behind random mDNS names
+    (<uuid>.local), and has no switch to turn that off. Nothing resolves mDNS in the test
+    container, so two WebKit peers could never reach each other with host candidates only.
+    Asking this local server for each peer's address gives WebKit a server-reflexive candidate
+    with its real container address, as a public STUN server does for Safari on the internet.
+    It listens on the container's own address (WebKit gathers no loopback candidates), and never
+    reaches outside the container.
+    """
+    probe = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    probe.connect(("192.0.2.1", 9))  # no packet is sent: this only picks the default interface
+    ip = probe.getsockname()[0]
+    probe.close()
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    sock.bind((ip, 0))
+
+    def loop():
+        while True:
+            data, (peer_ip, peer_port) = sock.recvfrom(2048)
+            if len(data) < 20:
+                continue
+            kind, _, magic = struct.unpack("!HHI", data[:8])
+            if kind != 0x0001 or magic != STUN_MAGIC:  # Binding request
+                continue
+            # XOR-MAPPED-ADDRESS (IPv4): the address this request came from, XORed with the cookie.
+            xaddr = struct.unpack("!I", socket.inet_aton(peer_ip))[0] ^ STUN_MAGIC
+            attr = struct.pack("!HHBBHI", 0x0020, 8, 0, 1, peer_port ^ (STUN_MAGIC >> 16), xaddr)
+            response = struct.pack("!HHI", 0x0101, len(attr), STUN_MAGIC) + data[8:20] + attr
+            sock.sendto(response, (peer_ip, peer_port))
+
+    threading.Thread(target=loop, daemon=True).start()
+    return f"stun:{ip}:{sock.getsockname()[1]}"
 
 
 def serve(host="127.0.0.1", port=0):

@@ -6,7 +6,7 @@ starts the browsers, opens that page and collects the results.
 
 Normally run in the pinned test container, after building (see docs/TESTING.md):
     docker compose run --rm build              # the tests import the compiled modules in build/modules/
-    docker compose run --rm test-unit          # = python tests/unit/run.py chromium firefox
+    docker compose run --rm test-unit          # = python tests/unit/run.py chromium firefox webkit
 
 Options:
     python tests/unit/run.py chromium          # one browser
@@ -72,7 +72,7 @@ def run_browser(playwright, name, url):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("browsers", nargs="*", default=["chromium", "firefox"], choices=["chromium", "firefox", "webkit"])
+    parser.add_argument("browsers", nargs="*", default=["chromium", "firefox", "webkit"], choices=["chromium", "firefox", "webkit"])
     parser.add_argument("--filter", default="")
     args = parser.parse_args()
 
