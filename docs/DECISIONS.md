@@ -78,6 +78,24 @@ kept under "History".
 - **Why:** a man-in-the-middle would hold different certificates on each side, so the codes
   wouldn't match. Comparing them out of band detects it.
 
+### D22. A chat host's room survives a reload, not a closed tab 🔄
+- **What:** the host's room state (link secret, non-extractable keys, approved members) is kept
+  in IndexedDB only so a reload can resume the room. The open page re-saves it every 30 s and when
+  hidden or unloaded; a copy not refreshed for 2 minutes, or past the room's time limit, is
+  refused and deleted, and Chat sweeps stale copies on every visit. The passphrase is never
+  stored. Every room also closes on its own after a time limit (4 h by default, 1 to 24 h).
+- **Why:** phones reload background tabs without warning, and losing the room then means sending
+  a new link and passphrase to everyone. Keeping the state for a reload only limits the window
+  in which a stolen copy is usable to about 2 minutes after the tab closes.
+- **Alternatives:** (1) no resume at all, nothing stored, with a warning before a reload: safest
+  and simplest, but the browser's "Leave site?" prompt can't be customised, doesn't tell a reload
+  from a close, and never shows when a phone reloads a background tab. (2) sessionStorage: it only
+  holds text, so the keys would have to be exportable and written out in clear, which is worse.
+  (3) Encrypting the IndexedDB copy with another key in the same origin: script in the page could
+  use that key as easily, so it adds nothing.
+- **Revisit:** after the no-resume trial ([roadmap fix K4](ROADMAP.md#high-priority-security-findings)):
+  if rooms stay usable on phones and computers with clearer warnings, drop resume.
+
 ## Engineering
 
 ### D12. Strict TypeScript with a reproducible build ✅ (0.6.0)

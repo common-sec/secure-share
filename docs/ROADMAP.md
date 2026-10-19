@@ -222,6 +222,11 @@ From [code scanning alert #1](https://github.com/common-sec/secure-share/securit
       24 h under "Advanced options" in Chat; Share uses the default). The host sees the closing
       time on creation and in the Invite panel, guests when they're admitted and the Share sender
       under the link; everyone is warned 10 minutes before.
+- [ ] **K4. Trial dropping host resume.** Build a variant that stores nothing (a reload or a
+      background-tab reload ends the room) and try it on phones and computers: how often rooms
+      are lost in normal use, and whether clearer warnings (before reloading, when the tab goes to
+      the background, on mobile) keep it usable. Then choose between it and the current
+      reload-only resume ([D22](DECISIONS.md#d22-a-chat-hosts-room-survives-a-reload-not-a-closed-tab-)).
 
 ### High priority: sending and receiving UX
 

@@ -83,6 +83,7 @@
   survive a reload**: the open page refreshes it every 30 s, a record not refreshed for 2 minutes
   (a closed tab) is refused and deleted, and so is one past the room's time limit. Closing the
   room deletes it at once. The passphrase is never stored; sessionStorage holds only the nickname.
+  Why not store nothing: [D22](DECISIONS.md#d22-a-chat-hosts-room-survives-a-reload-not-a-closed-tab-).
 - Every room closes on its own after a time limit (default 4 hours, at most 24, chosen by the
   host), for the host and every guest, so a forgotten tab doesn't keep relay and peer connections
   open (and exposed to bugs in the code or the browser) indefinitely.
