@@ -1,4 +1,4 @@
-import { h, copyText, formatBytes, safeFileName } from '../lib/dom.js';
+import { h, copyText, formatBytes, safeFileName, closesAt } from '../lib/dom.js';
 import { SecureRoom, DENY_REASONS, MAX_TEXT, MAX_FILE_BYTES } from '../lib/room.js';
 import { readInvite, type Invite, type Session } from './chat.js';
 import { passphraseField, copyRow, field } from './widgets.js';
@@ -178,6 +178,7 @@ function senderView(body: HTMLElement, room: SecureRoom, { text, files, passphra
     copyRow('One-time link', room.link('share'), true),
     copyRow('Passphrase', passphrase, true),
     h('p', { class: 'hint warn' }, '⚠ Keep this tab open until the delivery completes. Nothing is stored on a server, so closing it cancels the share.'),
+    room.expiresAt ? h('p', { class: 'hint' }, `⏱ If nobody receives it, the link stops working at ${closesAt(room.expiresAt)}.`) : null,
     awakeNote, away, status, extra,
     h('div', { class: 'row' }, cancel),
   ));
@@ -220,6 +221,14 @@ function senderView(body: HTMLElement, room: SecureRoom, { text, files, passphra
       setStatus('Delivered ✓ The room is closed and the link no longer works.');
       cancel.textContent = 'Share something else';
       void room.leave();
+    })
+    .on('expiring', ({ expiresAt }) => { if (!delivered) extra.append(h('p', { class: 'hint warn' }, `⏱ The link stops working at ${closesAt(expiresAt)}.`)); })
+    .on('closed', ({ reason }) => {
+      if (delivered || reason !== 'expired') return;
+      stopWaiting();
+      document.title = waitingTitle;
+      setStatus('Not delivered: the link reached its time limit and no longer works. Create a new one to try again.');
+      cancel.textContent = 'Share something else';
     })
     .on('left', () => {
       if (delivered) return;

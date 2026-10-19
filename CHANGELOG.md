@@ -4,6 +4,19 @@ All notable changes, one section per version. See [docs/ROADMAP.md](docs/ROADMAP
 
 ## [Unreleased]
 
+### Security
+- **The chat passphrase is no longer stored in the browser** (code scanning alert #1). It used to
+  be kept in clear in sessionStorage so the host could see it after a reload; now it stays in
+  memory only (roadmap fix K1).
+- **The host's saved room state only survives a reload.** It used to stay in IndexedDB for up to
+  24 h after the tab closed; now it's refused and deleted 2 minutes after the page stops
+  refreshing it, and stale records are swept on every visit (roadmap fix K2).
+- **Rooms close on their own after a time limit**: 4 hours by default, 1 to 24 hours under
+  "Advanced options" when creating a chat. The host sees the closing time when the room is
+  created, guests when they're admitted, the Share sender under the link, and everyone is warned
+  10 minutes before. Guests waiting for a host that never returns stop too. Protocol: `welcome`
+  carries the time left and `bye` has a new `expired` reason; older peers ignore both (roadmap fix K3).
+
 ### Added
 - **Safari's engine is tested.** The unit and end-to-end suites also run on **WebKit** (Safari, and
   every browser on iPhone and iPad), and every pair of different engines is tested in both

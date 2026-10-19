@@ -89,7 +89,8 @@ After a successful handshake the guest is *pending*:
   automatically. This is how members reconnect after a host reload.
 - Pending guests receive nothing.
 
-On accept the host sends `welcome`, then broadcasts the roster. On decline or removal it sends
+On accept the host sends `welcome` with the time left before the room closes, then broadcasts
+the roster. On decline or removal it sends
 `bye` and closes the connection. The guest's key is banned for the rest of the session.
 
 ## 6. Control messages (host → guest)
@@ -97,9 +98,18 @@ On accept the host sends `welcome`, then broadcasts the roster. On decline or re
 `ctl = b64u(seal(groupKey, UTF-8(JSON)))`, accepted by a guest only from the host's connection:
 
 ```
-{ t: "welcome" }
+{ t: "welcome", ttl?: ms }                                 // ttl: time left, 0 < ttl ≤ 24 h, else ignored
 { t: "roster", members: [ { id, nick, pub, host } ] }     // guest checks that the host entry's pub is pubH
-{ t: "bye", reason: "rejected" | "kicked" | "closed" }
+{ t: "bye", reason: "rejected" | "kicked" | "closed" | "expired" }
+```
+
+**Time limit.** The host picks a lifetime when creating the room (default 4 h, capped at 24 h).
+At the end it sends `bye {reason: "expired"}` to every guest and closes. A guest that received a
+`ttl` closes on its own when it runs out, even if the host is gone. Both warn 10 minutes before.
+`ttl` is relative, so the two clocks needn't agree. Older guests ignore `ttl` and read `expired`
+as `closed`.
+
+```
 ```
 
 ## 7. Messages and files
@@ -147,10 +157,14 @@ are **pairwise between host and guest**: guests can't compare codes with each ot
 
 ## 9. Host resume (Chat)
 
-The host stores `{roomId, secret, h, nick, identity, keys, approved}` in IndexedDB, where the
-private key and the derived keys are non-extractable `CryptoKey`s. Opening the room link again in
-the same browser resumes hosting if the record exists, `h` matches, it is younger than 24 h, and no
-other tab holds the Web Lock `uss-host:chat:<roomId>`. Closing the room deletes the record. Guests
+The host stores `{roomId, secret, h, nick, identity, keys, approved, expiresAt}` in IndexedDB,
+where the private key and the derived keys are non-extractable `CryptoKey`s. The page re-saves it
+every 30 s and when it's hidden or unloaded. Opening the room link again in the same browser
+resumes hosting if the record exists, `h` matches, it was saved less than 2 minutes ago (so a
+reload, not a tab closed earlier), the room's time limit hasn't passed, and no other tab holds the
+Web Lock `uss-host:chat:<roomId>`. Records failing those checks are deleted, and every visit to
+Chat sweeps them. A resumed room keeps its original `expiresAt`. Closing the room deletes the
+record. Guests
 treat a vanished host as `host-lost`, search again, and are re-admitted per §5.
 
 ## 10. Limits and constants

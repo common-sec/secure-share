@@ -330,3 +330,39 @@ test('guests wait for a reloading host and are re-admitted automatically', async
   assert.equal((await atBob).inner.body, 'back');
   cleanup(resumed, bob);
 });
+
+// ---- time limit ----
+test('the room closes for everyone at its time limit, and guests learn when on joining', async () => {
+  const net = new FakeNetwork();
+  const host = await hostRoom(net, { lifetimeMs: 4000 });
+  const bob = await joinGuest(net, host, 'Bob');
+  assert.ok(Math.abs(bob.expiresAt - host.expiresAt) < 1000, 'guest knows the closing time');
+  const [atHost, atBob] = [once(host, 'closed', 12000), once(bob, 'closed', 12000)];
+  assert.equal((await atBob).reason, 'expired');
+  assert.equal((await atHost).reason, 'expired');
+  assert.equal(host.transport.getRelaySockets()['wss://relay.test'].readyState, 3, 'host stops looking for guests');
+  cleanup(host, bob);
+});
+
+test('the time limit is capped, and a reload does not extend it', async () => {
+  const net = new FakeNetwork();
+  const host = await hostRoom(net, { lifetimeMs: 1e12 });
+  assert.ok(host.expiresAt - Date.now() <= 24 * 60 * 60 * 1000);
+  const snapshot = host.snapshot();
+  host.room.leave();
+  const resumed = await SecureRoom.host({ app: 'test', restore: snapshot, transport: net.transport(), maxGuests: 7, lifetimeMs: 1e12 });
+  assert.equal(resumed.expiresAt, host.expiresAt);
+  cleanup(host, resumed);
+});
+
+test('a guest waiting for a host that never comes back also stops at the time limit', async () => {
+  const net = new FakeNetwork();
+  const host = await hostRoom(net, { lifetimeMs: 4000 });
+  const bob = await joinGuest(net, host, 'Bob');
+  const lost = once(bob, 'host-lost');
+  host.room.leave(); // the host's tab vanishes without a goodbye
+  host.closed = true; // and its own timer with it
+  await lost;
+  assert.equal((await once(bob, 'closed', 12000)).reason, 'expired');
+  cleanup(host, bob);
+});

@@ -207,6 +207,27 @@ features above.
 
 Legend: `[ ]` to do · `[x]` done (keep for one release, then remove).
 
+### High priority: security findings
+
+From [code scanning alert #1](https://github.com/common-sec/secure-share/security/code-scanning/1)
+(clear-text storage of sensitive data).
+- [x] **K1. No passphrase in browser storage.** The chat host's passphrase was kept in
+      sessionStorage, in clear, to show it again after a reload. It now lives only in memory;
+      after a reload the Invite panel says it isn't kept.
+- [x] **K2. Host state survives a reload only.** The IndexedDB record used to stay for 24 h after
+      the tab closed. The page now refreshes it every 30 s and on hide/unload; one not refreshed
+      for 2 minutes, or past the room's time limit, is refused and deleted, and Chat sweeps stale
+      ones on every visit. A host whose tab can't resume sees "This room has ended".
+- [x] **K3. Room time limit.** Every room closes for everyone after 4 hours by default (1, 8 or
+      24 h under "Advanced options" in Chat; Share uses the default). The host sees the closing
+      time on creation and in the Invite panel, guests when they're admitted and the Share sender
+      under the link; everyone is warned 10 minutes before.
+- [ ] **K4. Trial dropping host resume.** Build a variant that stores nothing (a reload or a
+      background-tab reload ends the room) and try it on phones and computers: how often rooms
+      are lost in normal use, and whether clearer warnings (before reloading, when the tab goes to
+      the background, on mobile) keep it usable. Then choose between it and the current
+      reload-only resume ([D22](DECISIONS.md#d22-a-chat-hosts-room-survives-a-reload-not-a-closed-tab-)).
+
 ### High priority: sending and receiving UX
 
 From the [UX, product and SEO review](reviews/2026-10-12-ux-product-seo.md#2-ux-secure-share-the-main-flow).

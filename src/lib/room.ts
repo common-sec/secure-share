@@ -28,6 +28,11 @@ const MAX_FAILURES = 5;
 // Public Nostr relays used for discovery. Fewer relays = fewer third parties seeing that a room
 // exists; 3 keeps some redundancy if one is down. Peers of the same app pick the same subset.
 const RELAY_REDUNDANCY = 3;
+// Every room closes on its own after a while, so a forgotten tab doesn't keep connections open.
+export const DEFAULT_LIFETIME_MS = 4 * 60 * 60 * 1000;
+export const MAX_LIFETIME_MS = 24 * 60 * 60 * 1000;
+/** How long before the end members are warned ('expiring'). */
+export const EXPIRY_WARNING_MS = 10 * 60 * 1000;
 
 export const DENY_REASONS = {
   passphrase: 'Wrong passphrase.',
@@ -39,6 +44,7 @@ export const DENY_REASONS = {
   kicked: 'The host removed you from the room.',
   closed: 'The host closed the room.',
   'host-left': 'The host left, so the room is closed.',
+  expired: 'The room reached its time limit and closed. The link no longer works.',
 } as const;
 export type DenyReason = keyof typeof DENY_REASONS;
 const isDenyReason = (r: unknown): r is DenyReason => typeof r === 'string' && Object.hasOwn(DENY_REASONS, r);
@@ -68,7 +74,7 @@ interface Guest {
 
 interface Hello { v: 2; role: 'host' | 'guest'; pub: string; nonce: string; nick?: string }
 type Ctl =
-  | { t: 'welcome' }
+  | { t: 'welcome'; ttl?: number }
   | { t: 'roster'; members: Array<Pick<Member, 'id' | 'nick' | 'pub' | 'host'>> }
   | { t: 'bye'; reason: DenyReason };
 
@@ -91,6 +97,8 @@ export interface HostSnapshot {
   identity: C.Identity;
   keys: C.RoomKeys;
   approved: Array<[pub: string, nick: string]>;
+  /** when the room closes (epoch ms); older records without it get the default lifetime */
+  expiresAt?: number;
 }
 
 // ---------------------------------------------------------------- validation of peer data
@@ -105,7 +113,10 @@ function parseHello(v: unknown): Hello | null {
 
 function parseCtl(v: unknown): Ctl | null {
   if (!isObj(v)) return null;
-  if (v.t === 'welcome') return { t: 'welcome' };
+  if (v.t === 'welcome') {
+    const ttl = typeof v.ttl === 'number' && v.ttl > 0 && v.ttl <= MAX_LIFETIME_MS ? v.ttl : undefined;
+    return ttl === undefined ? { t: 'welcome' } : { t: 'welcome', ttl };
+  }
   if (v.t === 'bye') return { t: 'bye', reason: isDenyReason(v.reason) ? v.reason : 'closed' };
   if (v.t === 'roster' && Array.isArray(v.members)) {
     const members = v.members.filter(isObj).filter((m) => isStr(m.id) && isStr(m.nick) && isStr(m.pub))
@@ -145,6 +156,8 @@ export interface RoomEvents {
   accepted: Record<string, never>;
   denied: { reason: string };
   'host-lost': Record<string, never>;
+  /** the room closes in EXPIRY_WARNING_MS or less */
+  expiring: { expiresAt: number };
   persist: Record<string, never>;
   joined: { member: Member };
   left: { member: Member | Guest; kicked?: boolean };
@@ -162,6 +175,8 @@ interface HostOptions {
   nick?: string;
   maxGuests?: number;
   autoAccept?: boolean;
+  /** how long the room stays open (clamped to MAX_LIFETIME_MS); ignored when resuming */
+  lifetimeMs?: number;
   restore?: HostSnapshot | null;
   transport?: Transport | null;
 }
@@ -188,7 +203,7 @@ export class SecureRoom extends EventTarget {
    * Creates a room, or resumes one after a page reload when `restore` holds the saved host state
    * (see snapshot()).
    */
-  static async host({ app, passphrase = '', nick = '', maxGuests = 7, autoAccept = false, restore = null, transport = null }: HostOptions): Promise<SecureRoom> {
+  static async host({ app, passphrase = '', nick = '', maxGuests = 7, autoAccept = false, lifetimeMs = DEFAULT_LIFETIME_MS, restore = null, transport = null }: HostOptions): Promise<SecureRoom> {
     const identity = restore?.identity ?? await C.newIdentity();
     const room = new SecureRoom({
       app, roomId: restore?.roomId ?? C.randomId(16), secret: restore?.secret ?? C.randomId(32),
@@ -197,8 +212,10 @@ export class SecureRoom extends EventTarget {
     });
     room.keys = restore?.keys ?? null;
     room.approved = new Map(restore?.approved ?? []);
+    room.expiresAt = restore?.expiresAt ?? Date.now() + Math.min(Math.max(lifetimeMs, 1000), MAX_LIFETIME_MS);
     room.members.set(identity.id, { id: identity.id, nick: room.nick, pub: identity.pub, host: true });
     await room.#connect();
+    room.#watchExpiry();
     return room;
   }
 
@@ -235,6 +252,8 @@ export class SecureRoom extends EventTarget {
   guests = new Map<string, Guest>();
   /** host only: guest public key -> nickname, re-admitted automatically */
   approved = new Map<string, string>();
+  /** when the room closes (epoch ms, this device's clock); a guest learns it on acceptance */
+  expiresAt: number | null = null;
   locked = false;
   accepted = false;
   closed = false;
@@ -245,6 +264,8 @@ export class SecureRoom extends EventTarget {
   #fileMeta = new Map<string, Promise<FileMeta | null>>();
   #discoverable = true;
   #failures = 0;
+  #expiryTimer: ReturnType<typeof setInterval> | undefined;
+  #warned = false;
 
   private constructor(o: {
     app: string; roomId: string; secret: string; passphrase: string; nick: string; maxGuests: number;
@@ -291,6 +312,7 @@ export class SecureRoom extends EventTarget {
     return {
       roomId: this.roomId, secret: this.secret, hostFp: this.hostFp, nick: this.nick,
       identity: this.identity, keys: this.#k, approved: [...this.approved],
+      ...(this.expiresAt ? { expiresAt: this.expiresAt } : {}),
     };
   }
 
@@ -501,7 +523,7 @@ export class SecureRoom extends EventTarget {
     this.#emit('persist', {});
     const member: Member = { id: g.id, nick: g.nick, pub: g.pub, host: false, peerId, code: g.code };
     this.members.set(g.id, member);
-    await this.#sendCtl({ t: 'welcome' }, [peerId]);
+    await this.#sendCtl({ t: 'welcome', ...(this.expiresAt ? { ttl: Math.max(this.expiresAt - Date.now(), 1) } : {}) }, [peerId]);
     await this.#broadcastRoster();
     this.#emit('joined', { member });
   }
@@ -556,6 +578,8 @@ export class SecureRoom extends EventTarget {
     const msg = parseCtl(await C.openJson(this.#k.groupKey, data));
     if (!msg) return;
     if (msg.t === 'welcome') {
+      // A guest also stops on its own at the end, e.g. while waiting for a host that never returns.
+      if (msg.ttl && !this.expiresAt) { this.expiresAt = Date.now() + msg.ttl; this.#watchExpiry(); }
       this.accepted = true;
       this.#syncDiscovery();
       this.#emit('accepted', {});
@@ -669,9 +693,32 @@ export class SecureRoom extends EventTarget {
   }
 
   // ---- lifecycle ----
+  // Checked against the clock rather than one long timer, which a sleeping device would delay.
+  // The first check comes after a tick, once the caller has subscribed to 'expiring'.
+  #watchExpiry(): void {
+    const check = () => {
+      if (this.closed || !this.expiresAt) return;
+      const left = this.expiresAt - Date.now();
+      if (left <= 0) { void this.#expire(); return; }
+      if (left <= EXPIRY_WARNING_MS && !this.#warned) {
+        this.#warned = true;
+        this.#emit('expiring', { expiresAt: this.expiresAt });
+      }
+    };
+    clearInterval(this.#expiryTimer);
+    this.#expiryTimer = setInterval(check, 5000);
+  }
+
+  async #expire(): Promise<void> {
+    if (this.closed) return;
+    if (this.isHost) await this.#sendCtl({ t: 'bye', reason: 'expired' }, [...this.guests.keys()]).catch(() => {});
+    this.#close('expired');
+  }
+
   #close(reason: DenyReason | 'left'): void {
     if (this.closed) return;
     this.closed = true;
+    clearInterval(this.#expiryTimer);
     void this.room?.leave();
     this.#syncDiscovery();
     this.#emit('closed', { reason });
