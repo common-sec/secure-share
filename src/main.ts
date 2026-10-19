@@ -1,13 +1,14 @@
 import * as password from './tools/password.js';
 import * as chat from './tools/chat.js';
 import * as share from './tools/share.js';
+import { APP_NAME } from './lib/app.js';
 
 /** Set at build time by build.mjs: package.json version + short commit, e.g. "0.6.0+1a2b3c4". */
 declare const __APP_VERSION__: string;
 /** Set at build time by build.mjs from $BUILD_REPOSITORY: where this build's source lives. */
 declare const __REPOSITORY__: string;
 
-export const APP_NAME = 'CommonSec Share';
+export { APP_NAME };
 const REPOSITORY = __REPOSITORY__;
 
 interface Route {

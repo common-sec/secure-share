@@ -4,7 +4,22 @@ All notable changes, one section per version. See [docs/ROADMAP.md](docs/ROADMAP
 
 ## [Unreleased]
 
+### Added
+- **The sender's phone stays awake while waiting** (Screen Wake Lock, taken again when the tab
+  comes back). The form explains before the link exists that the page must stay open; while the
+  tab is in the background its title says "⚠ Keep this tab open", and on return a note repeats it
+  (TODO S1).
+- **"✓ Delivered" in the tab title** when the delivery completes, so it shows from another tab
+  (TODO S5).
+- **Received text is masked**, with Show, Copy and "Clear from screen" (TODO R2).
+
 ### Changed
+- The waiting screen hides the intro and shows only the steps and the status (TODO S4).
+- The approval option reads "Let me check who’s receiving before sending" (TODO S7).
+- The recipient's tab title is "You’ve received a secure delivery" (TODO R3).
+- **Accessibility:** every visible label is tied to its field, including the message box, and
+  the Passwords page's fields (its `label` and `select-name` axe findings are gone); Share's
+  status lines are announced to screen readers (TODO A1, A3).
 - **The site is at https://share.common-sec.org/**, a custom domain on GitHub Pages: verified for
   the organisation, HTTPS enforced. The previous `common-sec.github.io/secure-share/` address
   redirects to it. README, decisions (D19, D21), release guide and roadmap updated.
