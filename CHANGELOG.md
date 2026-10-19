@@ -6,8 +6,8 @@ All notable changes, one section per version. See [docs/ROADMAP.md](docs/ROADMAP
 
 ### Added
 - **Safari's engine is tested.** The unit and end-to-end suites also run on **WebKit** (Safari, and
-  every browser on iPhone and iPad), including cross-engine pairs (a WebKit guest in a Chromium
-  host's chat, a WebKit sender sharing to Firefox). All 50 unit tests and every end-to-end
+  every browser on iPhone and iPad), and every pair of different engines is tested in both
+  directions, for Share (sender → recipient) and Chat (host → guest). All 50 unit tests and every end-to-end
   scenario pass unchanged on WebKit: no app change was needed. WebKit hides host ICE candidates
   behind mDNS names, so the end-to-end test server also runs a tiny local STUN server for WebKit
   contexts; nothing leaves the container. Edge is covered by the Chromium runs (same engine); the

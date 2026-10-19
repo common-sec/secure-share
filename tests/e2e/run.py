@@ -207,13 +207,14 @@ def audit(page, state):
 
 
 # ---------------------------------------------------------------- scenarios
-TESTS = []
+ENGINES = ("chromium", "firefox", "webkit")
+TESTS = []    # (name, function, its argument, engines used)
 
 
 def scenario(name, browsers=("chromium",)):
     def register(fn):
         for b in browsers:
-            TESTS.append((f"{name} [{b}]", fn, b))
+            TESTS.append((f"{name} [{b}]", fn, b, (b,)))
         return fn
     return register
 
@@ -326,42 +327,44 @@ def chat_locked(env, b):
     expect(late.get_by_text("Looking for the host")).to_be_visible()
 
 
-@scenario("chat across browsers: Chromium host, Firefox guest", browsers=("chromium",))
-def chat_cross_browser(env, b):
-    host, guest = env.person("chromium"), env.person("firefox")
-    link, passphrase = chat_create(env, host, "Alice")
-    chat_join(guest, link, "Fox", passphrase)
-    approve(host, "Fox")
-    admitted(guest)
-    say(guest, "hi from Firefox")
-    sees(host, "hi from Firefox")
-    say(host, "hi from Chromium")
-    sees(guest, "hi from Chromium")
+# Every ordered pair of different engines, for both flows: the roles aren't symmetric (the host
+# relays for its guests, the sender offers and the recipient asks), so A → B and B → A both count.
+CROSS_PAIRS = [(a, b) for a in ENGINES for b in ENGINES if a != b]
 
 
-@scenario("chat across browsers: Chromium host, WebKit guest", browsers=("chromium",))
-def chat_cross_webkit_guest(env, b):
-    host, guest = env.person("chromium"), env.person("webkit")
-    link, passphrase = chat_create(env, host, "Alice")
-    chat_join(guest, link, "Safari", passphrase)
-    approve(host, "Safari")
-    admitted(guest)
-    say(guest, "hi from WebKit")
-    sees(host, "hi from WebKit")
-    say(host, "hi from Chromium")
-    sees(guest, "hi from Chromium")
+def cross_scenario(name):
+    def register(fn):
+        for a, b in CROSS_PAIRS:
+            TESTS.append((f"{name} [{a} → {b}]", fn, (a, b), (a, b)))
+        return fn
+    return register
 
 
-@scenario("share across browsers: WebKit sender, Firefox recipient", browsers=("webkit",))
-def share_cross_webkit_sender(env, b):
-    sender, recipient = env.person("webkit"), env.person("firefox")
+@cross_scenario("share across browsers: text and a file delivered")
+def share_cross_browser(env, pair):
+    a, b = pair
+    sender, recipient = env.person(a), env.person(b)
     secret_file = file_payload("notes.bin", 200_000)
-    link, passphrase = share_send(env, sender, "from Safari to Firefox", [secret_file])
+    link, passphrase = share_send(env, sender, f"from {a} to {b}", [secret_file])
     share_open(recipient, link, passphrase)
     expect(recipient.get_by_text("Received ✓")).to_be_visible()
-    assert recipient.locator("pre.secret").inner_text() == "from Safari to Firefox"
+    assert recipient.locator("pre.secret").inner_text() == f"from {a} to {b}"
     assert download(recipient, ".file-card", "notes.bin") == secret_file["buffer"]
     expect(sender.get_by_text("Delivered ✓")).to_be_visible()
+
+
+@cross_scenario("chat across browsers: guest admitted, messages both ways")
+def chat_cross_browser(env, pair):
+    a, b = pair
+    host, guest = env.person(a), env.person(b)
+    link, passphrase = chat_create(env, host, "Alice")
+    chat_join(guest, link, "Bob", passphrase)
+    approve(host, "Bob")
+    admitted(guest)
+    say(guest, f"hi from {b}")
+    sees(host, f"hi from {b}")
+    say(host, f"hi from {a}")
+    sees(guest, f"hi from {a}")
 
 
 @scenario("passwords page passes the accessibility checks")
@@ -377,20 +380,20 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--public", action="store_true", help="use the real public relays and STUN servers")
     parser.add_argument("--filter", default="")
-    parser.add_argument("--browsers", default="chromium,firefox,webkit", help="browsers allowed to run scenarios")
+    parser.add_argument("--browsers", default=",".join(ENGINES), help="browsers allowed to run scenarios")
     args = parser.parse_args()
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
     allowed = set(args.browsers.split(","))
-    selected = [t for t in TESTS if args.filter in t[0] and t[2] in allowed]
+    selected = [t for t in TESTS if args.filter in t[0] and set(t[3]) <= allowed]
     server, base = serve()
     print(f"e2e: {len(selected)} scenarios, {'public relays + STUN' if args.public else 'local relay, host-only ICE'}\n")
     failed = 0
     with sync_playwright() as p:
         env = Env(p, base, args.public)
         try:
-            for name, fn, b in selected:
+            for name, fn, b, _ in selected:
                 start = time.time()
                 try:
                     env.blocked = []

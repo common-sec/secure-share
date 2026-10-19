@@ -89,9 +89,8 @@ clicks, types, uploads and downloads files exactly as a user would, and the peer
 | Chat: a declined guest is told and gets nothing | Chromium |
 | Chat: a wrong passphrase is refused, and the host is told | Chromium |
 | Chat: a locked room can't be joined | Chromium |
-| Chat **across browsers**: Chromium host, Firefox guest | Chromium + Firefox |
-| Chat **across browsers**: Chromium host, WebKit guest | Chromium + WebKit |
-| Share **across browsers**: WebKit sender, Firefox recipient, with a file | WebKit + Firefox |
+| Share **across browsers**: text and a file delivered, sender on one engine and recipient on another | Every ordered pair of different engines (6) |
+| Chat **across browsers**: a guest is admitted and messages flow both ways, host on one engine and guest on another | Every ordered pair of different engines (6) |
 | Accessibility (axe-core) on the share form, waiting and received states, the chat form and room (host and guest), and the password page | Chromium, Firefox, WebKit (password page: Chromium) |
 
 ### Two modes
