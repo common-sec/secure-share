@@ -1,5 +1,5 @@
 import { h, formatBytes, safeFileName, type Child } from '../lib/dom.js';
-import { passphraseField, copyRow } from './widgets.js';
+import { passphraseField, copyRow, field } from './widgets.js';
 import { SecureRoom, DENY_REASONS, MAX_TEXT, MAX_FILE_BYTES, cleanNick, type Inner, type Member } from '../lib/room.js';
 import { saveHost, loadHost, forgetHost, claimHost, type HostRecord } from '../lib/hoststore.js';
 
@@ -55,8 +55,8 @@ export function mount(root: HTMLElement, params: URLSearchParams): () => void {
       }
     } },
     h('h2', null, invite ? 'You’re invited to a secure chat' : 'Start a secure chat'),
-    h('div', { class: 'field' }, h('label', null, 'Your nickname'), nick),
-    h('div', { class: 'field' }, h('label', null, 'Room passphrase'), pass.el,
+    field('Your nickname', nick),
+    field('Room passphrase', pass.el,
       h('p', { class: 'hint' }, invite
         ? 'The host should have given you this separately from the link.'
         : 'Share this with your guests separately from the link, e.g. say it on a call.')),
@@ -134,7 +134,7 @@ async function startChat(root: HTMLElement, { invite, nick = '', passphrase = nu
   const badge = h('span', { class: room.isHost ? 'badge badge-host' : 'badge' }, room.isHost ? '★ You are the host' : 'Connecting to host…');
   const requests = h('div', { class: 'requests' });
   const messages = h('ol', { class: 'messages', 'aria-live': 'polite' });
-  const input = h('textarea', { rows: 1, placeholder: 'Write a message…', maxlength: MAX_TEXT, disabled: true });
+  const input = h('textarea', { rows: 1, placeholder: 'Write a message…', 'aria-label': 'Message', maxlength: MAX_TEXT, disabled: true });
   const sendBtn = h('button', { class: 'btn btn-primary', disabled: true, onclick: sendText, title: 'Send (Enter)' }, 'Send');
   const fileInput = h('input', {
     type: 'file', multiple: true, hidden: true,

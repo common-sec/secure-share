@@ -19,6 +19,7 @@ exactly as on the live site. Both test the built app (dist/), so run the `build`
 import argparse
 import json
 import os
+import re
 import sys
 import time
 import traceback
@@ -108,14 +109,19 @@ def file_payload(name, size):
     return {"name": name, "mimeType": "application/octet-stream", "buffer": data}
 
 
-def share_send(env, page, text, files=(), approve=False):
+def share_send(env, page, text, files=(), approve=False, keep_awake=False):
     page.goto(env.app + "#/share")
     page.locator("form textarea").fill(text)
     if files:
         page.locator("form input[type=file]").set_input_files(list(files))
     passphrase = page.locator("form input[aria-label=Passphrase]").input_value()
     if approve:
-        page.get_by_text("Ask me before delivering").click()
+        page.get_by_text("Let me check who’s receiving before sending").click()
+    warning = page.get_by_text("Don’t leave your phone or computer unattended")
+    expect(warning).to_be_hidden()          # off by default
+    if keep_awake:
+        page.get_by_text("Keep the screen on while waiting").click()
+        expect(warning).to_be_visible()
     page.get_by_role("button", name="Create one-time link").click()
     link = page.locator('input[aria-label="One-time link"]')
     expect(link).to_be_attached()
@@ -126,6 +132,13 @@ def share_open(page, link, passphrase):
     page.goto(link)
     page.locator("form input[aria-label=Passphrase]").fill(passphrase)
     page.get_by_role("button", name="Receive").click()
+
+
+def received_text(page):
+    """The received text is masked until the recipient clicks Show."""
+    expect(page.locator("pre.secret")).to_be_hidden()
+    page.locator(".result").get_by_role("button", name="Show").click()
+    return page.locator("pre.secret").inner_text()
 
 
 def download(page, scope, name):
@@ -222,12 +235,19 @@ def share_happy_path(env, b):
     link, passphrase = share_send(env, sender, "db-password: Karrot~Over~Stone42", [secret_file])
     audit(sender, "share-waiting")
 
+    expect(sender.locator(".page-head .lead").first).to_be_hidden()   # the intro is hidden while waiting
+    expect(sender.get_by_role("status")).to_contain_text("Waiting for the recipient")
+
     share_open(recipient, link, passphrase)
+    expect(recipient).to_have_title(re.compile("received a secure delivery"))
     expect(recipient.get_by_text("Received ✓")).to_be_visible()
-    assert recipient.locator("pre.secret").inner_text() == "db-password: Karrot~Over~Stone42"
+    assert received_text(recipient) == "db-password: Karrot~Over~Stone42"
     assert download(recipient, ".file-card", "keys.bin") == secret_file["buffer"]
     expect(sender.get_by_text("Delivered ✓")).to_be_visible()
+    expect(sender).to_have_title(re.compile("^✓ Delivered"))
     audit(recipient, "share-received")
+    recipient.get_by_role("button", name="Clear from screen").click()
+    expect(recipient.locator("pre.secret")).to_have_count(0)
 
     late = env.person(b)
     share_open(late, link, passphrase)
@@ -248,13 +268,14 @@ def share_wrong_passphrase(env, b):
 @scenario("share: with approval, nothing is sent until the sender clicks Deliver")
 def share_with_approval(env, b):
     sender, recipient = env.person(b), env.person(b)
-    link, passphrase = share_send(env, sender, "approved secret", approve=True)
+    link, passphrase = share_send(env, sender, "approved secret", approve=True, keep_awake=True)
+    expect(sender.get_by_text("Don’t leave this device unattended")).to_be_visible()
     share_open(recipient, link, passphrase)
     expect(sender.get_by_role("button", name="Deliver")).to_be_visible()
     stays_quiet(lambda: recipient.get_by_text("Received ✓").is_visible())
     sender.get_by_role("button", name="Deliver").click()
     expect(recipient.get_by_text("Received ✓")).to_be_visible()
-    assert recipient.locator("pre.secret").inner_text() == "approved secret"
+    assert received_text(recipient) == "approved secret"
 
 
 @scenario("chat: approve guests, messages and files relay through the host, remove a member",

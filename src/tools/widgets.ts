@@ -1,5 +1,5 @@
 // UI pieces shared by the tools.
-import { h, copyText } from '../lib/dom.js';
+import { h, copyText, type Child } from '../lib/dom.js';
 import { roomPassphrase, phraseEntropy, ROOM_PHRASE } from '../lib/passphrase.js';
 import { strengthLabel, estimateBits } from '../lib/strength.js';
 
@@ -77,8 +77,25 @@ export function passphraseField({ generate }: { generate: boolean }): { input: H
 
 /** Read-only value with a Copy button; secrets are masked, with a Show toggle. */
 export function copyRow(label: string, value: string, secret: boolean): HTMLElement {
-  const field = h('input', { type: secret ? 'password' : 'text', readOnly: true, value, class: 'mono', 'aria-label': label });
+  const input = h('input', { type: secret ? 'password' : 'text', readOnly: true, value, class: 'mono', 'aria-label': label });
   const btn = h('button', { class: 'btn btn-small', onclick: () => copyText(value, btn) }, 'Copy');
-  return h('div', { class: 'field' }, h('label', null, label),
-    h('div', { class: 'row grow tight' }, field, secret ? revealToggle(field) : null, btn));
+  return field(label, h('div', { class: 'row grow tight' }, input, secret ? revealToggle(input) : null, btn));
+}
+
+let fieldIds = 0;
+
+/**
+ * A labelled form field. The label is tied to the control (or to the first input, textarea or
+ * select inside it) with for/id, so screen readers announce it and clicking it focuses the field.
+ */
+export function field(label: string, control: HTMLElement, ...rest: Child[]): HTMLElement {
+  const target = control.matches('input, textarea, select')
+    ? control
+    : control.querySelector<HTMLElement>('input:not([type=hidden]), textarea, select');
+  const lbl = h('label', null, label);
+  if (target) {
+    if (!target.id) target.id = `field-${++fieldIds}`;
+    lbl.htmlFor = target.id;
+  }
+  return h('div', { class: 'field' }, lbl, control, ...rest);
 }
