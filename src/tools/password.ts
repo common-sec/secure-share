@@ -4,7 +4,7 @@ import {
   generatePhrase, phraseEntropy, PHRASE_DEFAULTS, STYLES, SEPARATOR_OPTIONS, CAPS,
   type Caps, type PhraseOptions, type Separator, type Style,
 } from '../lib/passphrase.js';
-import { strengthMeter } from './widgets.js';
+import { strengthMeter, field } from './widgets.js';
 
 const SETS = {
   lower: 'abcdefghijklmnopqrstuvwxyz',
@@ -143,7 +143,6 @@ export function mount(root: HTMLElement, params: URLSearchParams): void {
     });
     return el;
   };
-  const field = (label: string, control: HTMLElement) => h('div', { class: 'field' }, h('label', null, label), control);
 
   const lenRange = h('input', { type: 'range', min: LIMITS.len[0], max: 64, value: String(Math.min(s.len, 64)), 'aria-label': 'Length' });
   const lenNum = number('len', LIMITS.len[0], LIMITS.len[1]);

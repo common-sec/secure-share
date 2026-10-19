@@ -9,10 +9,7 @@
     "color-contrast",
     "heading-order"
   ],
-  "passwords": [
-    "label",
-    "select-name"
-  ],
+  "passwords": [],
   "share-form": [
     "color-contrast"
   ],
