@@ -75,6 +75,12 @@ subdomain of this one.
 - staging can't be mistaken for production: a visible "staging" banner, `noindex` and no
   sitemap, and its own Trystero `appId`, so staging and production peers never meet while the
   protocol changes;
+- **the version in the footer never misleads** (found 2026-10-19): today every merge to `master`
+  deploys production, and the footer shows `package.json`'s version (the last release, e.g.
+  `0.6.2`) with the new commit, so `0.6.2+<commit>` looks like release 0.6.2 when it isn't.
+  Production shows exactly the tag it was built from; staging and any other untagged build say
+  so (e.g. `0.6.2-dev+<commit>`, or "unreleased build of `<commit>`"), and the release workflow
+  checks that the tag matches `package.json`;
 - docs/RELEASES.md describes the flow: merge → staging → manual checks → tag → production; the
   release checklist runs against staging; a decision entry records it.
 
