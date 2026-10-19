@@ -1,5 +1,5 @@
 {
-  "_note": "Known axe-core findings, accepted until fixed by the accessibility items A1-A4 in docs/TODO.md. Any finding not listed here fails the end-to-end tests. Remove entries as they're fixed; never add one without a TODO or roadmap reference.",
+  "_note": "Known axe-core findings, accepted until fixed by the accessibility items A1-A4 in docs/ROADMAP.md (fixes). Any finding not listed here fails the end-to-end tests. Remove entries as they're fixed; never add one without a roadmap reference.",
   "chat-form": [],
   "chat-room-guest": [
     "color-contrast",

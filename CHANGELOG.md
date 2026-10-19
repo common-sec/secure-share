@@ -23,6 +23,13 @@ All notable changes, one section per version. See [docs/ROADMAP.md](docs/ROADMAP
 - **Received text is masked**, with Show, Copy and "Clear from screen" (TODO R2).
 
 ### Changed
+- **Roadmap and internal work are split.** [docs/ROADMAP.md](docs/ROADMAP.md) now lists only app
+  features and user-facing fixes (the fixes that were in TODO.md moved there, same IDs).
+  Platform, build, CI/CD, testing and security process work moved to
+  [docs/TODO.md](docs/TODO.md) as items I1–I8, which ship in the next release without a feature
+  version. Planned features were renumbered: `age` format 0.8.0, relay fallback 0.9.0, static
+  pages 0.10.0, then 1.0.0, and 1.1.0–1.3.0 after launch. Both lists stay files edited through
+  pull requests rather than GitHub Issues or Projects (decision D18).
 - The waiting screen hides the intro and shows only the steps and the status (TODO S4).
 - The approval option reads "Let me check who’s receiving before sending" (TODO S7).
 - The recipient's tab title is "You’ve received a secure delivery" (TODO R3).

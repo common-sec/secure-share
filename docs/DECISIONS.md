@@ -44,7 +44,7 @@ kept under "History".
 - **Why:** no third party carries data, and there's zero cost. Direct connections work on most
   home, office and mobile networks (verified in a real-world test across two different networks, mobile data and wifi).
 - **Cost:** two peers both behind strict, symmetric NATs can't connect.
-- **Next:** roadmap 0.12.0 adds an end-to-end encrypted relay fallback, used only when no direct path works, plus clear failure messages ([ROADMAP.md](ROADMAP.md)).
+- **Next:** roadmap 0.9.0 adds an end-to-end encrypted relay fallback, used only when no direct path works, plus clear failure messages ([ROADMAP.md](ROADMAP.md)).
 
 ### D6. Chat is a star through the host ✅
 - **Why:** guests never learn each other's IP addresses; only the host admits people; fewer connections.
@@ -121,6 +121,11 @@ kept under "History".
 ### D18. One roadmap item at a time; each is a version ✅
 - **What:** [ROADMAP.md](ROADMAP.md) drives the work, [IDEAS.md](IDEAS.md) feeds it, every
   iteration ends with a commit, and every finished item with a tag.
+- **Since 2026-10-19:** the roadmap holds only app features and user-facing fixes; platform,
+  build, CI/CD and security process work is in [TODO.md](TODO.md) and ships in the next release
+  without a feature version of its own. Both are files edited through pull requests, not GitHub
+  Issues or Projects, so text from outside contributors never becomes the plan unreviewed
+  ([TODO.md](TODO.md#why-a-file-in-the-repository-not-github-issues-or-projects)).
 
 ### D19. Public on GitHub, served by GitHub Pages ✅
 - **Why:** truly free and simple. The repository must be public anyway for free Pages, and to be audited.
@@ -129,7 +134,7 @@ kept under "History".
   organisation's Pages. DNS: `share` is a CNAME to `common-sec.github.io`; `common-sec.org` is a
   verified domain of the organisation (so no one else can claim its subdomains on GitHub Pages);
   HTTPS is enforced. The older `common-sec.github.io/secure-share/` address redirects there.
-- **Revisit:** at the 1.0.0 hosting decision ([IDEAS: Hosting](IDEAS.md#hosting-github-pages-and-alternatives)).
+- **Revisit:** at the hosting decision before 1.0.0 ([TODO I5](TODO.md#i5-production-hosting-and-headers)) ([IDEAS: Hosting](IDEAS.md#hosting-github-pages-and-alternatives)).
 
 ### D20. Privacy by default, not anonymity ✅
 - **What:** no third-party scripts, no cookies, no tracking. The goal is easy secure sharing, not
