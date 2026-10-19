@@ -34,7 +34,7 @@ jobs:
         run: chmod a+rwX . && docker compose run --rm build
       - name: Build the test image (pinned base, hash-pinned packages under pip.conf rules)
         run: docker compose build test-unit
-      - name: Unit tests (Chromium + Firefox, no network)
+      - name: Unit tests (Chromium, Firefox and WebKit, no network)
         run: docker compose run --rm test-unit
 
   test-e2e:

@@ -64,7 +64,7 @@ Everything runs in containers (Docker + Compose; see [docs/DEVELOPMENT.md](docs/
 ```bash
 docker compose run --rm build                                         # type-check, build dist/, check it's reproducible
 docker compose up web                                                 # app at http://127.0.0.1:8080
-docker compose run --rm test-unit                                     # unit tests (Chromium + Firefox)
+docker compose run --rm test-unit                                     # unit tests (Chromium, Firefox, WebKit)
 docker compose run --rm test-e2e                                      # end-to-end tests through the real UI
 docker compose run --rm semgrep                                       # or trivy, trufflehog
 ```

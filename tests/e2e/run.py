@@ -7,14 +7,16 @@ Trystero and a Nostr relay for discovery, as on the live site.
     docker compose run --rm test-e2e            # local relay, host-only ICE (default, CI)
     docker compose run --rm test-e2e-public     # online: the real public relays and STUN servers
 
-    python tests/e2e/run.py [--public] [--filter text] [--browsers chromium,firefox]
+    python tests/e2e/run.py [--public] [--filter text] [--browsers chromium,firefox,webkit]
 
 Default mode serves the app and a minimal Nostr relay from one local server (tests/e2e/server.py)
 and points the app at it through test-only hooks injected before the page loads; ICE uses host
-candidates only, so no STUN server or public relay is involved. Every request the browsers make
-to anything but the local server (HTTP or WebSocket) is blocked and fails the scenario: the built
-app must work without any third-party origin. Public mode injects nothing: the app behaves
-exactly as on the live site. Both test the built app (dist/), so run the `build` service first.
+candidates only, so no public STUN server or relay is involved (WebKit, which hides host
+candidates behind mDNS names, gets a STUN server in the test container: see server.stun_serve).
+Every request the browsers make to anything but the local server (HTTP or WebSocket) is blocked
+and fails the scenario: the built app must work without any third-party origin. Public mode
+injects nothing: the app behaves exactly as on the live site. Both test the built app (dist/),
+so run the `build` service first.
 """
 import argparse
 import json
@@ -26,7 +28,7 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
-from server import serve  # noqa: E402
+from server import serve, stun_serve  # noqa: E402
 
 try:
     from playwright.sync_api import expect, sync_playwright
@@ -53,13 +55,16 @@ class Env:
         self.browsers, self.contexts = {}, []
         self.blocked = []    # third-party requests the app attempted (local mode)
         relay = base.replace("http://", "ws://") + "/relay"
-        self.init_script = None if public else (
-            f"window.__USS_TEST_RELAYS__ = {json.dumps([relay])}; window.__USS_TEST_ICE_SERVERS__ = [];")
+        hooks = f"window.__USS_TEST_RELAYS__ = {json.dumps([relay])}; window.__USS_TEST_ICE_SERVERS__ = "
+        self.init_script = None if public else hooks + "[];"
+        self.webkit_init_script = None if public else hooks + json.dumps([{"urls": stun_serve()}]) + ";"
 
     def browser(self, name):
         if name not in self.browsers:
             if name == "firefox":
                 self.browsers[name] = self.pw.firefox.launch(firefox_user_prefs=None if self.public else FIREFOX_PREFS)
+            elif name == "webkit":
+                self.browsers[name] = self.pw.webkit.launch()
             else:
                 self.browsers[name] = self.pw.chromium.launch(args=[] if self.public else CHROMIUM_ARGS)
         return self.browsers[name]
@@ -71,7 +76,7 @@ class Env:
             # Guards first: WebSocket routing patches the page, and must be in place before any script.
             ctx.route(lambda url: not self.local(url), self.block_http)
             ctx.route_web_socket(lambda url: not self.local(url), self.block_ws)
-            ctx.add_init_script(self.init_script)
+            ctx.add_init_script(self.webkit_init_script if browser == "webkit" else self.init_script)
         self.contexts.append(ctx)
         page = ctx.new_page()
         page.on("pageerror", lambda e: print(f"      [{browser}] page error: {e}"))
@@ -213,7 +218,7 @@ def scenario(name, browsers=("chromium",)):
     return register
 
 
-@scenario("share: text and a file are delivered once, then the link is dead", browsers=("chromium", "firefox"))
+@scenario("share: text and a file are delivered once, then the link is dead", browsers=("chromium", "firefox", "webkit"))
 def share_happy_path(env, b):
     sender, recipient = env.person(b), env.person(b)
     secret_file = file_payload("keys.bin", 300_000)
@@ -258,7 +263,7 @@ def share_with_approval(env, b):
 
 
 @scenario("chat: approve guests, messages and files relay through the host, remove a member",
-          browsers=("chromium", "firefox"))
+          browsers=("chromium", "firefox", "webkit"))
 def chat_group(env, b):
     host, bob, carol = env.person(b), env.person(b), env.person(b)
     host.goto(env.app + "#/chat")
@@ -334,6 +339,31 @@ def chat_cross_browser(env, b):
     sees(guest, "hi from Chromium")
 
 
+@scenario("chat across browsers: Chromium host, WebKit guest", browsers=("chromium",))
+def chat_cross_webkit_guest(env, b):
+    host, guest = env.person("chromium"), env.person("webkit")
+    link, passphrase = chat_create(env, host, "Alice")
+    chat_join(guest, link, "Safari", passphrase)
+    approve(host, "Safari")
+    admitted(guest)
+    say(guest, "hi from WebKit")
+    sees(host, "hi from WebKit")
+    say(host, "hi from Chromium")
+    sees(guest, "hi from Chromium")
+
+
+@scenario("share across browsers: WebKit sender, Firefox recipient", browsers=("webkit",))
+def share_cross_webkit_sender(env, b):
+    sender, recipient = env.person("webkit"), env.person("firefox")
+    secret_file = file_payload("notes.bin", 200_000)
+    link, passphrase = share_send(env, sender, "from Safari to Firefox", [secret_file])
+    share_open(recipient, link, passphrase)
+    expect(recipient.get_by_text("Received ✓")).to_be_visible()
+    assert recipient.locator("pre.secret").inner_text() == "from Safari to Firefox"
+    assert download(recipient, ".file-card", "notes.bin") == secret_file["buffer"]
+    expect(sender.get_by_text("Delivered ✓")).to_be_visible()
+
+
 @scenario("passwords page passes the accessibility checks")
 def passwords_a11y(env, b):
     page = env.person(b)
@@ -347,7 +377,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--public", action="store_true", help="use the real public relays and STUN servers")
     parser.add_argument("--filter", default="")
-    parser.add_argument("--browsers", default="chromium,firefox", help="browsers allowed to run scenarios")
+    parser.add_argument("--browsers", default="chromium,firefox,webkit", help="browsers allowed to run scenarios")
     args = parser.parse_args()
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")

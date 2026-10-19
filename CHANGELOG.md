@@ -4,6 +4,16 @@ All notable changes, one section per version. See [docs/ROADMAP.md](docs/ROADMAP
 
 ## [Unreleased]
 
+### Added
+- **Safari's engine is tested.** The unit and end-to-end suites also run on **WebKit** (Safari, and
+  every browser on iPhone and iPad), including cross-engine pairs (a WebKit guest in a Chromium
+  host's chat, a WebKit sender sharing to Firefox). All 50 unit tests and every end-to-end
+  scenario pass unchanged on WebKit: no app change was needed. WebKit hides host ICE candidates
+  behind mDNS names, so the end-to-end test server also runs a tiny local STUN server for WebKit
+  contexts; nothing leaves the container. Edge is covered by the Chromium runs (same engine); the
+  release checklist now includes manual checks on a real iPhone with Safari and on Edge for
+  Windows. See [docs/TESTING.md](docs/TESTING.md#browsers-and-engines).
+
 ### Changed
 - **The site is at https://share.common-sec.org/**, a custom domain on GitHub Pages: verified for
   the organisation, HTTPS enforced. The previous `common-sec.github.io/secure-share/` address

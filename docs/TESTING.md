@@ -5,7 +5,7 @@
 This app has no server: all of its logic runs in the browser and depends on browser APIs, namely
 **Web Crypto** (keys, encryption, signatures), **WebRTC** (peer connections), **IndexedDB** and
 **Web Locks** (host resume). Mocking those would test the mocks, so every test runs in **real
-browsers** (Chromium and Firefox), driven by **[Playwright](https://playwright.dev)**.
+browsers** (Chromium, Firefox and WebKit), driven by **[Playwright](https://playwright.dev)**.
 
 Playwright plays two roles:
 
@@ -29,7 +29,7 @@ docker compose run --rm test-e2e           # end-to-end, local relay, no third-p
 docker compose run --rm test-e2e-public    # end-to-end over the real public relays and STUN
 ```
 
-`test-unit` runs `python tests/unit/run.py chromium firefox` in the `test` image, which is Microsoft's
+`test-unit` runs `python tests/unit/run.py chromium firefox webkit` in the `test` image, which is Microsoft's
 pinned Playwright image plus the hash-pinned Python packages, baked in at build time (see
 `Dockerfile`). It serves the repository on a loopback port, runs the suite in each browser,
 prints every result and exits non-zero on any failure. Options go after the service name:
@@ -82,15 +82,17 @@ clicks, types, uploads and downloads files exactly as a user would, and the peer
 
 | Scenario | Browsers |
 |---|---|
-| Share: text **and a file** delivered (byte-for-byte), then the one-time link is dead | Chromium, Firefox |
+| Share: text **and a file** delivered (byte-for-byte), then the one-time link is dead | Chromium, Firefox, WebKit |
 | Share: a wrong passphrase is refused, and the sender is told | Chromium |
 | Share: with "Ask me before delivering", nothing is sent until the sender clicks Deliver | Chromium |
-| Chat: host approves two guests; messages and a **file** relay guest → host → guest; a member is removed | Chromium, Firefox |
+| Chat: host approves two guests; messages and a **file** relay guest → host → guest; a member is removed | Chromium, Firefox, WebKit |
 | Chat: a declined guest is told and gets nothing | Chromium |
 | Chat: a wrong passphrase is refused, and the host is told | Chromium |
 | Chat: a locked room can't be joined | Chromium |
 | Chat **across browsers**: Chromium host, Firefox guest | Chromium + Firefox |
-| Accessibility (axe-core) on the share form, waiting and received states, the chat form and room (host and guest), and the password page | Chromium, Firefox |
+| Chat **across browsers**: Chromium host, WebKit guest | Chromium + WebKit |
+| Share **across browsers**: WebKit sender, Firefox recipient, with a file | WebKit + Firefox |
+| Accessibility (axe-core) on the share form, waiting and received states, the chat form and room (host and guest), and the password page | Chromium, Firefox, WebKit (password page: Chromium) |
 
 ### Two modes
 
@@ -105,6 +107,14 @@ clicks, types, uploads and downloads files exactly as a user would, and the peer
   **blocks every request (HTTP or WebSocket) that isn't to the local test server**, and a
   scenario fails if the app tried one. (A Docker `internal` network isn't used for this, because
   browsers gather no WebRTC candidates at all on a machine without a default route.)
+- **WebKit and mDNS.** WebKit, like Safari, always hides its host ICE candidates behind random
+  `<uuid>.local` mDNS names, with no switch to turn that off (Chromium and Firefox have one, which
+  the tests set). Nothing resolves mDNS in the container, so two WebKit peers could never connect on host
+  candidates alone. The test server therefore also runs a minimal **local STUN server** (Binding
+  only, standard library, on the container's own address), and WebKit contexts get it as their
+  only ICE server: each WebKit peer learns its real container address as a server-reflexive
+  candidate, as Safari does from a public STUN server on the internet. Nothing leaves the
+  container, and Chromium and Firefox still use host candidates only.
 - **`test-e2e-public`: real world.** Nothing is injected: the app uses the real public Nostr
   relays and STUN servers, exactly as on the live site. It tests real-world networking, and
   depends on those third parties being up, so it isn't a CI gate.
@@ -117,10 +127,31 @@ fixes them (colour contrast, heading order, unlabelled fields on the password pa
 not in that list fails the run. To review the current findings:
 `docker compose run --rm -e E2E_AXE_RECORD=1 test-e2e` prints them instead of failing.
 
+## Browsers and engines
+
+| Browser people use | Engine | How it's covered |
+|---|---|---|
+| Chrome, Brave, Opera, Samsung Internet, **Edge** (desktop and Android) | Blink (Chromium) | Playwright's Chromium, unit and end-to-end |
+| Firefox (desktop and Android) | Gecko | Playwright's Firefox, unit and end-to-end |
+| **Safari** (macOS), and **every browser on iPhone and iPad** (Safari, Chrome, Firefox, Edge for iOS) | WebKit | Playwright's WebKit, unit and end-to-end, plus a manual check on a real iPhone before each release |
+
+**Edge** runs Chromium's engine, so the Chromium runs cover it; no Edge-specific difference has
+shown up, so there is no dedicated Edge run (Playwright's `msedge` channel is amd64-only in
+containers and not in the pinned image). One gets added if a real difference appears. A manual
+check on Edge for Windows is part of the release checklist ([RELEASES.md](RELEASES.md#making-a-release)).
+
+**WebKit vs Safari:** Playwright's WebKit is built from the same engine as Safari, but it isn't
+Safari: the Linux build has its own networking and media stack, and no iOS-specific behaviour
+(background tabs being suspended, the share sheet, downloads in the Files app). Hence the manual
+iPhone check. With WebKit added, the suites found no difference in Web Crypto, IndexedDB, Web
+Locks, WebRTC data channels or downloads; the one difference, mDNS host candidates, is a property
+of the test container (see above), not of the app. The clipboard (the Copy buttons) isn't
+exercised by the automated tests in any browser; the manual checks cover it.
+
 ## CI
 
 `.github/workflows/ci.yml` runs on every push and pull request:
 1. `build`: `docker compose run --rm build`: type-check, build, check that a second build is
    byte-identical, and print `dist/SHA256SUMS`.
-2. `test-unit` and `test-e2e`: build the app, build the test image and run the same commands as locally.
+2. `test-unit` and `test-e2e`: on Chromium, Firefox and WebKit; build the app, build the test image and run the same commands as locally.
 3. `scan`: one job each for `trufflehog`, `semgrep` and `trivy` (see [DEVELOPMENT.md](DEVELOPMENT.md)).
