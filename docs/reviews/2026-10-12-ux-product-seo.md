@@ -91,7 +91,7 @@ outline. Deliver as SVG (favicon, header), PNG sizes for `apple-touch-icon` and 
 > **Update (decision after this review):** the organisation will be an umbrella for several
 > security tools, so its name is chosen separately from this app's name and isn't decided yet.
 > This app would live at `https://<org>.github.io/<app>/`, with the organisation root as a portal
-> listing its tools. The UX findings in §2–§4 moved to [TODO.md](../TODO.md) as high priority.
+> listing its tools. The UX findings in §2–§4 moved to the roadmap's [fixes](../ROADMAP.md#fixes-and-small-improvements) as high priority.
 
 Moving to a dedicated GitHub organisation (e.g. `handseal`), **before announcing**, because the
 public URL changes:

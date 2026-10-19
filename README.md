@@ -51,9 +51,9 @@ your data.
 | [docs/RELEASES.md](docs/RELEASES.md) | Rebuilding a release and verifying its checksums against what is served |
 | [docs/TESTING.md](docs/TESTING.md) | How the test suite works and how to run it |
 | [SECURITY.md](SECURITY.md) | Reporting vulnerabilities, audit scope |
-| [docs/ROADMAP.md](docs/ROADMAP.md) | What we're working on (one feature per version) and what's next |
+| [docs/ROADMAP.md](docs/ROADMAP.md) | App features (one per version) and user-facing fixes: what's next |
 | [docs/IDEAS.md](docs/IDEAS.md) | Ideas waiting to be chosen for the roadmap |
-| [docs/TODO.md](docs/TODO.md) | Small improvements by priority, done between roadmap items |
+| [docs/TODO.md](docs/TODO.md) | Internal work: platform, build, CI/CD and security process |
 | [CHANGELOG.md](CHANGELOG.md) | What changed in each version |
 | [docs/reviews/](docs/reviews/) | Reviews: [UX, product and SEO (2026-10-12)](docs/reviews/2026-10-12-ux-product-seo.md) |
 

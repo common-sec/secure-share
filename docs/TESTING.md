@@ -71,7 +71,7 @@ docker compose run --rm test-unit python tests/unit/run.py chromium --filter roo
 Security tests must fail when the protection they guard is removed. For example, deleting the
 signature check in `#verifyEnvelope` (src/lib/room.ts) makes *"a member cannot forge messages as
 another member"* fail. Do such mutation checks by hand when changing the protocol. Systematic
-fuzzing is planned for roadmap 1.1.0.
+fuzzing is planned in [TODO.md I7](TODO.md#i7-dast-and-fuzzing).
 
 ## End-to-end tests
 
@@ -121,7 +121,7 @@ clicks, types, uploads and downloads files exactly as a user would, and the peer
 ### Accessibility
 
 Every audited page state runs **axe-core** (via `axe-playwright-python`, hash-pinned).
-`tests/e2e/axe-baseline.json` lists the findings that are known and accepted until the accessibility items (A1–A4) in [TODO.md](TODO.md)
+`tests/e2e/axe-baseline.json` lists the findings that are known and accepted until the accessibility items (A1–A4) in the [roadmap's fixes](ROADMAP.md#fixes-and-small-improvements)
 fixes them (colour contrast, heading order, unlabelled fields on the password page). Any finding
 not in that list fails the run. To review the current findings:
 `docker compose run --rm -e E2E_AXE_RECORD=1 test-e2e` prints them instead of failing.
