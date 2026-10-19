@@ -1,9 +1,13 @@
-import { h, formatBytes, safeFileName, type Child } from '../lib/dom.js';
+import { h, formatBytes, safeFileName, clockTime, closesAt, type Child } from '../lib/dom.js';
 import { passphraseField, copyRow, field } from './widgets.js';
-import { SecureRoom, DENY_REASONS, MAX_TEXT, MAX_FILE_BYTES, cleanNick, type Inner, type Member } from '../lib/room.js';
-import { saveHost, loadHost, forgetHost, claimHost, type HostRecord } from '../lib/hoststore.js';
+import { SecureRoom, DENY_REASONS, MAX_TEXT, MAX_FILE_BYTES, DEFAULT_LIFETIME_MS, cleanNick, type Inner, type Member } from '../lib/room.js';
+import { saveHost, loadHost, forgetHost, claimHost, sweepHosts, HEARTBEAT_MS, type HostRecord } from '../lib/hoststore.js';
 
-// Per-tab conveniences (sessionStorage is cleared when the tab closes).
+const HOUR = 60 * 60 * 1000;
+const LIFETIMES: Array<[ms: number, label: string]> = [[HOUR, '1 hour'], [4 * HOUR, '4 hours'], [8 * HOUR, '8 hours'], [24 * HOUR, '24 hours']];
+
+// Per-tab conveniences (sessionStorage is cleared when the tab closes). Nothing secret goes here:
+// the passphrase is kept only in memory, so it isn't shown again after a reload.
 const tabStore = {
   get(k: string): string | null { try { return sessionStorage.getItem(k); } catch { return null; } },
   set(k: string, v: string): void { try { sessionStorage.setItem(k, v); } catch { /* unavailable */ } },
@@ -29,6 +33,9 @@ export function mount(root: HTMLElement, params: URLSearchParams): () => void {
   let session: Session | null = null;
   let disposed = false;
   const invite = readInvite(params);
+  void sweepHosts();
+  // Earlier versions kept the host's passphrase here.
+  try { for (const k of Object.keys(sessionStorage)) if (k.startsWith('uss-pass:')) tabStore.del(k); } catch { /* unavailable */ }
 
   const showForm = () => {
     root.replaceChildren();
@@ -36,6 +43,7 @@ export function mount(root: HTMLElement, params: URLSearchParams): () => void {
     const pass = passphraseField({ generate: !invite });
     const error = h('p', { class: 'error', hidden: true });
     const submit = h('button', { class: 'btn btn-primary', type: 'submit' }, invite ? 'Join chat' : 'Create chat room');
+    const lifetime = h('select', null, ...LIFETIMES.map(([ms, label]) => h('option', { value: String(ms), selected: ms === DEFAULT_LIFETIME_MS }, label)));
 
     const form = h('form', { class: 'card narrow', onsubmit: async (e: Event) => {
       e.preventDefault();
@@ -46,7 +54,7 @@ export function mount(root: HTMLElement, params: URLSearchParams): () => void {
       submit.textContent = 'Deriving keys…';
       tabStore.set('uss-nick', n);
       try {
-        session = await startChat(root, { invite, nick: n, passphrase: p, onRetry: showForm });
+        session = await startChat(root, { invite, nick: n, passphrase: p, lifetimeMs: Number(lifetime.value), onRetry: showForm });
       } catch (err) {
         error.textContent = `Could not start: ${errorText(err)}`;
         error.hidden = false;
@@ -60,6 +68,11 @@ export function mount(root: HTMLElement, params: URLSearchParams): () => void {
       h('p', { class: 'hint' }, invite
         ? 'The host should have given you this separately from the link.'
         : 'Share this with your guests separately from the link, e.g. say it on a call.')),
+    invite ? null : h('details', { class: 'advanced' },
+      h('summary', null, 'Advanced options'),
+      field('Close the room automatically after', lifetime,
+        h('p', { class: 'hint' }, 'When the time is up the room closes for everyone and the link stops working. '
+          + 'An open room keeps network connections open on this device, so choose the shortest time you need.'))),
     error,
     h('div', { class: 'row' }, submit),
     );
@@ -74,6 +87,7 @@ export function mount(root: HTMLElement, params: URLSearchParams): () => void {
         h('li', null, '🔑 Joining needs both the link and the passphrase.'),
         h('li', null, '✋ The host approves every person who joins.'),
         h('li', null, '🔢 Safety codes let you confirm no one is intercepting the connection.'),
+        h('li', null, '⏱ Rooms close on their own after a time limit (4 hours unless the host chooses otherwise).'),
       ),
     );
     nick.focus();
@@ -85,6 +99,7 @@ export function mount(root: HTMLElement, params: URLSearchParams): () => void {
       const saved = await loadHost('chat', invite.roomId, invite.hostFp);
       const release = saved ? await claimHost('chat', invite.roomId) : null;
       if (disposed) return release?.();
+      if (!saved && tabStore.get(`uss-hosted:${invite.roomId}`)) return showEnded();
       if (!saved || !release) return showForm();
       try {
         session = await startChat(root, { restore: saved, release, onRetry: showForm });
@@ -96,6 +111,16 @@ export function mount(root: HTMLElement, params: URLSearchParams): () => void {
   } else {
     showForm();
   }
+
+  // This tab hosted the room, but it can't be resumed: the tab was away too long, or time is up.
+  function showEnded(): void {
+    root.replaceChildren(h('div', { class: 'card narrow' },
+      h('h2', null, 'This room has ended'),
+      h('p', null, 'A room survives a reload, but not a closed or long-suspended tab, and it closes at its time limit. '
+        + 'The link no longer works.'),
+      h('div', { class: 'row' }, h('button', { class: 'btn btn-primary', onclick: () => { location.hash = '#/chat?'; } }, 'Start a new chat')),
+    ));
+  }
   return () => { disposed = true; session?.leave(); };
 }
 
@@ -103,6 +128,7 @@ interface StartOptions {
   invite?: Invite | null;
   nick?: string;
   passphrase?: string | null;
+  lifetimeMs?: number;
   restore?: HostRecord;
   release?: (() => void) | null;
   onRetry: () => void;
@@ -110,22 +136,27 @@ interface StartOptions {
 
 interface FileCard { bar: HTMLProgressElement; actions: HTMLElement }
 
-async function startChat(root: HTMLElement, { invite, nick = '', passphrase = null, restore, release = null, onRetry }: StartOptions): Promise<Session> {
+async function startChat(root: HTMLElement, { invite, nick = '', passphrase = null, lifetimeMs, restore, release = null, onRetry }: StartOptions): Promise<Session> {
   let room: SecureRoom;
   if (restore) room = await SecureRoom.host({ app: 'chat', restore, maxGuests: 7 });
   else if (invite) room = await SecureRoom.join({ app: 'chat', ...invite, passphrase: passphrase ?? '', nick });
-  else room = await SecureRoom.host({ app: 'chat', passphrase: passphrase ?? '', nick, maxGuests: 7 });
+  else room = await SecureRoom.host({ app: 'chat', passphrase: passphrase ?? '', nick, maxGuests: 7, lifetimeMs });
 
   const link = room.link('chat');
+  let heartbeat: ReturnType<typeof setInterval> | undefined;
+  const persist = () => { if (!room.closed) void saveHost('chat', room.snapshot()); };
   if (room.isHost) {
-    // Keep the room link in the address bar and make a reload resume the room.
+    // Keep the room link in the address bar and make a reload resume the room. The saved state is
+    // refreshed while the page lives and when it's hidden or unloaded (a reload); once refreshes
+    // stop (the tab was closed), it's no longer accepted (see hoststore.ts).
     release ??= await claimHost('chat', room.roomId);
     history.replaceState(null, '', link.slice(link.indexOf('#')));
-    const persist = () => { void saveHost('chat', room.snapshot()); };
     persist();
     room.on('persist', persist);
-    if (passphrase) tabStore.set(`uss-pass:${room.roomId}`, passphrase);
-    else passphrase = tabStore.get(`uss-pass:${room.roomId}`);
+    heartbeat = setInterval(persist, HEARTBEAT_MS);
+    window.addEventListener('pagehide', persist);
+    document.addEventListener('visibilitychange', persist);
+    tabStore.set(`uss-hosted:${room.roomId}`, '1');
   }
   const objectUrls: string[] = [];
   const fileCards = new Map<string | symbol, FileCard>();
@@ -142,6 +173,8 @@ async function startChat(root: HTMLElement, { invite, nick = '', passphrase = nu
   });
   const attachBtn = h('button', { class: 'btn btn-ghost attach', disabled: true, title: `Attach files (up to ${formatBytes(MAX_FILE_BYTES)})`, onclick: () => fileInput.click() }, '📎');
   const memberList = h('ul', { class: 'members' });
+  const expiryNote = h('p', { class: 'hint warn', hidden: !room.expiresAt },
+    room.expiresAt ? `⏱ The room closes automatically at ${clockTime(room.expiresAt)}.` : '');
   const lockToggle = h('input', { type: 'checkbox', onchange: (e: Event) => room.setLocked((e.target as HTMLInputElement).checked) });
 
   const chatPane = h('section', { class: 'chat-main' },
@@ -161,11 +194,12 @@ async function startChat(root: HTMLElement, { invite, nick = '', passphrase = nu
       copyRow('Link', link, true),
       passphrase
         ? copyRow('Passphrase', passphrase, true)
-        : h('p', { class: 'hint' }, 'Passphrase: the one you chose when creating the room (not kept after closing the tab).'),
+        : h('p', { class: 'hint' }, 'Passphrase: the one you chose when creating the room (not kept after a reload, for safety).'),
       h('p', { class: 'hint' }, 'Send the link and the passphrase through different channels.'),
+      expiryNote,
       h('label', { class: 'check' }, lockToggle, h('span', null, 'Lock room', h('small', null, 'no new join requests'))),
     ) : null,
-    h('div', { class: 'panel' }, h('h3', null, 'Members'), memberList),
+    h('div', { class: 'panel' }, h('h3', null, 'Members'), memberList, room.isHost ? null : expiryNote),
   );
 
   root.replaceChildren(
@@ -189,7 +223,7 @@ async function startChat(root: HTMLElement, { invite, nick = '', passphrase = nu
     const mine = member.id === room.identity.id;
     const name = h('span', { class: 'who' }, member.nick, member.host ? ' ★' : '');
     name.style.color = colorFor(member.id);
-    const time = new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const time = clockTime(ts);
     return h('li', { class: `msg ${mine ? 'mine' : ''}` },
       h('div', { class: 'meta' }, mine ? null : name, h('span', { class: 'time' }, time)),
       ...content);
@@ -322,13 +356,20 @@ async function startChat(root: HTMLElement, { invite, nick = '', passphrase = nu
     .on('accepted', () => {
       badge.textContent = '✓ Host verified';
       system('You’re in. Messages are end-to-end encrypted.');
+      if (room.expiresAt && expiryNote.hidden) {
+        expiryNote.textContent = `⏱ The room closes automatically at ${clockTime(room.expiresAt)}.`;
+        expiryNote.hidden = false;
+        system(`This room closes automatically at ${closesAt(room.expiresAt)}.`);
+      }
       setEnabled(true);
     })
+    .on('expiring', ({ expiresAt }) => system(`The room closes at ${closesAt(expiresAt)}. Save anything you need.`))
     .on('denied', ({ reason }) => finish((DENY_REASONS as Record<string, string>)[reason] ?? `Could not join (${reason}).`, true))
     .on('closed', ({ reason }) => { if (reason !== 'left') finish(DENY_REASONS[reason], reason === 'passphrase'); });
 
   function finish(text: string, retry: boolean): void {
     void room.leave();
+    if (room.isHost) stopPersisting();
     setEnabled(false);
     badge.textContent = 'Disconnected';
     system(text, 'error');
@@ -344,14 +385,22 @@ async function startChat(root: HTMLElement, { invite, nick = '', passphrase = nu
     setEnabled(true);
   } else if (room.isHost) {
     system('Room created. Share the link and the passphrase with the people you want to invite.');
+    if (room.expiresAt) system(`It closes automatically at ${closesAt(room.expiresAt)}, for everyone.`);
     setEnabled(true);
   } else {
     system('Looking for the host…');
     slowTimer = setTimeout(() => system('Still looking. The host must keep their chat tab open. Check that the link is complete.'), 20000);
   }
 
-  const onBeforeUnload = (e: BeforeUnloadEvent) => { if (room.members.size > 1 || room.isHost) e.preventDefault(); };
+  const onBeforeUnload = (e: BeforeUnloadEvent) => { if (!room.closed && (room.members.size > 1 || room.isHost)) e.preventDefault(); };
   window.addEventListener('beforeunload', onBeforeUnload);
+
+  function stopPersisting(): void {
+    clearInterval(heartbeat);
+    window.removeEventListener('pagehide', persist);
+    document.removeEventListener('visibilitychange', persist);
+    void forgetHost('chat', room.roomId);
+  }
 
   return {
     leave() {
@@ -359,8 +408,8 @@ async function startChat(root: HTMLElement, { invite, nick = '', passphrase = nu
       window.removeEventListener('beforeunload', onBeforeUnload);
       void room.leave();
       if (room.isHost) {
-        void forgetHost('chat', room.roomId);
-        tabStore.del(`uss-pass:${room.roomId}`);
+        stopPersisting();
+        tabStore.del(`uss-hosted:${room.roomId}`);
         release?.();
       }
       objectUrls.forEach((u) => URL.revokeObjectURL(u));

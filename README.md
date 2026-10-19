@@ -75,7 +75,8 @@ Pages, Netlify). The Web Crypto API needs a secure context (HTTPS or `localhost`
 ## Design principles
 
 - **No backend, no storage.** Nothing is uploaded, and nothing outlives the browser tab, except
-  the host's non-extractable keys while a chat room is open (to survive a reload).
+  the host's non-extractable keys while a chat room is open (to survive a reload, not a closed
+  tab). Rooms close on their own after a time limit (4 hours by default).
 - **No hand-rolled cryptographic primitives.** All of them come from the browser's Web Crypto
   API: AES-GCM, ECDSA P-256, HKDF, PBKDF2, HMAC, SHA-256 and the CSPRNG. The protocol that combines
   them is documented in [PROTOCOL.md](docs/PROTOCOL.md) and covered by adversarial tests.

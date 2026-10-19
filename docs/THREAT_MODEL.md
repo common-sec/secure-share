@@ -79,8 +79,17 @@
 
 ### 11. Someone with later access to the device
 - Share stores nothing.
-- Chat hosts keep non-extractable keys in IndexedDB until the room is closed (at most 24 h). The
-  nickname and the host's passphrase are kept in sessionStorage until the tab closes.
+- Chat hosts keep the room state (link secret, non-extractable keys) in IndexedDB **only to
+  survive a reload**: the open page refreshes it every 30 s, a record not refreshed for 2 minutes
+  (a closed tab) is refused and deleted, and so is one past the room's time limit. Closing the
+  room deletes it at once. The passphrase is never stored; sessionStorage holds only the nickname.
+- Every room closes on its own after a time limit (default 4 hours, at most 24, chosen by the
+  host), for the host and every guest, so a forgotten tab doesn't keep relay and peer connections
+  open (and exposed to bugs in the code or the browser) indefinitely.
+- **Residual:** while a room is open, script running in the page (an XSS, a browser bug) can use
+  the stored keys, as it could use the ones in memory. Encrypting the record with another key
+  kept in the same origin wouldn't change that, so we keep the record small and short-lived
+  instead.
 - **Residual:** browser history contains room links (the fragment includes the link secret). The
   clipboard and OS clipboard history may retain copied secrets.
 

@@ -51,7 +51,8 @@ docker compose run --rm test-unit python tests/unit/run.py chromium --filter roo
 | `crypto.test.js` | Key agreement between both sides, **the passphrase never affects the signaling key**, tamper detection, fresh IVs, signatures, safety codes |
 | `password.test.js` | Length, required sets, exclusions, entropy, impossible settings |
 | `passphrase.test.js` | Never only dictionary words, structure, minimum strength, entropy monotonicity, syllable capitals, spelling rules |
-| `room.test.js` | The protocol between host and guests, including attacks: wrong passphrase, **auto-lock**, declined and pending guests, unique nicknames, **impostor host with link + passphrase**, star topology, **forged and tampered messages**, **replays**, wrong-key data, **files that don't match their signed hash**, removal, **relay disconnection**, host reload |
+| `room.test.js` | The protocol between host and guests, including attacks: wrong passphrase, **auto-lock**, declined and pending guests, unique nicknames, **impostor host with link + passphrase**, star topology, **forged and tampered messages**, **replays**, wrong-key data, **files that don't match their signed hash**, removal, **relay disconnection**, host reload, **room time limit** (host and stranded guests close, cap, not extended by a reload) |
+| `hoststore.test.js` | Host resume only across a reload: closed-tab and expired records are refused, the sweep deletes them |
 
 ### How the unit tests work
 
