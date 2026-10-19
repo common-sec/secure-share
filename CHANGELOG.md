@@ -5,10 +5,11 @@ All notable changes, one section per version. See [docs/ROADMAP.md](docs/ROADMAP
 ## [Unreleased]
 
 ### Added
-- **The sender's phone stays awake while waiting** (Screen Wake Lock, taken again when the tab
-  comes back). The form explains before the link exists that the page must stay open; while the
-  tab is in the background its title says "⚠ Keep this tab open", and on return a note repeats it
-  (TODO S1).
+- **The sender's screen can stay on while waiting:** an opt-in "Keep the screen on while waiting"
+  option (Screen Wake Lock, off by default, with a warning not to leave the device unattended;
+  taken again when the tab comes back). The form explains before the link exists that the page
+  must stay open; while the tab is in the background its title says "⚠ Keep this tab open", and
+  on return a note repeats it (TODO S1).
 - **"✓ Delivered" in the tab title** when the delivery completes, so it shows from another tab
   (TODO S5).
 - **Received text is masked**, with Show, Copy and "Clear from screen" (TODO R2).

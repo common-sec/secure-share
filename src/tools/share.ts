@@ -50,6 +50,10 @@ function sendForm(body: HTMLElement, setSession: SetSession): void {
     h('button', { type: 'button', class: 'btn btn-small', onclick: () => fileInput.click() }, 'choose files'), fileInput);
   const pass = passphraseField({ generate: true });
   const approve = h('input', { type: 'checkbox' });
+  // Off by default: an unlocked device left alone exposes this page and everything else on it.
+  const awakeWarning = h('p', { class: 'hint warn', hidden: true },
+    '⚠ This device will stay awake and unlocked until the delivery completes, as long as this tab is open and in front. Don’t leave your phone or computer unattended while it’s on.');
+  const awake = h('input', { type: 'checkbox', onchange: () => { awakeWarning.hidden = !awake.checked; } });
   const error = h('p', { class: 'error', hidden: true });
 
   drop.addEventListener('dragover', (e) => { e.preventDefault(); drop.classList.add('over'); });
@@ -81,7 +85,7 @@ function sendForm(body: HTMLElement, setSession: SetSession): void {
     submit.textContent = 'Deriving keys…';
     try {
       const room = await SecureRoom.host({ app: 'share', passphrase, nick: 'Sender', maxGuests: 1, autoAccept: !approve.checked });
-      setSession(senderView(body, room, { text: text.value, files, passphrase }));
+      setSession(senderView(body, room, { text: text.value, files, passphrase, keepScreenOn: awake.checked }));
     } catch (err) {
       showError(`Could not start: ${errorText(err)}`);
       submit.disabled = false;
@@ -94,6 +98,9 @@ function sendForm(body: HTMLElement, setSession: SetSession): void {
     h('p', { class: 'hint' }, 'The recipient needs it in addition to the link. Send it through a different channel.')),
   h('label', { class: 'check' }, approve, h('span', null, 'Let me check who’s receiving before sending',
     h('small', null, 'you compare a short code with them, e.g. by phone, then click Deliver'))),
+  h('label', { class: 'check' }, awake, h('span', null, 'Keep the screen on while waiting',
+    h('small', null, 'stops the screen from turning off or locking until the delivery completes'))),
+  awakeWarning,
   error,
   h('p', { class: 'hint' }, 'The delivery goes straight from this page to the recipient, so keep it open until they have it. On a phone, keep the screen on and stay in the browser.'),
   h('div', { class: 'row' }, submit),
@@ -110,7 +117,9 @@ function sendForm(body: HTMLElement, setSession: SetSession): void {
   ));
 }
 
-function senderView(body: HTMLElement, room: SecureRoom, { text, files, passphrase }: { text: string; files: File[]; passphrase: string }): Session {
+interface Outgoing { text: string; files: File[]; passphrase: string; keepScreenOn: boolean }
+
+function senderView(body: HTMLElement, room: SecureRoom, { text, files, passphrase, keepScreenOn }: Outgoing): Session {
   const status = h('p', { class: 'status-big', role: 'status' });
   const steps = h('ol', { class: 'progress-steps' },
     h('li', { class: 'active' }, 'Share the link and passphrase'),
@@ -119,17 +128,19 @@ function senderView(body: HTMLElement, room: SecureRoom, { text, files, passphra
   const extra = h('div', { 'aria-live': 'polite' });
   const away = h('p', { class: 'hint warn', hidden: true },
     'You left this page. Keep it open and in front until the delivery completes: phones may pause or close pages in the background.');
+  const awakeNote = h('p', { class: 'hint warn', hidden: !keepScreenOn },
+    '⚠ The screen stays on until the delivery completes. Don’t leave this device unattended.');
   const cancel = h('button', { class: 'btn btn-ghost', onclick: () => { location.hash = '#/share?'; } }, 'Cancel');
   let delivered = false;
 
-  // The share lives in this tab: keep the screen on while waiting (the lock is dropped whenever the
-  // tab is hidden, so it's taken again on return), and use the tab title to warn while it's in the
-  // background and to signal delivery.
+  // The share lives in this tab: if the sender opted in, keep the screen on while waiting (the lock
+  // is dropped whenever the tab is hidden, so it's taken again on return), and use the tab title to
+  // warn while it's in the background and to signal delivery.
   const waitingTitle = document.title;
   let wakeLock: WakeLockSentinel | null = null;
   let stopped = false;
   const keepAwake = async () => {
-    if (stopped || wakeLock || document.visibilityState !== 'visible' || !('wakeLock' in navigator)) return;
+    if (!keepScreenOn || stopped || wakeLock || document.visibilityState !== 'visible' || !('wakeLock' in navigator)) return;
     try {
       const lock = await navigator.wakeLock.request('screen');
       if (stopped) void lock.release();
@@ -151,6 +162,7 @@ function senderView(body: HTMLElement, room: SecureRoom, { text, files, passphra
     void wakeLock?.release().catch(() => {});
     wakeLock = null;
     away.hidden = true;
+    awakeNote.hidden = true;
   };
   document.addEventListener('visibilitychange', onVisibility);
   void keepAwake();
@@ -166,7 +178,7 @@ function senderView(body: HTMLElement, room: SecureRoom, { text, files, passphra
     copyRow('One-time link', room.link('share'), true),
     copyRow('Passphrase', passphrase, true),
     h('p', { class: 'hint warn' }, '⚠ Keep this tab open until the delivery completes. Nothing is stored on a server, so closing it cancels the share.'),
-    away, status, extra,
+    awakeNote, away, status, extra,
     h('div', { class: 'row' }, cancel),
   ));
   setStatus('Waiting for the recipient to open the link…');

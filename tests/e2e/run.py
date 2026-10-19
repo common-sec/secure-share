@@ -109,7 +109,7 @@ def file_payload(name, size):
     return {"name": name, "mimeType": "application/octet-stream", "buffer": data}
 
 
-def share_send(env, page, text, files=(), approve=False):
+def share_send(env, page, text, files=(), approve=False, keep_awake=False):
     page.goto(env.app + "#/share")
     page.locator("form textarea").fill(text)
     if files:
@@ -117,6 +117,11 @@ def share_send(env, page, text, files=(), approve=False):
     passphrase = page.locator("form input[aria-label=Passphrase]").input_value()
     if approve:
         page.get_by_text("Let me check who’s receiving before sending").click()
+    warning = page.get_by_text("Don’t leave your phone or computer unattended")
+    expect(warning).to_be_hidden()          # off by default
+    if keep_awake:
+        page.get_by_text("Keep the screen on while waiting").click()
+        expect(warning).to_be_visible()
     page.get_by_role("button", name="Create one-time link").click()
     link = page.locator('input[aria-label="One-time link"]')
     expect(link).to_be_attached()
@@ -263,7 +268,8 @@ def share_wrong_passphrase(env, b):
 @scenario("share: with approval, nothing is sent until the sender clicks Deliver")
 def share_with_approval(env, b):
     sender, recipient = env.person(b), env.person(b)
-    link, passphrase = share_send(env, sender, "approved secret", approve=True)
+    link, passphrase = share_send(env, sender, "approved secret", approve=True, keep_awake=True)
+    expect(sender.get_by_text("Don’t leave this device unattended")).to_be_visible()
     share_open(recipient, link, passphrase)
     expect(sender.get_by_role("button", name="Deliver")).to_be_visible()
     stays_quiet(lambda: recipient.get_by_text("Received ✓").is_visible())
