@@ -113,24 +113,29 @@ one random symbol between words and capitals (`ROOM_PHRASE`, `src/lib/passphrase
 57 bits. Read aloud on a call it sounds like "capital S, stone, tilde, capital B, behind, tilde,
 capital K, karrot with a K, ish…". The recipient has to type that exactly.
 
-**It doesn't need to be complex.** Nothing an outsider can see depends on the passphrase, so
-every guess is an online attempt, and the room locks after 5 wrong ones
-([THREAT_MODEL.md](../THREAT_MODEL.md), `MAX_FAILURES` in `src/lib/room.ts:27`). Complexity
-protects against offline guessing, which this design rules out.
+**It must stay strong, but it can be simple.** By design nothing an outsider can see depends on
+the passphrase, so every guess is an online attempt and the room locks after 5 wrong ones
+([THREAT_MODEL.md](../THREAT_MODEL.md), `MAX_FAILURES` in `src/lib/room.ts:27`). Even so, the
+passphrase is sized so that an **offline attack on recorded traffic is not practical** if that
+protection ever failed. The strength comes from the number of random words, not from capitals,
+symbols or respellings, which are what make it hard to say.
 
 **Proposal:**
-- **Four common words, lowercase, separated by spaces**, from the existing list of 877 words
-  (`src/lib/words.ts`): about 39 bits. With 5 tries, the chance of guessing it is about 1 in 100
-  billion.
+- **Six fully random words, lowercase, separated by spaces**, each chosen independently from the
+  full list of 877 words (`src/lib/words.ts`): about 59 bits, at least as strong as today's
+  phrase (about 57). With PBKDF2 at 600 000 iterations
+  ([PROTOCOL.md](../PROTOCOL.md)), an offline search of that space is not practical. Five words
+  (about 49 bits) is the lower bound to consider if six proves too long on calls; the default is
+  six.
 - **Exact match, one to one.** The words are not normalised: no case folding and no rewriting of
   spaces or separators, so what the recipient types must be exactly what the sender has (only
   leading and trailing spaces are ignored, as today). The simple format is what makes this easy:
   lowercase words and single spaces leave nothing to get wrong except the words themselves. Key
   derivation in [PROTOCOL.md](../PROTOCOL.md) stays as it is.
-- **A word list fit for speaking:** drop words that sound like another word in the list
-  (`night` / `knight`) and words people often misspell or mispronounce (e.g. `cello`). The
-  room list becomes a curated subset; the password generator keeps the full list and its complex
-  styles, because a password can face offline attacks.
+- **The full word list, unfiltered:** no sound-alike or spelling exclusions, so every word keeps
+  its full share of the entropy. The few sound-alike pairs (e.g. `night` / `knight`) are handled
+  by the wrong-words message (US7) and by the sender reading the words as shown. The password
+  generator keeps its complex styles.
 - **Shown as separate words** on the sender's screen, large enough to read aloud, still masked by
   default with Show (people share their screen on calls).
 - **Plain strength wording:** "Strong enough for this one-time link ✓", no bits on the main
@@ -208,7 +213,7 @@ ticked, a "you left this page" note, the status and Cancel.
 
 ```
 ✓ 1  Link copied. Paste it in your chat with them.      [Copy again] [Share…] [QR]
-  2  Tell them these words:   ••••  ••••  ••••  ••••     [Show]
+  2  Tell them these words:   ••••  ••••  ••••  ••••  ••••  ••••  [Show]
   3  Keep this page open until they've got it.          [Keep my screen on]
      Waiting for them to open the link…
                                                          [Cancel]
@@ -247,7 +252,7 @@ and isn't stored anywhere.                              How it works ›
 
 1  Type the words they tell you
    ┌──────────────────────────────────┐
-   │ e.g. four words                   │      [Show]
+   │ e.g. six words                   │      [Show]
    └──────────────────────────────────┘
    [ Open ]
 
@@ -259,7 +264,7 @@ and isn't stored anywhere.                              How it works ›
 - **Context and trust** (R1): one line saying what this is, one link to How it works and the
   source code. Nothing else above the field.
 - **The field asks for "the words they tell you"**, must match exactly (§2), and
-  says "usually four words" so people know roughly when they're done. The hint for the not-on-a-call case: "They
+  says "usually six words" so people know roughly when they're done. The hint for the not-on-a-call case: "They
   should have sent them separately from the link."
 - **Live stages** (R5): finding the sender, connected, receiving with a percentage. If the sender
   can't be found, the message says what to do (US7), and the 20 s wait keeps the current tone
@@ -278,7 +283,7 @@ Before the next release, in this order (G1 changes the words every other screen 
 
 | # | Item | Covers |
 |---|---|---|
-| G1 | Speakable room passphrases: four lowercase words, a curated word list, exact match (no normalisation) | §2, S6 (Share) |
+| G1 | Speakable room passphrases: six random lowercase words from the full list, exact match (no normalisation) | §2, S6 (Share) |
 | G2 | One-question creation page: passphrase off the form, More options, Chat pointer in one line, How it works link | §3, S3 |
 | G3 | Copy the invitation automatically on creation, with fallback; share sheet and QR code | §3, S2 |
 | G4 | Guided waiting screen: numbered steps, Keep my screen on as a step, not-on-a-call line | §4, S1 follow-up |

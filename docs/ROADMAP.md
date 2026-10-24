@@ -217,8 +217,8 @@ recipient are guided step by step, designed first for using the app on a call (l
 passphrase said aloud). Done in this order, before 0.8.0; the open items below that these cover
 point here.
 
-- [ ] **G1. Speakable room passphrases.** Four lowercase common words from a word list curated for
-      speaking, matched exactly as given (no normalisation, key derivation unchanged), plain
+- [ ] **G1. Speakable room passphrases.** Six fully random lowercase words from the full word list
+      (about 59 bits, so an offline attack on recorded traffic isn't practical), matched exactly as given (no normalisation, key derivation unchanged), plain
       strength wording.
 - [ ] **G2. One-question creation page.** "What do you want to send?" and one button; the
       passphrase moves to the next screen; choosing your own words and "check who's receiving"
