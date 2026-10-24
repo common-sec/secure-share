@@ -59,7 +59,9 @@ already public, so the security basics in [TODO.md](TODO.md#before-launch) (repo
 staging, tagged production) come before the next feature release, and the external security review
 comes **just before launch**, so it reviews what actually ships. The logo needs iterations with
 people and doesn't affect usability, so it isn't on the critical path. The high-priority
-[fixes](#fixes-and-small-improvements) go in as patches between features, before launch.
+[fixes](#fixes-and-small-improvements) go in as patches between features, before launch; the
+[guided sharing](#before-the-next-release-guided-sharing) items (2026-10-19) come first, before
+0.8.0, because the main flows should be right before more is built on them.
 
 ### 0.4.0: First real-world test feedback ✅
 **Context:** first test of the published site, between two devices on different networks (mobile data and wifi), with
@@ -207,6 +209,30 @@ features above.
 
 Legend: `[ ]` to do · `[x]` done (keep for one release, then remove).
 
+### Before the next release: guided sharing
+
+From the [guided sharing UX review](reviews/2026-10-19-ux-guided-sharing.md) (2026-10-19), with
+its [user stories](reviews/2026-10-19-ux-guided-sharing.md#1-user-stories). **Goal:** sender and
+recipient are guided step by step, designed first for using the app on a call (link in the chat,
+passphrase said aloud). Done in this order, before 0.8.0; the open items below that these cover
+point here.
+
+- [ ] **G1. Speakable room passphrases.** Six fully random lowercase words from the full word list
+      (about 59 bits, so an offline attack on recorded traffic isn't practical), matched exactly as given (no normalisation, key derivation unchanged), plain
+      strength wording.
+- [ ] **G2. One-question creation page.** "What do you want to send?" and one button; the
+      passphrase moves to the next screen; choosing your own words and "check who's receiving"
+      go under More options; the Secure Chat pointer is one line; details move to How it works.
+- [ ] **G3. Link copied automatically.** An invitation with the link (never the passphrase) is
+      copied on creation, with a fallback; "Copy link only", the share sheet and a QR code as
+      secondary actions.
+- [ ] **G4. Guided waiting screen.** Numbered steps (paste the link, say the words, keep this
+      page open), with "Keep my screen on" as part of the last step, and a line for when you're
+      not on a call.
+- [ ] **G5. Guided recipient page.** What this is and that nothing is stored, "type the words they
+      tell you", live connection stages, the result, then Done (clears everything) and Send
+      something back.
+
 ### High priority: security findings
 
 From [code scanning alert #1](https://github.com/common-sec/secure-share/security/code-scanning/1)
@@ -238,28 +264,28 @@ happening, trusts it, and succeeds.
 - [x] **S1. Keep the phone awake while waiting.** Request a Screen Wake Lock until delivery; warn
       when the tab goes to the background; explain before creating the link that the page must
       stay open.
-- [ ] **S2. Easier link sharing.** A "Send link…" button using the system share sheet (Web Share
+- [ ] **S2. Easier link sharing** (→ G3). A "Send link…" button using the system share sheet (Web Share
       API); a QR code for handing the link to a phone nearby; "Copy invitation" text that reminds
       people to send the passphrase **another way**.
-- [ ] **S3. Main action visible on a phone.** Shorter intro (details move to a "How it works"
+- [ ] **S3. Main action visible on a phone** (→ G2). Shorter intro (details move to a "How it works"
       disclosure), a smaller default text area, and a sticky primary button on mobile.
 - [x] **S4. Waiting screen focus.** Hide the intro once the link exists; show only the steps and
       the status.
 - [x] **S5. Delivery signal when the tab isn't visible.** Update the tab title ("✓ Delivered");
       optionally a notification, if the user allows it.
-- [ ] **S6. Plain-language strength.** "Strong enough for this room ✓" in place of "Fair · ≈57
+- [ ] **S6. Plain-language strength** (Share → G1; the password page stays here). "Strong enough for this room ✓" in place of "Fair · ≈57
       bits", with the bits as detail on demand. Same on the password page.
 - [x] **S7. Clearer approval option.** "Let me check who's receiving before sending (compare a
       code by phone)" in place of "Ask me before delivering".
 
 #### Recipient
-- [ ] **R1. Context and trust.** Explain what this is, that it's open source (link to the code and
+- [ ] **R1. Context and trust** (→ G5). Explain what this is, that it's open source (link to the code and
       How it works), what happens next, and that nothing is stored.
 - [x] **R2. Mask received secrets.** Hidden by default, with Show, Copy and "Clear from screen".
 - [x] **R3. Tab title.** "You've received a secure delivery" in place of "Share once".
-- [ ] **R4. Next step after receiving.** "Send something back securely" (opens a new share) and
+- [ ] **R4. Next step after receiving** (→ G5). "Send something back securely" (opens a new share) and
       "Done" (clears everything).
-- [ ] **R5. Live connection stages.** Finding the sender → connecting → receiving %; after a
+- [ ] **R5. Live connection stages** (→ G5). Finding the sender → connecting → receiving %; after a
       timeout, actionable advice (ask the sender to keep the page open, try another network).
 
 #### Everywhere

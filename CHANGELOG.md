@@ -36,6 +36,12 @@ All notable changes, one section per version. See [docs/ROADMAP.md](docs/ROADMAP
 - **Received text is masked**, with Show, Copy and "Clear from screen" (TODO R2).
 
 ### Changed
+- **Guided sharing UX review.** A second UX review,
+  [docs/reviews/2026-10-19-ux-guided-sharing.md](docs/reviews/2026-10-19-ux-guided-sharing.md),
+  writes user stories for Share (designed first for use on a call: link in the chat, passphrase
+  said aloud) and reviews the sender and recipient pages. Its items G1–G5 (speakable passphrases,
+  a one-question creation page, the link copied automatically, guided waiting and recipient
+  screens) are on the roadmap before 0.8.0 and cover the open S2, S3, S6, R1, R4 and R5.
 - **Roadmap and internal work are split.** [docs/ROADMAP.md](docs/ROADMAP.md) now lists only app
   features and user-facing fixes (the fixes that were in TODO.md moved there, same IDs).
   Platform, build, CI/CD, testing and security process work moved to
