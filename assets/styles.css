@@ -102,6 +102,8 @@ textarea { resize: vertical; }
 .check { display: flex; gap: 8px; align-items: flex-start; cursor: pointer; }
 .check input { margin-top: 4px; accent-color: var(--accent); }
 .check small { display: block; color: var(--muted); }
+.advanced summary { cursor: pointer; color: var(--muted); padding: 4px 0; }
+.advanced[open] summary { margin-bottom: 8px; }
 
 .hint { color: var(--muted); font-size: .85rem; margin: 8px 0 0; }
 .muted { color: var(--muted); }

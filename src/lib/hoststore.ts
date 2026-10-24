@@ -1,11 +1,15 @@
-// Lets a host reload the page without losing the room.
+// Lets a host reload the page without losing the room, and nothing more.
 // IndexedDB can store non-extractable CryptoKeys, so private keys are never exportable or visible
-// as data. Records expire after a day and are deleted when the host closes the room.
-import type { HostSnapshot } from './room.js';
+// as data. The open page re-saves its record every HEARTBEAT_MS and when it's hidden or unloaded;
+// a record that hasn't been refreshed for RELOAD_GRACE_MS belongs to a closed tab and is useless
+// (and deleted), as is one past the room's time limit. Closing the room deletes it at once.
+import { DEFAULT_LIFETIME_MS, type HostSnapshot } from './room.js';
 
 const DB = 'uss-hosts';
 const STORE = 'rooms';
-const TTL_MS = 24 * 60 * 60 * 1000;
+export const HEARTBEAT_MS = 30 * 1000;
+// Longer than a reload, and than the once-a-minute timers browsers allow background tabs.
+export const RELOAD_GRACE_MS = 2 * 60 * 1000;
 
 export type HostRecord = HostSnapshot & { savedAt: number };
 
@@ -34,11 +38,14 @@ export async function saveHost(app: string, snapshot: HostSnapshot): Promise<voi
   } catch { /* private mode etc. */ }
 }
 
+const isStale = (rec: HostRecord, now = Date.now()): boolean =>
+  now - rec.savedAt > RELOAD_GRACE_MS || now >= (rec.expiresAt ?? rec.savedAt + DEFAULT_LIFETIME_MS);
+
 export async function loadHost(app: string, roomId: string, hostFp: string): Promise<HostRecord | null> {
   try {
     const rec = (await tx('readonly', (s) => s.get(`${app}:${roomId}`))) as HostRecord | undefined;
     if (!rec || rec.hostFp !== hostFp) return null;
-    if (Date.now() - rec.savedAt > TTL_MS) { await forgetHost(app, roomId); return null; }
+    if (isStale(rec)) { await forgetHost(app, roomId); return null; }
     return rec;
   } catch {
     return null;
@@ -47,6 +54,25 @@ export async function loadHost(app: string, roomId: string, hostFp: string): Pro
 
 export async function forgetHost(app: string, roomId: string): Promise<void> {
   try { await tx('readwrite', (s) => s.delete(`${app}:${roomId}`)); } catch { /* ignore */ }
+}
+
+/** Deletes every record a reload can no longer use (closed tabs, rooms past their time limit). */
+export async function sweepHosts(): Promise<void> {
+  try {
+    const conn = await db();
+    await new Promise<void>((resolve, reject) => {
+      const t = conn.transaction(STORE, 'readwrite');
+      const req = t.objectStore(STORE).openCursor();
+      req.onsuccess = () => {
+        const cursor = req.result;
+        if (!cursor) return;
+        if (isStale(cursor.value as HostRecord)) cursor.delete();
+        cursor.continue();
+      };
+      t.oncomplete = () => { conn.close(); resolve(); };
+      t.onerror = () => { conn.close(); reject(t.error); };
+    });
+  } catch { /* private mode etc. */ }
 }
 
 /**

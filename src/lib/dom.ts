@@ -59,3 +59,13 @@ export function formatBytes(n: number): string {
   do { n /= 1024; i++; } while (n >= 1024 && i < units.length - 1);
   return `${n.toFixed(n < 10 ? 1 : 0)} ${units[i]}`;
 }
+
+export const clockTime = (ms: number): string => new Date(ms).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+/** "18:42 (in 4 hours)" */
+export function closesAt(expiresAt: number): string {
+  const mins = Math.max(Math.round((expiresAt - Date.now()) / 60000), 0);
+  const hours = Math.round(mins / 60);
+  const left = mins >= 60 ? (hours === 1 ? '1 hour' : `${hours} hours`) : mins === 1 ? '1 minute' : `${mins} minutes`;
+  return `${clockTime(expiresAt)} (in ${left})`;
+}

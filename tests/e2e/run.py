@@ -348,6 +348,25 @@ def chat_locked(env, b):
     expect(late.get_by_text("Looking for the host")).to_be_visible()
 
 
+
+@scenario("chat: a reload resumes the room, the passphrase is not stored, and everyone sees the time limit")
+def chat_reload(env, b):
+    host, bob = env.person(b), env.person(b)
+    link, passphrase = chat_create(env, host, "Alice")
+    expect(host.get_by_text("It closes automatically at")).to_be_visible()
+    chat_join(bob, link, "Bob", passphrase)
+    approve(host, "Bob")
+    admitted(bob)
+    expect(bob.get_by_text("This room closes automatically at")).to_be_visible()
+    assert passphrase not in host.evaluate("JSON.stringify(sessionStorage)"), "passphrase kept in sessionStorage"
+
+    host.reload()
+    expect(host.get_by_text("Room resumed after a reload")).to_be_visible()
+    expect(host.get_by_text("not kept after a reload")).to_be_visible()
+    expect(host.locator(".members").get_by_text("Bob")).to_be_visible()
+    say(host, "back after a reload")
+    sees(bob, "back after a reload")
+
 # Every ordered pair of different engines, for both flows: the roles aren't symmetric (the host
 # relays for its guests, the sender offers and the recipient asks), so A → B and B → A both count.
 CROSS_PAIRS = [(a, b) for a in ENGINES for b in ENGINES if a != b]
