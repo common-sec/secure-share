@@ -224,6 +224,7 @@ ticked, a "you left this page" note, the status and Cancel.
 - **Not on a call?** One line under step 2: "Not on a call? Send the words another way than the
   link, e.g. a text message." (US3)
 - The "you left this page" warning and the tab title changes stay as they are.
+- The room's closing time (roadmap K3) stays, as one small line under the steps.
 - With "Check who's receiving" on, step 2 becomes "Read your code to them: **1234**. Does it match
   theirs?" with Deliver and Decline.
 
