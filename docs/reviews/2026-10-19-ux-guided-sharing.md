@@ -59,7 +59,8 @@ Done when:
 Done when:
 - the page says in one line who this is from in plain terms ("Someone sent you something
   privately") and in one line what to do ("Type the words they tell you");
-- the words are accepted however they're typed: any capitals, extra spaces or other separators;
+- the words must match **exactly**, one to one; because they're lowercase words separated by
+  single spaces, typing what you hear is enough, and a mismatch says so plainly (US7);
 - the page shows where it is (finding the sender, connecting, receiving) and what was received,
   with Copy or Download, then **Done**, which clears everything.
 
@@ -121,12 +122,11 @@ protects against offline guessing, which this design rules out.
 - **Four common words, lowercase, separated by spaces**, from the existing list of 877 words
   (`src/lib/words.ts`): about 39 bits. With 5 tries, the chance of guessing it is about 1 in 100
   billion.
-- **Forgiving input on both sides:** lowercase, and any run of spaces, dashes, dots or other
-  separators becomes one space, before key derivation. This changes the key derivation input in
-  [PROTOCOL.md](../PROTOCOL.md) (`NFKC(passphrase)` becomes `NFKC(normalized passphrase)`). Both
-  peers load the same site, so the only links affected are ones made before a deploy and opened
-  after it. Recommendation: document it in PROTOCOL.md and the changelog, and don't hold the UX
-  work for the 0.8.0 protocol change.
+- **Exact match, one to one.** The words are not normalised: no case folding and no rewriting of
+  spaces or separators, so what the recipient types must be exactly what the sender has (only
+  leading and trailing spaces are ignored, as today). The simple format is what makes this easy:
+  lowercase words and single spaces leave nothing to get wrong except the words themselves. Key
+  derivation in [PROTOCOL.md](../PROTOCOL.md) stays as it is.
 - **A word list fit for speaking:** drop words that sound like another word in the list
   (`night` / `knight`) and words people often misspell or mispronounce (e.g. `cello`). The
   room list becomes a curated subset; the password generator keeps the full list and its complex
@@ -257,7 +257,7 @@ and isn't stored anywhere.                              How it works ›
 
 - **Context and trust** (R1): one line saying what this is, one link to How it works and the
   source code. Nothing else above the field.
-- **The field asks for "the words they tell you"**, accepts any capitals and spacing (§2), and
+- **The field asks for "the words they tell you"**, must match exactly (§2), and
   says "usually four words" so people know roughly when they're done. The hint for the not-on-a-call case: "They
   should have sent them separately from the link."
 - **Live stages** (R5): finding the sender, connected, receiving with a percentage. If the sender
@@ -277,7 +277,7 @@ Before the next release, in this order (G1 changes the words every other screen 
 
 | # | Item | Covers |
 |---|---|---|
-| G1 | Speakable room passphrases: four lowercase words, a curated word list, forgiving input, PROTOCOL.md updated | §2, S6 (Share) |
+| G1 | Speakable room passphrases: four lowercase words, a curated word list, exact match (no normalisation) | §2, S6 (Share) |
 | G2 | One-question creation page: passphrase off the form, More options, Chat pointer in one line, How it works link | §3, S3 |
 | G3 | Copy the invitation automatically on creation, with fallback; share sheet and QR code | §3, S2 |
 | G4 | Guided waiting screen: numbered steps, Keep my screen on as a step, not-on-a-call line | §4, S1 follow-up |

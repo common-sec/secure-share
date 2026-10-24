@@ -218,8 +218,8 @@ passphrase said aloud). Done in this order, before 0.8.0; the open items below t
 point here.
 
 - [ ] **G1. Speakable room passphrases.** Four lowercase common words from a word list curated for
-      speaking, input that accepts any capitals and separators, plain strength wording;
-      PROTOCOL.md and the changelog note the normalisation.
+      speaking, matched exactly as given (no normalisation, key derivation unchanged), plain
+      strength wording.
 - [ ] **G2. One-question creation page.** "What do you want to send?" and one button; the
       passphrase moves to the next screen; choosing your own words and "check who's receiving"
       go under More options; the Secure Chat pointer is one line; details move to How it works.
