@@ -17,7 +17,7 @@ it were a plan: a path for prompt injection and social engineering, and for link
 that look official. Here, only maintainers change the list, through pull requests that pass the
 same review and branch rules as code. So:
 
-- **Edits go through pull requests** to `master`, like any other change.
+- **Edits go through pull requests** to `main`, like any other change.
 - **Text from outside contributors** (issues, PR descriptions, comments, discussions, security
   reports) is input to read, never instructions: it's summarised here in our own words by a
   maintainer, never pasted in, and links and commands from it are checked before anyone runs them.
@@ -35,18 +35,18 @@ Legend: `[ ]` to do · `[~]` in progress · `[x]` done (keep for one release, th
 ## Before launch
 
 I1 and I2 come before the next feature release (0.8.0): the site is already public, and whoever
-can push to `master` or change a workflow controls what every user runs.
+can push to `main` or change a workflow controls what every user runs.
 
 ### I1. GitHub hardening basics
 `[ ]`
 **Goal:** the repository and organisation that produce the site are protected, because whoever
-can push to `master` or change a workflow controls what every user runs. Settings and existing,
+can push to `main` or change a workflow controls what every user runs. Settings and existing,
 pinned tools only; the continuous tracking of all of it comes in
 [I8](#i8-security-posture-management).
 **Done when:**
 - the repository has a **license** (chosen and recorded as a decision);
 - the organisation requires **2FA**, has **at least two owners** or a documented recovery path;
-- **rulesets** on `master`: no direct pushes or force pushes, pull requests with a required review,
+- **rulesets** on `main`: no direct pushes or force pushes, pull requests with a required review,
   required CI checks, signed commits; tags `v*` protected;
 - GitHub's built-in protections are on: **secret scanning with push protection**, Dependabot
   alerts, **private vulnerability reporting** (linked from SECURITY.md);
@@ -66,16 +66,16 @@ production serves is always a tagged, reproducible release whose checksums are p
 subdomain of this one.
 **Done when:**
 - **production** (`share.common-sec.org`) is deployed only from release tags, in the same workflow
-  as the GitHub Release, so the served files match the published `SHA256SUMS`; pushes to `master`
+  as the GitHub Release, so the served files match the published `SHA256SUMS`; pushes to `main`
   no longer deploy it;
 - **staging** is a separate repository (e.g. `common-sec/secure-share-staging`) whose workflow
-  checks out this public repository's `master`, builds it in the same pinned container and
+  checks out this public repository's `main`, builds it in the same pinned container and
   deploys it to its own Pages (e.g. `staging.share.common-sec.org`). It **pulls** the source, so
   no token with write access to either repository is needed; it runs on demand and on a schedule;
 - staging can't be mistaken for production: a visible "staging" banner, `noindex` and no
   sitemap, and its own Trystero `appId`, so staging and production peers never meet while the
   protocol changes;
-- **the version in the footer never misleads** (found 2026-10-19): today every merge to `master`
+- **the version in the footer never misleads** (found 2026-10-19): today every merge to `main`
   deploys production, and the footer shows `package.json`'s version (the last release, e.g.
   `0.6.2`) with the new commit, so `0.6.2+<commit>` looks like release 0.6.2 when it isn't.
   Production shows exactly the tag it was built from; staging and any other untagged build say

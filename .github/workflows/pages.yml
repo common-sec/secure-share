@@ -1,10 +1,10 @@
 name: Deploy to GitHub Pages
 
-# Publishes the built app (dist/) on every push to master. The build runs in the same pinned
+# Publishes the built app (dist/) on every push to main. The build runs in the same pinned
 # container as everywhere else and must be reproducible; its SHA256SUMS ship with the site.
 on:
   push:
-    branches: [master]
+    branches: [main]
   workflow_dispatch:
 
 permissions:

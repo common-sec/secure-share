@@ -8,7 +8,7 @@ trust.
 
 | Where | What |
 |---|---|
-| **GitHub Pages** (`.github/workflows/pages.yml`) | `dist/` from every push to `master`, including its `SHA256SUMS` |
+| **GitHub Pages** (`.github/workflows/pages.yml`) | `dist/` from every push to `main`, including its `SHA256SUMS` |
 | **GitHub Releases** (`.github/workflows/release.yml`) | for every tag `vX.Y.Z`: `commonsec-share-vX.Y.Z.tar.gz` (the `dist/` folder), its `.sha256`, and `commonsec-share-vX.Y.Z.SHA256SUMS` (one checksum per file) |
 | **CI logs** | every build prints `dist/SHA256SUMS` |
 
@@ -67,7 +67,7 @@ done
 sha256sum -c ../served.SHA256SUMS
 ```
 
-Pages serves the latest `master`, which may be ahead of the latest tag: compare with a build of
+Pages serves the latest `main`, which may be ahead of the latest tag: compare with a build of
 the commit shown in the footer in that case.
 
 ## Making a release
@@ -78,5 +78,5 @@ the commit shown in the footer in that case.
 3. Manual checks against staging (Playwright covers the engines, not the real browsers): on a
    **real iPhone with Safari** and on **Edge for Windows**, send a Share with a file to another
    device (recipient downloads it), join a Chat and exchange a message, and use a Copy button.
-4. Tag and push: `git tag -a vX.Y.Z -m "X.Y.Z: <feature>" && git push origin master vX.Y.Z`.
+4. Tag and push: `git tag -a vX.Y.Z -m "X.Y.Z: <feature>" && git push origin main vX.Y.Z`.
 5. The Release workflow builds, checks reproducibility and publishes the release with checksums.
