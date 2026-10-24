@@ -15,7 +15,7 @@ trust.
 Releases up to v0.6.1 were published as `secure-sharing-vX.Y.Z…` (the app's earlier name).
 
 The footer of the app shows the version and the commit it was built from
-(`v0.6.2 · build abc1234`), linking to that commit.
+(`v0.7.0 · build abc1234`), linking to that commit.
 
 ## Rebuild and compare
 
@@ -25,7 +25,7 @@ else is pinned: the Node image by digest, the npm packages by `package-lock.json
 ```bash
 git clone https://github.com/common-sec/secure-share.git
 cd secure-share
-git checkout v0.6.2
+git checkout v0.7.0
 docker compose run --rm build          # npm ci, type-check, build twice, fail if they differ
 cat dist/SHA256SUMS
 ```
@@ -33,7 +33,7 @@ cat dist/SHA256SUMS
 Compare with the release's `SHA256SUMS`:
 
 ```bash
-diff dist/SHA256SUMS commonsec-share-v0.6.2.SHA256SUMS && echo "identical"
+diff dist/SHA256SUMS commonsec-share-v0.7.0.SHA256SUMS && echo "identical"
 ```
 
 The tarball is deterministic too, so it can be recreated and compared with its `.sha256`.
@@ -42,8 +42,8 @@ names, modes 755/644, owner 0, time 0, and a gzip header with no name or time. P
 the checkout never leak in (on a Windows drive mounted in WSL, every file looks like `777`).
 
 ```bash
-docker compose run --rm package v0.6.2       # writes release/commonsec-share-v0.6.2.tar.gz and .sha256
-diff release/commonsec-share-v0.6.2.tar.gz.sha256 commonsec-share-v0.6.2.tar.gz.sha256 && echo "identical"
+docker compose run --rm package v0.7.0       # writes release/commonsec-share-v0.7.0.tar.gz and .sha256
+diff release/commonsec-share-v0.7.0.tar.gz.sha256 commonsec-share-v0.7.0.tar.gz.sha256 && echo "identical"
 ```
 
 The commit is read from `.git`, so build from a git checkout of the tag (or set `BUILD_COMMIT`
@@ -59,7 +59,7 @@ Download the served files and check them against the published checksums:
 ```bash
 base=https://share.common-sec.org
 curl -fsS "$base/SHA256SUMS" -o served.SHA256SUMS
-diff served.SHA256SUMS commonsec-share-v0.6.2.SHA256SUMS
+diff served.SHA256SUMS commonsec-share-v0.7.0.SHA256SUMS
 mkdir -p served && cd served
 awk '{print $2}' ../served.SHA256SUMS | while read -r f; do
   mkdir -p "$(dirname "$f")" && curl -fsS "$base/$f" -o "$f"

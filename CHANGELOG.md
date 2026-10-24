@@ -4,6 +4,8 @@ All notable changes, one section per version. See [docs/ROADMAP.md](docs/ROADMAP
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-10-24
+
 ### Security
 - **The chat passphrase is no longer stored in the browser** (code scanning alert #1). It used to
   be kept in clear in sessionStorage so the host could see it after a reload; now it stays in
