@@ -281,11 +281,11 @@ self-contained HTML file. The architecture is still to be decided; see the roadm
 
 ## Staging environment
 **Status:** ✅ Accepted → TODO I2
-**Problem:** every push to `master` deploys straight to the public site, so production often runs
+**Problem:** every push to `main` deploys straight to the public site, so production often runs
 untagged builds whose checksums aren't published, and real-device checks (two devices on
 different networks) have no URL to run against before users get the change.
 **Proposal:** production deploys only from release tags; a separate staging repository (Pages
-serves one site per repository) pulls `master` from this public repository, builds it in the same
+serves one site per repository) pulls `main` from this public repository, builds it in the same
 container and serves it at its own address, with no write token, a "staging" banner, `noindex`
 and its own Trystero `appId`.
 
