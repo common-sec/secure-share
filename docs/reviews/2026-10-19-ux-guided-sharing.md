@@ -102,7 +102,7 @@ Done when each failure has a plain message and one action:
 | Wrong words | "Those words didn't match. Check them with the sender and try again (N tries left)." | "Someone typed the wrong words (N of 5)." |
 | Sender's page closed, or the link was already used | After a short wait: "The sender isn't there. Ask them to keep their page open, or to make a new link." | n/a |
 | Too many wrong tries | "This link is locked. Ask the sender for a new one." | "Locked after 5 wrong tries. Create a new link." |
-| No direct connection | The 0.9.0 connectivity work defines this | Same |
+| No direct connection | The 0.10.0 connectivity work defines this | Same |
 
 ---
 

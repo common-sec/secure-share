@@ -4,6 +4,12 @@ All notable changes, one section per version. See [docs/ROADMAP.md](docs/ROADMAP
 
 ## [Unreleased]
 
+### Changed
+- **Guided sharing is the next release, 0.8.0.** Items G1–G5 from the guided sharing UX review
+  moved from the fixes list to a roadmap feature of their own, ahead of the rest; the `age`
+  format is now 0.9.0, the relay fallback 0.10.0 and static pages 0.11.0.
+- **Pages deploys from `main`**, the renamed default branch; nothing had deployed since #21.
+
 ## [0.7.0] - 2026-10-24
 
 ### Security
