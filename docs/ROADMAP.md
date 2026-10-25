@@ -36,10 +36,11 @@ CI/CD, testing infrastructure and security process work is tracked separately, i
 |---|---|---|
 | 0.1.0 | **Baseline**: password/passphrase generator, Secure Chat, Secure Share, docs, browser test suite | ✅ Done |
 | 0.4.0 | **First real-world test feedback**: Secure Share as the home page, clearer naming, stronger and masked room passphrases with a strength meter | ✅ Done |
-| 0.7.0 | **Names, organisation and domain**: CommonSec organisation, CommonSec Share app, served at `share.common-sec.org` | ✅ Done (to tag) |
-| 0.8.0 | **Standard secure channel**: our own handshake and message encryption replaced by a published protocol (Noise `IKpsk1` on the snow library, under study), with forward secrecy (breaking) | Next (study) |
-| 0.9.0 | **Connectivity on restrictive networks**: users behind symmetric NAT or UDP-blocking firewalls can still connect, through an end-to-end encrypted relay fallback | Planned |
-| 0.10.0 | **Static pages and SEO**: pre-rendered static pages, metadata and social previews, How it works and FAQ, sitemap, Search Console | Planned |
+| 0.7.0 | **Names, organisation and domain**: CommonSec organisation, CommonSec Share app, served at `share.common-sec.org` | ✅ Done |
+| 0.8.0 | **Guided sharing**: sender and recipient guided step by step, designed first for use on a call: speakable passphrases, a one-question creation page, the link copied automatically, guided waiting and recipient screens | In progress |
+| 0.9.0 | **Standard secure channel**: our own handshake and message encryption replaced by a published protocol (Noise `IKpsk1` on the snow library, under study), with forward secrecy (breaking) | Planned (study) |
+| 0.10.0 | **Connectivity on restrictive networks**: users behind symmetric NAT or UDP-blocking firewalls can still connect, through an end-to-end encrypted relay fallback | Planned |
+| 0.11.0 | **Static pages and SEO**: pre-rendered static pages, metadata and social previews, How it works and FAQ, sitemap, Search Console | Planned |
 | 1.0.0 | **Public launch**: release checklist and announcement, once the [pre-launch internal work](TODO.md#before-launch) is done | Planned |
 | 1.1.0 | **Share a generated password**: a button on the password generator opens a one-way Secure Share with it, passphrase and link ready | Planned |
 | 1.2.0 | **Local version of the app** (architecture to define: PWA, Electron, Docker image, single file) | Planned |
@@ -50,18 +51,19 @@ The versions skipped above (0.2.0, 0.3.0, 0.3.1, 0.5.0, 0.6.0) were internal wor
 before internal work moved to [TODO.md](TODO.md) on 2026-10-19; [CHANGELOG.md](../CHANGELOG.md)
 has what each contained. Features planned at that point were renumbered: the `age` format was
 0.11.0, the relay fallback 0.12.0, static pages 0.13.0, and the features after 1.0 were 1.3.0 to
-1.5.0.
+1.5.0. On 2026-10-25 guided sharing became 0.8.0, ahead of them, and they moved up one: the
+`age` format was 0.8.0, the relay fallback 0.9.0 and static pages 0.10.0.
 
-**Why this order (2026-10-15, updated 2026-10-19):** the one breaking protocol change comes
-first, because it's cheap before 1.0 and a major version after it. Then the relay fallback, so
+**Why this order (2026-10-15, updated 2026-10-19 and 2026-10-25):** guided sharing comes first,
+because the main flows should be right before more is built on them, and it's the next thing
+people testing the site will see. Then the one breaking protocol change, because it's cheap
+before 1.0 and a major version after it. Then the relay fallback, so
 people on restrictive networks can connect at launch, and the static pages and SEO. The site is
 already public, so the security basics in [TODO.md](TODO.md#before-launch) (repository hardening,
-staging, tagged production) come before the next feature release, and the external security review
+staging, tagged production) come before the standard secure channel (0.9.0), and the external security review
 comes **just before launch**, so it reviews what actually ships. The logo needs iterations with
 people and doesn't affect usability, so it isn't on the critical path. The high-priority
-[fixes](#fixes-and-small-improvements) go in as patches between features, before launch; the
-[guided sharing](#before-the-next-release-guided-sharing) items (2026-10-19) come first, before
-0.8.0, because the main flows should be right before more is built on them.
+[fixes](#fixes-and-small-improvements) go in as patches between features, before launch.
 
 ### 0.4.0: First real-world test feedback ✅
 **Context:** first test of the published site, between two devices on different networks (mobile data and wifi), with
@@ -92,7 +94,30 @@ Moved out on 2026-10-15: organisation 2FA, rulesets and owners go to the GitHub 
 (now [TODO.md I1](TODO.md#i1-github-hardening-basics)); the logo has its own
 unscheduled item at the end.
 
-### 0.8.0: Standard secure channel
+### 0.8.0: Guided sharing
+From the [guided sharing UX review](reviews/2026-10-19-ux-guided-sharing.md) (2026-10-19), with
+its [user stories](reviews/2026-10-19-ux-guided-sharing.md#1-user-stories). **Goal:** sender and
+recipient are guided step by step, designed first for using the app on a call (link in the chat,
+passphrase said aloud). Done in this order; the open [fixes](#fixes-and-small-improvements) that
+these cover point here.
+**Done when:**
+- [ ] **G1. Speakable room passphrases.** Six fully random lowercase words from the full word list
+      (about 59 bits, so an offline attack on recorded traffic isn't practical), matched exactly as given (no normalisation, key derivation unchanged), plain
+      strength wording.
+- [ ] **G2. One-question creation page.** "What do you want to send?" and one button; the
+      passphrase moves to the next screen; choosing your own words and "check who's receiving"
+      go under More options; the Secure Chat pointer is one line; details move to How it works.
+- [ ] **G3. Link copied automatically.** An invitation with the link (never the passphrase) is
+      copied on creation, with a fallback; "Copy link only", the share sheet and a QR code as
+      secondary actions.
+- [ ] **G4. Guided waiting screen.** Numbered steps (paste the link, say the words, keep this
+      page open), with "Keep my screen on" as part of the last step, and a line for when you're
+      not on a call.
+- [ ] **G5. Guided recipient page.** What this is and that nothing is stored, "type the words they
+      tell you", live connection stages, the result, then Done (clears everything) and Send
+      something back.
+
+### 0.9.0: Standard secure channel
 **Goal:** the whole channel (handshake, chat messages, Share payloads, files and control messages)
 runs on one published, reviewed protocol instead of our own construction, so reviewers check a
 known design against its specification. **Changed 2026-10-25:** this item used to be the `age`
@@ -115,7 +140,7 @@ let anyone with the link test passphrase guesses offline, which D9 rules out.
   release notes mark the change as breaking;
 - unit and end-to-end tests cover the new protocol, including its published test vectors.
 
-### 0.9.0: Connectivity on restrictive networks
+### 0.10.0: Connectivity on restrictive networks
 **Context:** direct connections work for most networks, but fail when both sides are behind
 restrictive NATs (symmetric NAT, common on corporate networks and some mobile carriers) or when a
 firewall blocks UDP. Industry estimates put the share of WebRTC sessions that need a relay at
@@ -139,7 +164,7 @@ everyone else keeps direct connections.
   local TURN container;
 - COMMUNICATION.md, DECISIONS.md (D5) and THREAT_MODEL.md updated.
 
-### 0.10.0: Static pages and SEO
+### 0.11.0: Static pages and SEO
 **Goal:** people searching for how to send a password or a sensitive file securely find the app,
 and shared links show a trustworthy preview. See
 [the review](reviews/2026-10-12-ux-product-seo.md#7-seo-and-discoverability) and
@@ -214,30 +239,6 @@ features above.
 
 Legend: `[ ]` to do · `[x]` done (keep for one release, then remove).
 
-### Before the next release: guided sharing
-
-From the [guided sharing UX review](reviews/2026-10-19-ux-guided-sharing.md) (2026-10-19), with
-its [user stories](reviews/2026-10-19-ux-guided-sharing.md#1-user-stories). **Goal:** sender and
-recipient are guided step by step, designed first for using the app on a call (link in the chat,
-passphrase said aloud). Done in this order, before 0.8.0; the open items below that these cover
-point here.
-
-- [ ] **G1. Speakable room passphrases.** Six fully random lowercase words from the full word list
-      (about 59 bits, so an offline attack on recorded traffic isn't practical), matched exactly as given (no normalisation, key derivation unchanged), plain
-      strength wording.
-- [ ] **G2. One-question creation page.** "What do you want to send?" and one button; the
-      passphrase moves to the next screen; choosing your own words and "check who's receiving"
-      go under More options; the Secure Chat pointer is one line; details move to How it works.
-- [ ] **G3. Link copied automatically.** An invitation with the link (never the passphrase) is
-      copied on creation, with a fallback; "Copy link only", the share sheet and a QR code as
-      secondary actions.
-- [ ] **G4. Guided waiting screen.** Numbered steps (paste the link, say the words, keep this
-      page open), with "Keep my screen on" as part of the last step, and a line for when you're
-      not on a call.
-- [ ] **G5. Guided recipient page.** What this is and that nothing is stored, "type the words they
-      tell you", live connection stages, the result, then Done (clears everything) and Send
-      something back.
-
 ### High priority: security findings
 
 From [code scanning alert #1](https://github.com/common-sec/secure-share/security/code-scanning/1)
@@ -310,7 +311,7 @@ already run on every page).
 
 Plain links only: no embedded widget, button script, badge or counter
 loaded from a third party ([IDEAS.md](IDEAS.md#support--feedback-links)). The privacy note it
-included moves into the FAQ (0.10.0).
+included moves into the FAQ (0.11.0).
 
 - [ ] **L1. Star on GitHub.** A plain link to the repository in the footer.
 - [ ] **L2. Donations.** Patreon and/or Buy Me a Coffee links in the footer.

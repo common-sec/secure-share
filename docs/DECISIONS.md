@@ -44,7 +44,7 @@ kept under "History".
 - **Why:** no third party carries data, and there's zero cost. Direct connections work on most
   home, office and mobile networks (verified in a real-world test across two different networks, mobile data and wifi).
 - **Cost:** two peers both behind strict, symmetric NATs can't connect.
-- **Next:** roadmap 0.9.0 adds an end-to-end encrypted relay fallback, used only when no direct path works, plus clear failure messages ([ROADMAP.md](ROADMAP.md)).
+- **Next:** roadmap 0.10.0 adds an end-to-end encrypted relay fallback, used only when no direct path works, plus clear failure messages ([ROADMAP.md](ROADMAP.md)).
 
 ### D6. Chat is a star through the host ✅
 - **Why:** guests never learn each other's IP addresses; only the host admits people; fewer connections.
@@ -76,8 +76,9 @@ kept under "History".
   `age` format was considered and dropped (D23).
 
 ### D23. The `age` format: considered and dropped, for now ❌ (2026-10-25)
-- **What was proposed:** roadmap 0.8.0 planned to encrypt Share payloads (files and text) in the
-  [age](https://age-encryption.org) format, with the `age-encryption` library. It was built and
+- **What was proposed:** the roadmap (0.8.0, then 0.9.0 once guided sharing moved ahead)
+  planned to encrypt Share payloads (files and text) in the [age](https://age-encryption.org)
+  format, with the `age-encryption` library. It was built and
   tested (closed PR #26): a post-quantum hybrid age identity derived from the room keys,
   interoperable with the reference `age` tool, all tests green.
 - **Why it was dropped:** age is a file format, not a channel protocol. Chat messages, control
@@ -85,7 +86,7 @@ kept under "History".
   sat next to them inside the same channel, so there was more to review, not less. It also has no
   sender authentication or forward secrecy, and costs about 1.6 KB per message, so it doesn't fit
   chat. The goal is that the **whole channel** uses a reviewed construction.
-- **Next:** roadmap 0.8.0 is now a standard secure channel; the study compares Noise (`IK` with a
+- **Next:** roadmap 0.9.0 is now a standard secure channel; the study compares Noise (`IK` with a
   pre-shared key, on the snow library), binding our handshake to WebRTC's DTLS, PAKE (CPace), MLS
   and HPKE.
 - **Revisit:** age (or HPKE) for data that leaves the live channel: a saved encrypted file, or

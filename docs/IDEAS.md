@@ -52,7 +52,7 @@ there's a build system for pinned dependencies anyway, TypeScript gives the same
 noise. Reproducible builds keep "served code = reviewed code" verifiable.
 
 ## Support & feedback links
-**Status:** 📋 Fix ([ROADMAP.md](ROADMAP.md#medium-priority-support-and-feedback-links)); the privacy note moves into the FAQ (0.10.0)
+**Status:** 📋 Fix ([ROADMAP.md](ROADMAP.md#medium-priority-support-and-feedback-links)); the privacy note moves into the FAQ (0.11.0)
 **Problem:** there's no way for people to support or rate the project, and no visibility for the portfolio.
 **Proposal:** plain links only (no embedded widgets, buttons, badges or counters loaded from third parties):
 - **Developers:** "★ Star on GitHub" link to the repository. Not GitHub's button script.
@@ -124,7 +124,7 @@ umbrella for several security tools whose name is chosen separately (decided: **
 trust and context, masked received secrets, plain language, accessibility basics.
 
 ## SEO and launch readiness
-**Status:** ✅ Accepted → 0.10.0 (static pages and SEO); the launch itself is 1.0.0
+**Status:** ✅ Accepted → 0.11.0 (static pages and SEO); the launch itself is 1.0.0
 **Proposal:** pre-rendered static pages per tool, metadata and social previews, How it works and
 FAQ, sitemap, Search Console and Bing Webmaster Tools, Lighthouse CI, launch checklist.
 
@@ -136,7 +136,7 @@ both reach and SEO.
 ## Usage statistics from access logs
 **Status:** 💡 Proposed
 **Problem:** we don't know whether anyone uses the tools.
-**Proposal:** search impressions and clicks from Google Search Console and Bing Webmaster Tools (no script on the page; planned in 0.10.0). Beyond that, read the static host's aggregate access logs (page and module loads). There's no
+**Proposal:** search impressions and clicks from Google Search Console and Bing Webmaster Tools (no script on the page; planned in 0.11.0). Beyond that, read the static host's aggregate access logs (page and module loads). There's no
 code in the app, and the URL fragment holding secrets is never sent to the host. Optionally, a
 self-hosted, opt-in event counter that stores no IP and no identifier.
 
@@ -164,7 +164,9 @@ does, why the protocol is shaped this way, and what the alternatives (PAKE, Nois
 Argon2) would change. Its outcome could become `docs/HOW_IT_WORKS.md` for users and contributors.
 
 ## Encrypt Share payloads in the `age` format
-**Status:** ✅ Accepted → 0.8.0 (before 1.0, while a breaking protocol change is still a minor version)
+**Status:** ❌ Dropped on 2026-10-25 ([D23](DECISIONS.md)): a file format next to our own channel
+added a second construction instead of replacing ours. Roadmap 0.9.0 is now a standard secure
+channel (Noise); age or HPKE may come back for data that leaves the channel.
 **Proposal:** use the audited, standard `age` format (`typage`) for Share payloads instead of our
 AES-GCM framing. One more dependency, but a standard and interoperable format.
 
@@ -202,7 +204,7 @@ encrypted); it needs server storage, abuse controls and size limits; and it isn'
 A product decision first, then a technical one.
 
 ## Optional TURN relay
-**Status:** ✅ Accepted → 0.9.0, as part of connectivity on restrictive networks
+**Status:** ✅ Accepted → 0.10.0, as part of connectivity on restrictive networks
 **Problem:** peers behind strict NATs or firewalls can't connect.
 **Proposal:** an opt-in TURN server (self-hosted, or a paid service as a sustainability option). It
 only carries data that is already end-to-end encrypted.

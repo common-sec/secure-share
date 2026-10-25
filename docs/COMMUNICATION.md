@@ -274,7 +274,7 @@ four stages:
 |---|---|---|---|
 | `host` | The device's own network interface (hidden behind a random `.local` name) | `4f1c…3c.local:54321` | Both devices are on the same local network |
 | `srflx` (server reflexive) | The public address a STUN server saw (below) | `198.51.100.23:51234` | The NATs allow hole punching: most networks |
-| `relay` | A TURN relay server | `203.0.113.7:3478` | Always, but traffic goes through the relay. **We don't use TURN today** (roadmap 0.9.0) |
+| `relay` | A TURN relay server | `203.0.113.7:3478` | Always, but traffic goes through the relay. **We don't use TURN today** (roadmap 0.10.0) |
 
 ### The ICE credentials
 
@@ -382,7 +382,7 @@ the port the other peer would reach, so the checks miss.
   (TURN) for any reason at roughly **10–25%**, depending heavily on the users' networks. These
   figures come from vendors and are not precise. A relay is what we deliberately don't run
   today ([DECISIONS.md D5](DECISIONS.md)), so for those users the connection currently fails.
-  Fixing that, with an end-to-end encrypted relay fallback, is roadmap item **0.9.0**
+  Fixing that, with an end-to-end encrypted relay fallback, is roadmap item **0.10.0**
   ([ROADMAP.md](ROADMAP.md)).
 
 ## Step 4: our own checks, inside the direct channel

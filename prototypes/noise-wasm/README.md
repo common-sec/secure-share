@@ -1,6 +1,6 @@
 # Noise handshake prototype (snow on WebAssembly)
 
-A study for roadmap 0.8.0, not used by the app. It wraps the
+A study for roadmap 0.9.0, not used by the app. It wraps the
 [snow](https://github.com/mcginty/snow) Noise library (Rust, 0.10.0) for the browser with
 wasm-bindgen and checks two questions: does it work in a browser under our Content-Security-Policy,
 and which `IK` variant fits our threat model.

@@ -3,7 +3,7 @@ name = "noise-wasm"
 version = "0.0.0"
 edition = "2021"
 publish = false
-description = "Prototype: snow's Noise IKpsk2 handshake for the browser (study for 0.8.0)"
+description = "Prototype: snow's Noise IK handshake with a PSK for the browser (study for 0.9.0)"
 license = "UNLICENSED"
 
 [lib]

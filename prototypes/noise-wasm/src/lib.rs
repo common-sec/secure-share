@@ -1,4 +1,4 @@
-//! Prototype for the 0.8.0 study: snow's Noise `IK` handshake with a PSK
+//! Prototype for the 0.9.0 study: snow's Noise `IK` handshake with a PSK
 //! (`IKpsk1` or `IKpsk2`, 25519 / ChaCha20-Poly1305 / SHA-256) and the transport that
 //! follows, exposed to JavaScript through wasm-bindgen.
 //!
