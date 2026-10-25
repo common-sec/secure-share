@@ -37,7 +37,7 @@ CI/CD, testing infrastructure and security process work is tracked separately, i
 | 0.1.0 | **Baseline**: password/passphrase generator, Secure Chat, Secure Share, docs, browser test suite | ✅ Done |
 | 0.4.0 | **First real-world test feedback**: Secure Share as the home page, clearer naming, stronger and masked room passphrases with a strength meter | ✅ Done |
 | 0.7.0 | **Names, organisation and domain**: CommonSec organisation, CommonSec Share app, served at `share.common-sec.org` | ✅ Done (to tag) |
-| 0.8.0 | **Standard encryption format**: Share payloads in the audited `age` format instead of our own framing (breaking) | Next |
+| 0.8.0 | **Standard secure channel**: our own handshake and message encryption replaced by a published protocol (Noise `IKpsk2` under study), with forward secrecy (breaking) | Next (study) |
 | 0.9.0 | **Connectivity on restrictive networks**: users behind symmetric NAT or UDP-blocking firewalls can still connect, through an end-to-end encrypted relay fallback | Planned |
 | 0.10.0 | **Static pages and SEO**: pre-rendered static pages, metadata and social previews, How it works and FAQ, sitemap, Search Console | Planned |
 | 1.0.0 | **Public launch**: release checklist and announcement, once the [pre-launch internal work](TODO.md#before-launch) is done | Planned |
@@ -92,23 +92,25 @@ Moved out on 2026-10-15: organisation 2FA, rulesets and owners go to the GitHub 
 (now [TODO.md I1](TODO.md#i1-github-hardening-basics)); the logo has its own
 unscheduled item at the end.
 
-### 0.8.0: Standard encryption format
-**Goal:** encrypt with a standard, audited format instead of our own framing, so reviewers check
-a known construction rather than ours. See
-[IDEAS.md](IDEAS.md#encrypt-share-payloads-in-the-age-format).
-**Why before launch:** it changes the wire format, so old links and peers stop working. Before
-1.0 that's a minor version; after it, a major one.
+### 0.8.0: Standard secure channel
+**Goal:** the whole channel (handshake, chat messages, Share payloads, files and control messages)
+runs on one published, reviewed protocol instead of our own construction, so reviewers check a
+known design against its specification. **Changed 2026-10-25:** this item used to be the `age`
+file format for Share payloads only; that was dropped because it would have added a second
+construction next to ours ([D23](DECISIONS.md)).
+**Why before launch:** it changes the protocol, so old links and peers stop working. Before 1.0
+that's a minor version; after it, a major one.
+**Now:** a study of the options (Noise, binding to WebRTC's DTLS, PAKE, MLS, HPKE) and their
+browser libraries. The current recommendation is Noise `IKpsk2` (WireGuard's pattern) on Web
+Crypto, with a pre-shared key from the link secret and the passphrase.
 **Done when:**
-- Share payloads use the **`age` format** (the `typage` library, pinned and bundled like
-  Trystero); the key schedule is reviewed at the same time (e.g. scrypt as in `age`'s passphrase
-  recipient, or our PBKDF2-derived key as an X25519 or symmetric recipient), and the choice is
-  recorded as a decision;
-- Chat's message framing is assessed for the same change; it either moves too or the reason it
-  stays is documented;
+- the protocol and its library (or our implementation of a published pattern, checked against
+  its test vectors) are chosen and recorded as a decision;
+- every message type uses it, with forward secrecy, no offline passphrase guessing (D9), host
+  authentication against the link, and recorded traffic still safe from a future quantum computer;
 - docs/PROTOCOL.md and the threat model are updated, the protocol version is bumped, and the
   release notes mark the change as breaking;
-- unit and end-to-end tests cover the new format, including interoperability with the reference
-  `age` tool for Share payloads.
+- unit and end-to-end tests cover the new protocol, including its published test vectors.
 
 ### 0.9.0: Connectivity on restrictive networks
 **Context:** direct connections work for most networks, but fail when both sides are behind
