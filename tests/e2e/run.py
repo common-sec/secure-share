@@ -158,7 +158,7 @@ def share_send(env, page, text, files=(), approve=False, keep_awake=False, own_w
 def share_open(page, link, passphrase):
     page.goto(link)
     page.locator("form input[aria-label=Passphrase]").fill(passphrase)
-    page.get_by_role("button", name="Receive").click()
+    page.get_by_role("button", name="Open", exact=True).click()
 
 
 def received_text(page):
@@ -282,6 +282,7 @@ def share_happy_path(env, b):
 
     share_open(recipient, link, passphrase)
     expect(recipient).to_have_title(re.compile("received a secure delivery"))
+    expect(recipient.get_by_role("heading", name="Someone sent you something privately")).to_be_visible()
     expect(recipient.get_by_text("Received ✓")).to_be_visible()
     assert received_text(recipient) == "db-password: Karrot~Over~Stone42"
     assert download(recipient, ".file-card", "keys.bin") == secret_file["buffer"]
@@ -317,6 +318,11 @@ def share_with_approval(env, b):
     sender.get_by_role("button", name="Deliver").click()
     expect(recipient.get_by_text("Received ✓")).to_be_visible()
     assert received_text(recipient) == "approved secret"
+    # Done clears everything from the page (G5).
+    recipient.get_by_role("button", name="Done").click()
+    expect(recipient.get_by_text("All done ✓")).to_be_visible()
+    expect(recipient.locator("pre.secret")).to_have_count(0)
+    expect(recipient.get_by_role("link", name="Send something back")).to_be_visible()
 
 
 @scenario("share: the sender can choose their own words under More options")

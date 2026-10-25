@@ -161,7 +161,7 @@ select {
 .card.over { border-color: var(--accent); background: var(--code-bg); }
 .btn-tap { min-height: 44px; }
 .hint.inline { margin: 0; }
-.link-button { font: inherit; color: var(--accent); background: none; border: 0; padding: 0; cursor: pointer; text-decoration: underline; }
+.link-button { font: inherit; color: var(--text); background: none; border: 0; padding: 0; cursor: pointer; text-decoration: underline; }
 .chat-pointer { margin: 12px 0 0; }
 .how-it-works summary { cursor: pointer; }
 .advanced .check { margin-top: 12px; }
