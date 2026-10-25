@@ -382,6 +382,9 @@ the port the other peer would reach, so the checks miss.
   (TURN) for any reason at roughly **10–25%**, depending heavily on the users' networks. These
   figures come from vendors and are not precise. A relay is what we deliberately don't run
   today ([DECISIONS.md D5](DECISIONS.md)), so for those users the connection currently fails.
+  The app does notice: when offers were exchanged through the relays but no direct path was
+  found, both sides are told that a network between them blocks direct connections, and what to
+  try. It also says when none of the relays can be reached, as on networks that filter WebSockets.
   Fixing that, with an end-to-end encrypted relay fallback, is roadmap item **0.9.0**
   ([ROADMAP.md](ROADMAP.md)).
 

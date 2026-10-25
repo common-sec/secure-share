@@ -120,7 +120,9 @@ roughly 10–25%. Today those users simply can't connect ([COMMUNICATION.md](COM
 everyone else keeps direct connections.
 **Done when:**
 - **clear failure handling:** the app notices when no direct path is found (ICE fails or times
-  out) and tells users plainly what happened and what to try (another network, mobile data);
+  out) and tells users plainly what happened and what to try (another network, mobile data).
+  Done early, as fix [N1](#high-priority-restrictive-networks); the relay fallback updates the
+  advice once it exists;
 - **diagnostics:** a short, private connection report (which address types were found, whether
   UDP is blocked) to tell "restrictive NAT" from other failures;
 - **relay fallback (TURN):** used only when a direct path fails. It carries traffic that is already
@@ -232,6 +234,20 @@ point here.
 - [ ] **G5. Guided recipient page.** What this is and that nothing is stored, "type the words they
       tell you", live connection stages, the result, then Done (clears everything) and Send
       something back.
+
+### High priority: restrictive networks
+
+Some networks block what the app needs: firewalls that drop UDP or WebRTC, strict NATs, or
+filters (firewall rules, NIDS/NIPS) that block the WebSocket relays. Until the
+[relay fallback (0.9.0)](#090-connectivity-on-restrictive-networks), users should at least learn
+what happened instead of waiting forever.
+- [x] **N1. Say when the network blocks the connection.** Two cases are detected, with no new
+      third party and nothing sent anywhere: the other side was found through the relays but no
+      direct connection could be opened (Trystero's "could not connect after exchanging SDP"),
+      and no relay can be reached for 10 s while the room needs them. Share (sender and recipient)
+      and Chat (host and guest) say what failed and what to try: another network such as mobile
+      data, or asking the network's IT team whether WebRTC is allowed. Deliberate blocking isn't
+      worked around.
 
 ### High priority: security findings
 

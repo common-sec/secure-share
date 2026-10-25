@@ -13,6 +13,10 @@
 //   - actions deliver in order per pair; binary data (ArrayBuffer or any view) arrives as a fresh
 //     Uint8Array, as Trystero delivers it
 //   - closing a peer connection fires onPeerLeave on both ends
+//
+// Restrictive networks can be simulated per browser: net.transport({ relaysBlocked: true }) never
+// reaches a relay; net.transport({ directBlocked: true }) finds peers but no direct path to them,
+// which Trystero reports through onJoinError on both sides.
 let counter = 0;
 
 function randomHex(bytes) {
@@ -34,8 +38,8 @@ export class FakeNetwork {
     this.log = []; // every handshake outcome, for assertions
   }
 
-  transport() {
-    return new FakeTransport(this);
+  transport(options = {}) {
+    return new FakeTransport(this, options);
   }
 
   #key(ep) {
@@ -52,6 +56,13 @@ export class FakeNetwork {
   }
 
   async #handshake(a, b) {
+    if (a.transport.directBlocked || b.transport.directBlocked) {
+      this.log.push({ a: a.id, b: b.id, ok: false, errors: ['direct-blocked', 'direct-blocked'] });
+      for (const [self, peer] of [[a, b], [b, a]]) {
+        self.callbacks?.onJoinError?.({ error: `could not connect to peer ${peer.id} after exchanging SDP; configure TURN servers with turnConfig or rtcConfig.iceServers`, peerId: peer.id });
+      }
+      return;
+    }
     a.pending.add(b.id);
     b.pending.add(a.id);
     const ab = channel();
@@ -138,11 +149,14 @@ function peerConnection(net, self, peer) {
 }
 
 class FakeTransport {
-  constructor(net) {
+  constructor(net, { relaysBlocked = false, directBlocked = false } = {}) {
     this.net = net;
+    this.relaysBlocked = relaysBlocked;
+    this.directBlocked = directBlocked;
     this.paused = false;
     this.pauseCount = 0;
-    this.socket = { readyState: 1, close: () => { this.socket.readyState = 3; } };
+    // A blocked relay stays CONNECTING (0), as a WebSocket does while a firewall drops its packets.
+    this.socket = { readyState: relaysBlocked ? 0 : 1, close: () => { this.socket.readyState = 3; } };
     this.endpoint = null;
   }
 
@@ -153,6 +167,7 @@ class FakeTransport {
   resumeRelayReconnection() {
     if (!this.paused && this.socket.readyState === 1) return; // already connected: nothing to resume
     this.paused = false;
+    if (this.relaysBlocked) { this.socket.readyState = 0; return; }
     this.socket.readyState = 1;
     if (this.endpoint && !this.endpoint.left) this.net.discover(this.endpoint);
   }

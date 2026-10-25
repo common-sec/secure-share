@@ -18,6 +18,12 @@ All notable changes, one section per version. See [docs/ROADMAP.md](docs/ROADMAP
   carries the time left and `bye` has a new `expired` reason; older peers ignore both (roadmap fix K3).
 
 ### Added
+- **The app says when a network blocks the connection** (roadmap fix N1). When the other side is
+  found but no direct connection can be opened (a firewall blocking UDP or WebRTC, or strict NATs
+  on both sides), or when no discovery relay can be reached for 10 seconds (WebSockets blocked, or
+  offline), Share and Chat now say so, with what to try, instead of "Still looking…" forever.
+  `SecureRoom` has two new events, `direct-blocked` and `relays`; the fake transport in the unit
+  tests can simulate both networks.
 - **Safari's engine is tested.** The unit and end-to-end suites also run on **WebKit** (Safari, and
   every browser on iPhone and iPad), and every pair of different engines is tested in both
   directions, for Share (sender → recipient) and Chat (host → guest). All 50 unit tests and every end-to-end
