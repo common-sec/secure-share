@@ -1,6 +1,6 @@
 // UI pieces shared by the tools.
 import { h, copyText, type Child } from '../lib/dom.js';
-import { roomPassphrase, phraseEntropy, ROOM_PHRASE } from '../lib/passphrase.js';
+import { roomPassphrase } from '../lib/passphrase.js';
 import { strengthLabel, estimateBits } from '../lib/strength.js';
 
 export interface StrengthMeter {
@@ -45,25 +45,32 @@ export function revealToggle(input: HTMLInputElement): HTMLButtonElement {
 
 /**
  * Room passphrase input, masked by default.
- *   generate: true  → pre-filled with a generated passphrase, a ↻ button and a strength meter
- *                     (exact for generated values, an estimate once edited)
+ *   generate: true  → pre-filled with generated words and a ↻ button; `enough` says in plain
+ *                     words that they're strong enough, and a strength meter (an estimate) only
+ *                     appears once the passphrase is edited
  *   generate: false → empty field for the passphrase someone gave you
+ * Nothing is normalised: what is typed must match exactly (callers only trim the ends).
  */
-export function passphraseField({ generate }: { generate: boolean }): { input: HTMLInputElement; el: HTMLElement } {
+export function passphraseField({ generate, enough = 'Strong enough ✓' }: { generate: boolean; enough?: string }): { input: HTMLInputElement; el: HTMLElement } {
   const input = h('input', {
-    type: 'password', spellcheck: 'false', autocomplete: 'off', autocapitalize: 'off',
+    type: 'password', spellcheck: 'false', autocomplete: 'off', autocapitalize: 'off', autocorrect: 'off',
     class: 'mono', required: true, 'aria-label': 'Passphrase',
   });
   const controls: HTMLElement[] = [input, revealToggle(input)];
   let meter: StrengthMeter | null = null;
+  let ok: HTMLElement | null = null;
   if (generate) {
     const m = strengthMeter();
+    const okLine = h('p', { class: 'hint passphrase-ok' }, enough);
     meter = m;
+    ok = okLine;
     let generated = '';
     const refresh = () => {
+      const isGenerated = input.value === generated;
+      okLine.hidden = !isGenerated;
+      m.el.hidden = isGenerated;
       if (!input.value) m.set(null);
-      else if (input.value === generated) m.set(phraseEntropy(ROOM_PHRASE));
-      else m.set(estimateBits(input.value), { estimated: true });
+      else if (!isGenerated) m.set(estimateBits(input.value), { estimated: true });
     };
     const regenerate = () => { generated = roomPassphrase(); input.value = generated; refresh(); };
     input.addEventListener('input', refresh);
@@ -72,7 +79,7 @@ export function passphraseField({ generate }: { generate: boolean }): { input: H
   }
   const context = generate ? h('p', { class: 'hint' },
     'A generated passphrase is plenty for a room: it can only be guessed live, against your browser, and the room locks after 5 wrong tries.') : null;
-  return { input, el: h('div', null, h('div', { class: 'row grow tight' }, ...controls), meter?.el, context) };
+  return { input, el: h('div', null, h('div', { class: 'row grow tight' }, ...controls), ok, meter?.el, context) };
 }
 
 /** Read-only value with a Copy button; secrets are masked, with a Show toggle. */

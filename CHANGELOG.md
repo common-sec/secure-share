@@ -5,6 +5,14 @@ All notable changes, one section per version. See [docs/ROADMAP.md](docs/ROADMAP
 ## [Unreleased]
 
 ### Changed
+- **Room passphrases you can say aloud** (roadmap G1). Chat and Share now generate six random
+  lowercase words separated by spaces, e.g. `ginger mule honey hen wizard lotus`, picked
+  independently from the full list of 877 words: about 59 bits, at least as strong as the
+  previous three bent words with a symbol, capitals and a number (about 57). They're matched
+  exactly as typed (only leading and trailing spaces are ignored); key derivation is unchanged.
+  Instead of "Fair · ≈57 bits", the sender sees "Strong enough for this one-time link ✓" (Chat:
+  "for this room"); the strength meter appears only once the passphrase is edited. Passphrase
+  fields turn autocorrect off, and the typed-passphrase estimate no longer counts spaces.
 - **Guided sharing is the next release, 0.8.0.** Items G1–G5 from the guided sharing UX review
   moved from the fixes list to a roadmap feature of their own, ahead of the rest; the `age`
   format is now 0.9.0, the relay fallback 0.10.0 and static pages 0.11.0.
