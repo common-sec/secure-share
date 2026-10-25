@@ -13,6 +13,7 @@ Normally run in the pinned test container, after building (see docs/TESTING.md):
 """
 import base64
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -21,7 +22,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from run import serve, sync_playwright  # noqa: E402  (same loopback server as the unit tests)
 
-AGE = os.environ.get("AGE_BIN", "age")
+# The reference tool, installed in the test image (Dockerfile, stage age-cli).
+AGE = "/usr/local/bin/age"
 
 # Runs in the page: the app's own modules, as the unit tests use them.
 DERIVE_AND_ENCRYPT = """async ([text, fileB64]) => {
@@ -77,8 +79,10 @@ def main() -> None:
                 page.goto(f"{base}/tests/unit/index.html?filter=no-test-matches-this")
                 page.wait_for_selector("#summary.pass, #summary.fail")
                 out = page.evaluate(DERIVE_AND_ENCRYPT, [text, b64u(blob)])
-                ok = check(out["identity"].startswith("AGE-SECRET-KEY-PQ-1")
-                           and out["recipient"].startswith("age1pq1"), "the room has a hybrid identity") and ok
+                ok = check(bool(re.fullmatch(r"AGE-SECRET-KEY-PQ-1[0-9A-Z]+", out["identity"]))
+                           and bool(re.fullmatch(r"age1pq1[0-9a-z]+", out["recipient"])), "the room has a hybrid identity") and ok
+                if not ok:
+                    sys.exit(1)
 
                 tmpd = Path(tmp)
                 (tmpd / "key.txt").write_text(out["identity"] + "\n")
