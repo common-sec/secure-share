@@ -5,6 +5,12 @@ All notable changes, one section per version. See [docs/ROADMAP.md](docs/ROADMAP
 ## [Unreleased]
 
 ### Changed
+- **One question, one button** to create a Share (roadmap G2). The page asks "What do you want
+  to send?", with "+ Add files" (or drop files anywhere on the card) and **Create link**. The
+  passphrase is generated when the link is created and shown on the next screen. Choosing your
+  own words and checking who's receiving are under **More options**. "Keep the screen on" moved
+  to the waiting screen, and the longer explanations and "Which one should I use?" moved to a
+  **How it works** box under the form, leaving one line that points to Secure Chat.
 - **Room passphrases you can say aloud** (roadmap G1). Chat and Share now generate six random
   lowercase words separated by spaces, e.g. `ginger mule honey hen wizard lotus`, picked
   independently from the full list of 877 words: about 59 bits, at least as strong as the

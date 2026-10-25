@@ -104,7 +104,7 @@ these cover point here.
 - [x] **G1. Speakable room passphrases.** Six fully random lowercase words from the full word list
       (about 59 bits, so an offline attack on recorded traffic isn't practical), matched exactly as given (no normalisation, key derivation unchanged), plain
       strength wording.
-- [ ] **G2. One-question creation page.** "What do you want to send?" and one button; the
+- [x] **G2. One-question creation page.** "What do you want to send?" and one button; the
       passphrase moves to the next screen; choosing your own words and "check who's receiving"
       go under More options; the Secure Chat pointer is one line; details move to How it works.
 - [ ] **G3. Link copied automatically.** An invitation with the link (never the passphrase) is

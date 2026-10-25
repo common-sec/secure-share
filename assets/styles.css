@@ -158,11 +158,14 @@ select {
 }
 .tab[aria-selected="true"] { background: var(--surface); color: var(--text); border-color: var(--accent); font-weight: 600; }
 
-.dropzone {
-  margin-top: 14px; padding: 20px; border: 2px dashed var(--border); border-radius: var(--radius);
-  text-align: center; color: var(--muted);
-}
-.dropzone.over { border-color: var(--accent); background: var(--code-bg); }
+.card.over { border-color: var(--accent); background: var(--code-bg); }
+.btn-tap { min-height: 44px; }
+.hint.inline { margin: 0; }
+.link-button { font: inherit; color: var(--accent); background: none; border: 0; padding: 0; cursor: pointer; text-decoration: underline; }
+.chat-pointer { margin: 12px 0 0; }
+.how-it-works summary { cursor: pointer; }
+.advanced .check { margin-top: 12px; }
+.how-it-works summary h2 { display: inline; }
 .file-list { list-style: none; padding: 0; margin: 8px 0 0; display: grid; gap: 4px; }
 .file-list li { display: flex; gap: 8px; align-items: center; justify-content: space-between; overflow-wrap: anywhere; }
 .file-card {
