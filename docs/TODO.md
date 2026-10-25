@@ -34,8 +34,8 @@ Legend: `[ ]` to do · `[~]` in progress · `[x]` done (keep for one release, th
 
 ## Before launch
 
-I1 and I2 come before the next feature release (0.8.0): the site is already public, and whoever
-can push to `main` or change a workflow controls what every user runs.
+I1 and I2 come before roadmap 0.9.0 (guided sharing, 0.8.0, ships first): the site is already
+public, and whoever can push to `main` or change a workflow controls what every user runs.
 
 ### I1. GitHub hardening basics
 `[ ]`
@@ -101,7 +101,7 @@ browser runs on WebKit, Safari's engine.
   Windows goes in the release checklist.
 
 ### I4. Lighthouse CI
-`[ ]` Split out of the static pages feature (roadmap 0.10.0) and done with it.
+`[ ]` Split out of the static pages feature (roadmap 0.11.0) and done with it.
 Lighthouse CI (pinned container) runs in CI with budgets for SEO, accessibility and performance.
 
 ### I5. Production hosting and headers
@@ -116,7 +116,7 @@ HSTS, CSP and `nosniff` as headers where the host allows it, or the documented c
 nothing known is left open.
 **Done when:**
 - docs/PROTOCOL.md, the threat model and the code that implements them have been reviewed by
-  someone outside the project, after roadmap 0.8.0 (`age` format) and 0.9.0 (relay fallback), so
+  someone outside the project, after roadmap 0.9.0 (`age` format) and 0.10.0 (relay fallback), so
   the review covers the final format and the relay fallback;
 - a full internal pass over the threat model checks each mitigation against the code and tests;
 - every finding is fixed, or accepted with a documented reason; each fix comes with a regression

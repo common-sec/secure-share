@@ -44,7 +44,7 @@ kept under "History".
 - **Why:** no third party carries data, and there's zero cost. Direct connections work on most
   home, office and mobile networks (verified in a real-world test across two different networks, mobile data and wifi).
 - **Cost:** two peers both behind strict, symmetric NATs can't connect.
-- **Next:** roadmap 0.9.0 adds an end-to-end encrypted relay fallback, used only when no direct path works, plus clear failure messages ([ROADMAP.md](ROADMAP.md)).
+- **Next:** roadmap 0.10.0 adds an end-to-end encrypted relay fallback, used only when no direct path works, plus clear failure messages ([ROADMAP.md](ROADMAP.md)).
 
 ### D6. Chat is a star through the host ✅
 - **Why:** guests never learn each other's IP addresses; only the host admits people; fewer connections.
