@@ -185,17 +185,36 @@ function sendForm(body: HTMLElement, setSession: SetSession): void {
   );
 }
 
+/**
+ * The passphrase shown large enough to read aloud, word by word, masked by default with Show
+ * (people share their screen on calls). The mask shows one dot group per word, never the letters.
+ */
+function wordsView(passphrase: string): HTMLElement {
+  const parts = passphrase.split(' ').filter(Boolean);
+  const shown = h('span', { class: 'words-text', hidden: true }, ...parts.map((w) => h('span', { class: 'word' }, w)));
+  const masked = h('span', { class: 'words-text', 'aria-label': 'Hidden words' }, ...parts.map(() => h('span', { class: 'word' }, '••••')));
+  const toggle = h('button', { type: 'button', class: 'btn btn-ghost btn-small', 'aria-pressed': 'false', onclick: () => {
+    const show = shown.hidden;
+    shown.hidden = !show;
+    masked.hidden = show;
+    toggle.textContent = show ? 'Hide' : 'Show';
+    toggle.setAttribute('aria-pressed', String(show));
+  } }, 'Show');
+  const copy = h('button', { type: 'button', class: 'btn btn-ghost btn-small', onclick: () => copyText(passphrase, copy) }, 'Copy');
+  return h('div', { class: 'words mono' }, masked, shown, toggle, copy);
+}
+
 interface Outgoing { text: string; files: File[]; passphrase: string; copied: Promise<boolean> }
 
 function senderView(body: HTMLElement, room: SecureRoom, { text, files, passphrase, copied }: Outgoing): Session {
   const link = room.link('share');
   const invite = invitation(link);
-  const copyNote = h('p', { class: 'copy-note', 'aria-live': 'polite' }, 'Copying the invitation…');
+  const copyNote = h('span', { class: 'copy-note', 'aria-live': 'polite' }, 'Copying the invitation…');
   void copied.then((ok) => {
     copyNote.textContent = ok ? 'Link copied ✓ Paste it in your chat with them.' : 'Copy the link and paste it in your chat with them.';
-    copyNote.classList.toggle('ok', ok);
+    if (ok && current === 0) step(1);
   });
-  const copyInvite = h('button', { type: 'button', class: 'btn btn-small', onclick: () => copyText(invite, copyInvite) }, 'Copy invitation');
+  const copyInvite = h('button', { type: 'button', class: 'btn btn-small', onclick: () => copyText(invite, copyInvite) }, 'Copy again');
   const shareButton = 'share' in navigator
     ? h('button', { type: 'button', class: 'btn btn-small', onclick: () => { navigator.share({ text: invite }).catch(() => {}); } }, 'Share…')
     : null;
@@ -213,11 +232,8 @@ function senderView(body: HTMLElement, room: SecureRoom, { text, files, passphra
     qrButton.setAttribute('aria-expanded', String(!qrBox.hidden));
   } }, 'QR code');
   const status = h('p', { class: 'status-big', role: 'status' });
-  const steps = h('ol', { class: 'progress-steps' },
-    h('li', { class: 'active' }, 'Share the link and passphrase'),
-    h('li', null, 'Recipient connects'),
-    h('li', null, 'Delivered, link destroyed'));
   const extra = h('div', { 'aria-live': 'polite' });
+  const request = h('div', { 'aria-live': 'polite' });
   const away = h('p', { class: 'hint warn', hidden: true },
     'You left this page. Keep it open and in front until the delivery completes: phones may pause or close pages in the background.');
   // Off by default: an unlocked device left alone exposes this page and everything else on it.
@@ -230,8 +246,11 @@ function senderView(body: HTMLElement, room: SecureRoom, { text, files, passphra
     if (keepScreenOn) void keepAwake();
     else { void wakeLock?.release().catch(() => {}); wakeLock = null; }
   } });
-  const awakeOption = h('label', { class: 'check' }, awake, h('span', null, 'Keep the screen on while waiting',
-    h('small', null, 'stops the screen from turning off or locking until the delivery completes')));
+  // Only where the browser can do it (Screen Wake Lock).
+  const awakeOption = 'wakeLock' in navigator
+    ? h('label', { class: 'check' }, awake, h('span', null, 'Keep my screen on',
+      h('small', null, 'stops the screen from turning off or locking until the delivery completes')))
+    : null;
   const cancel = h('button', { class: 'btn btn-ghost', onclick: () => { location.hash = '#/share?'; } }, 'Cancel');
   let delivered = false;
 
@@ -265,28 +284,45 @@ function senderView(body: HTMLElement, room: SecureRoom, { text, files, passphra
     wakeLock = null;
     away.hidden = true;
     awakeNote.hidden = true;
-    awakeOption.hidden = true;
+    if (awakeOption) awakeOption.hidden = true;
   };
   document.addEventListener('visibilitychange', onVisibility);
   void keepAwake();
 
-  const step = (n: number) => [...steps.children].forEach((li, i) => {
-    li.classList.toggle('done', i < n);
-    li.classList.toggle('active', i === n);
-  });
+  // The screen is the instructions, in the order they happen; each step ticks when it's done:
+  // 1 when the link is copied, 2 when the recipient connects, 3 when it's delivered.
+  const words = wordsView(passphrase);
+  const steps = h('ol', { class: 'guide-steps' },
+    h('li', null,
+      h('div', { class: 'step-title' }, copyNote),
+      h('div', { class: 'row tight' }, copyInvite, shareButton, qrButton),
+      sendWith(link),
+      qrBox,
+      h('details', { class: 'advanced' }, h('summary', null, 'Show the link'),
+        copyRow('One-time link', link, true, 'Copy link only'))),
+    h('li', null,
+      h('div', { class: 'step-title' }, 'Tell them these words:'),
+      words,
+      h('p', { class: 'hint' }, 'Not on a call? Send the words another way than the link, e.g. a text message.'),
+      request),
+    h('li', null,
+      h('div', { class: 'step-title' }, 'Keep this page open until they’ve got it.'),
+      awakeOption, awakeNote, status, extra));
+  let current = 0;
+  const step = (n: number) => {
+    current = n;
+    [...steps.children].forEach((li, i) => {
+      li.classList.toggle('done', i < n);
+      li.classList.toggle('active', i === n);
+    });
+  };
+  step(0);
   const setStatus = (t: string) => { status.textContent = t; };
 
   body.replaceChildren(h('div', { class: 'card narrow' },
     steps,
-    copyNote,
-    copyRow('One-time link', link, true, 'Copy link only'),
-    h('div', { class: 'row tight' }, copyInvite, shareButton, qrButton),
-    sendWith(link),
-    qrBox,
-    copyRow('Passphrase', passphrase, true),
-    h('p', { class: 'hint warn' }, '⚠ Keep this tab open until the delivery completes. Nothing is stored on a server, so closing it cancels the share.'),
     room.expiresAt ? h('p', { class: 'hint' }, `⏱ If nobody receives it, the link stops working at ${closesAt(room.expiresAt)}.`) : null,
-    awakeOption, awakeNote, away, status, extra,
+    away,
     h('div', { class: 'row' }, cancel),
   ));
   setStatus('Waiting for the recipient to open the link…');
@@ -295,16 +331,16 @@ function senderView(body: HTMLElement, room: SecureRoom, { text, files, passphra
     .on('auth-failed', ({ failures }) => extra.append(h('p', { class: 'error' }, `Someone entered a wrong passphrase (${failures}).`)))
     .on('lock', ({ auto }) => { if (auto) setStatus('Locked after repeated wrong passphrases. Cancel and create a new link.'); })
     .on('request', ({ peerId, code }) => {
-      setStatus('Someone with the right passphrase wants to receive it.');
-      extra.replaceChildren(h('div', { class: 'request' },
-        h('div', null, 'Safety code ', h('strong', { class: 'mono' }, code ?? '…'), h('div', { class: 'hint' }, 'It should match the code on the recipient’s screen.')),
+      setStatus('Someone with the right words wants to receive it.');
+      request.replaceChildren(h('div', { class: 'request' },
+        h('div', null, 'Read your code to them: ', h('strong', { class: 'mono' }, code ?? '…'), '. Does it match theirs?'),
         h('div', { class: 'row tight' },
-          h('button', { class: 'btn btn-primary btn-small', onclick: () => { extra.replaceChildren(); void room.accept(peerId); } }, 'Deliver'),
-          h('button', { class: 'btn btn-small', onclick: () => { extra.replaceChildren(); void room.reject(peerId); setStatus('Declined. Still waiting…'); } }, 'Decline')),
+          h('button', { class: 'btn btn-primary btn-small', onclick: () => { request.replaceChildren(); void room.accept(peerId); } }, 'Deliver'),
+          h('button', { class: 'btn btn-small', onclick: () => { request.replaceChildren(); void room.reject(peerId); setStatus('Declined. Still waiting…'); } }, 'Decline')),
       ));
     })
     .on('joined', ({ member }) => {
-      step(1);
+      step(2);
       room.setLocked(true);
       setStatus(`Recipient connected (safety code ${member.code ?? '…'}). Sending…`);
       void (async () => {
@@ -339,7 +375,7 @@ function senderView(body: HTMLElement, room: SecureRoom, { text, files, passphra
     })
     .on('left', () => {
       if (delivered) return;
-      step(0);
+      step(1);
       room.setLocked(false);
       setStatus('The recipient disconnected before finishing. Waiting for them to reconnect…');
     });
