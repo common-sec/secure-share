@@ -58,7 +58,7 @@ https://share.common-sec.org/#/share?r=Q7nmLtvgH6OIiTJ387mbqQ&k=G4laNCs8p9dVdjEw
 
 | Not in the link | Example | What it is |
 |---|---|---|
-| **Passphrase** | `Stone~Behind~Karrotish42` (an example: never use a published passphrase) | Shared separately (e.g. read out on a call). Proven inside the direct channel; never sent anywhere |
+| **Passphrase** | `ginger mule honey hen wizard lotus` (an example: never use a published passphrase) | Shared separately (e.g. read out on a call). Proven inside the direct channel; never sent anywhere |
 | Host public key | `BME6VIGq4d4D2PcV…0PhwAAE` (87 chars) | The host's ECDSA P-256 public key, sent in the handshake (step 4). Its SHA-256 must equal `h` |
 
 What's derived from them ([PROTOCOL.md §2](PROTOCOL.md)):

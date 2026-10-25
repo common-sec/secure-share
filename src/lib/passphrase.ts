@@ -299,9 +299,14 @@ export function phraseEntropy(o: PhraseOptions): number {
   return bits;
 }
 
-/** Settings for chat and share room passphrases: short enough to read aloud, no fixed pattern. */
-export const ROOM_PHRASE: PhraseOptions = { w: 3, style: 'memorable', link: true, sep: 'same', cap: 'first', num: true };
+/**
+ * Room passphrases (Chat and Share): words picked independently from the full list, lowercase,
+ * separated by single spaces, so they can be read aloud on a call and typed as heard. The
+ * strength comes from the number of words alone: 6 × log2(877) ≈ 58.7 bits.
+ */
+export const ROOM_WORDS = 6;
+export const ROOM_PHRASE_BITS = ROOM_WORDS * log2(WORDS.length);
 
 export function roomPassphrase(): string {
-  return generatePhrase(ROOM_PHRASE);
+  return Array.from({ length: ROOM_WORDS }, () => pick(WORDS)).join(' ');
 }

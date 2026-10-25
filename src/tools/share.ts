@@ -48,7 +48,7 @@ function sendForm(body: HTMLElement, setSession: SetSession): void {
   });
   const drop = h('div', { class: 'dropzone' }, 'Drop files here, or ',
     h('button', { type: 'button', class: 'btn btn-small', onclick: () => fileInput.click() }, 'choose files'), fileInput);
-  const pass = passphraseField({ generate: true });
+  const pass = passphraseField({ generate: true, enough: 'Strong enough for this one-time link ✓' });
   const approve = h('input', { type: 'checkbox' });
   // Off by default: an unlocked device left alone exposes this page and everything else on it.
   const awakeWarning = h('p', { class: 'hint warn', hidden: true },

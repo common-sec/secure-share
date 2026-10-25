@@ -101,7 +101,7 @@ recipient are guided step by step, designed first for using the app on a call (l
 passphrase said aloud). Done in this order; the open [fixes](#fixes-and-small-improvements) that
 these cover point here.
 **Done when:**
-- [ ] **G1. Speakable room passphrases.** Six fully random lowercase words from the full word list
+- [x] **G1. Speakable room passphrases.** Six fully random lowercase words from the full word list
       (about 59 bits, so an offline attack on recorded traffic isn't practical), matched exactly as given (no normalisation, key derivation unchanged), plain
       strength wording.
 - [ ] **G2. One-question creation page.** "What do you want to send?" and one button; the
