@@ -68,11 +68,39 @@ kept under "History".
   passphrase is proven by HMAC challenge-response inside the direct channel.
 - **Why:** otherwise relays (or anyone recording them) could test passphrase guesses offline.
 
-### D10. No hand-made crypto primitives: Web Crypto only ✅
+### D10. No hand-made crypto primitives: Web Crypto, plus age for files ✅ (updated 0.8.0)
 - **What:** AES-256-GCM, ECDSA P-256, HKDF, PBKDF2 (600k), HMAC, SHA-256 and the CSPRNG, all from
-  the browser. Our own code is the protocol that combines them, specified in PROTOCOL.md and
-  covered by attack tests.
-- **Alternatives considered for later:** PAKE, Noise, the `age` format for Share, MLS for group chat ([IDEAS](IDEAS.md)).
+  the browser. Files and Share text use the age format through `age-encryption`, the reference
+  TypeScript implementation (D23). Our own code is the protocol that combines them, specified in
+  PROTOCOL.md and covered by attack tests.
+- **Why the exception:** Web Crypto has no ChaCha20-Poly1305 or ML-KEM yet, so age needs a
+  library; writing those primitives ourselves is what this decision rules out.
+- **Before:** Web Crypto only (0.1.0 to 0.7.0).
+- **Alternatives considered for later:** PAKE, Noise, MLS for group chat ([IDEAS](IDEAS.md)).
+
+### D23. Files and Share text in the age format, to a post-quantum room identity ✅ (0.8.0)
+- **What:** files (Share and Chat) and Share's text are [age v1](https://age-encryption.org/v1)
+  files, encrypted to one hybrid ML-KEM-768 + X25519 identity that every member derives from the
+  room keys (link secret and PBKDF2 of the passphrase, through HKDF and HMAC). Chat messages and
+  control messages stay in the signed AES-GCM envelope. Protocol v3 ([PROTOCOL.md](PROTOCOL.md)).
+- **Why:** reviewers check a standard, specified construction instead of our framing, and the
+  reference `age` tool can decrypt a payload given the room's identity (tested in CI). Deriving the
+  identity from the room keys keeps today's security exactly: it needs the link **and** the
+  passphrase, and nothing new is visible to relays (D9). The hybrid recipient keeps payloads safe
+  from "record now, decrypt later" by a future quantum computer, as the symmetric-only v2 keys
+  were; a plain X25519 recipient would have weakened that. Cost: about 1.6 KB per file and a few
+  milliseconds.
+- **Alternatives:** (1) age's passphrase (scrypt) recipient with the passphrase alone: easiest to
+  use with the age tool, but it drops the link secret, so a captured file could be guessed offline
+  from the passphrase; and scrypt at age's default cost takes seconds and 256 MiB on top of PBKDF2,
+  which hurts on phones. (2) scrypt over the link secret and the passphrase: as safe, as slow, and
+  the age tool would need a long generated string. (3) a plain X25519 recipient from the room
+  keys: fast and readable by older age versions, but not post-quantum.
+- **Chat messages stay as they are:** they're small and frequent, and an age header (about 1.6 KB
+  and an ML-KEM operation each) adds cost without a reviewer benefit over the signed envelope,
+  whose keys are already symmetric only.
+- **Revisit:** streaming files in 64 KiB chunks (age allows it) to lift the in-memory limit;
+  offering an encrypted `.age` download; ML-DSA signatures once browsers ship them in Web Crypto.
 
 ### D11. Safety codes from both DTLS certificates ✅
 - **Why:** a man-in-the-middle would hold different certificates on each side, so the codes
@@ -105,9 +133,10 @@ kept under "History".
   reviewed code" verifiable now that there is a build step.
 - **Before:** plain JavaScript with no build step (0.1.0 to 0.5.0).
 
-### D13. One runtime dependency, bundled from a lockfile ✅ (0.6.0)
-- **What:** `trystero@0.26.0` from npm, locked with integrity hashes and bundled into the app. The
-  CSP allows scripts only from `'self'`.
+### D13. Few runtime dependencies, bundled from a lockfile ✅ (0.6.0, updated 0.8.0)
+- **What:** `trystero@0.26.0` and, since 0.8.0, `age-encryption@0.3.1` (with `@scure/base` and the
+  noble crypto libraries) from npm, locked with integrity hashes and bundled into the app as lazily
+  loaded chunks. The CSP allows scripts only from `'self'`.
 - **Why:** no third party serves code at runtime.
 - **Before:** loaded from jsDelivr at a pinned URL.
 
@@ -166,8 +195,9 @@ kept under "History".
 - **Why:** one umbrella brand to build instead of one per tool; descriptive names say what each
   tool does and help search. The hyphenated domain is easier to read and makes lookalike domains
   easier to spot; the unhyphenated `commonsec.org` is worth owning as a redirect.
-- **Not renamed:** the protocol's Trystero `appId` (`user-sec-tools.<app>.v2`), since changing it
-  would split peers between old and new pages ([PROTOCOL.md](PROTOCOL.md)).
+- **Renamed with protocol v3 (0.8.0):** the Trystero `appId`, from `user-sec-tools.<app>.v2` to
+  `commonsec-share.<app>.v3`. Changing it splits peers between old and new pages, so it waited for
+  a release that breaks the protocol anyway ([PROTOCOL.md](PROTOCOL.md)).
 - **Done:** the app is served at `https://share.common-sec.org/` (2026-10-15). **Next:** logo.
 
 ### Open

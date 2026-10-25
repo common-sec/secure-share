@@ -22,10 +22,13 @@ browser extensions.
 ## For auditors
 
 - Start with [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), then [docs/PROTOCOL.md](docs/PROTOCOL.md).
-- All cryptographic primitives are Web Crypto. The code to review is the composition in
-  `src/lib/crypto.ts` and `src/lib/room.ts` (strict TypeScript).
+- All cryptographic primitives are Web Crypto, except files and Share text, which use the age
+  format through `age-encryption` (see [PROTOCOL.md §7](docs/PROTOCOL.md#7-messages-and-files)).
+  The code to review is the composition in `src/lib/crypto.ts` and `src/lib/room.ts` (strict
+  TypeScript).
 - `tests/unit/room.test.js` shows the intended security properties as executable tests. Adversarial
   peers are built with `tests/unit/fake-transport.js`.
-- The only runtime dependency is `trystero@0.26.0` (MIT), locked in `package-lock.json`, bundled
-  at build time and imported from `src/vendor/trystero.ts`. Builds are reproducible: see
+- The runtime dependencies are `trystero@0.26.0` (MIT) and `age-encryption@0.3.1` (BSD-3-Clause,
+  with the noble/scure crypto libraries, MIT), locked in `package-lock.json`, bundled at build
+  time and imported only from `src/vendor/trystero.ts` and `src/vendor/age.ts`. Builds are reproducible: see
   [docs/RELEASES.md](docs/RELEASES.md) to check that served files match the source.

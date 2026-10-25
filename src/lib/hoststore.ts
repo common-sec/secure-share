@@ -45,7 +45,8 @@ export async function loadHost(app: string, roomId: string, hostFp: string): Pro
   try {
     const rec = (await tx('readonly', (s) => s.get(`${app}:${roomId}`))) as HostRecord | undefined;
     if (!rec || rec.hostFp !== hostFp) return null;
-    if (isStale(rec)) { await forgetHost(app, roomId); return null; }
+    // Records saved before protocol v3 lack the age key and can't send or receive files.
+    if (isStale(rec) || !(rec.keys?.ageKey instanceof CryptoKey)) { await forgetHost(app, roomId); return null; }
     return rec;
   } catch {
     return null;

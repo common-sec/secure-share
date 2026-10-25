@@ -13,15 +13,21 @@
 ## Trust assumptions
 
 - The user's **device, OS and browser** are not compromised. Malicious browser extensions are out of scope.
-- The **code served** is the code in this repository plus the pinned Trystero version (see supply chain below).
+- The **code served** is the code in this repository plus the pinned Trystero and `age-encryption` versions (see supply chain below).
 - The **out-of-band channel** used to share the passphrase is different from the one used for the link.
-- **Web Crypto** implementations are correct.
+- **Web Crypto** and the `age-encryption` library (and its noble dependencies) are correct.
 
 ## Adversaries and mitigations
 
 ### 1. Network observer (Wi-Fi, ISP, backbone)
 - **Sees:** that you connect to the static host, Nostr relays, STUN servers and a peer IP; timing and volume.
-- **Cannot:** read or modify content. Everything is TLS, WSS or DTLS, and the app adds AES-256-GCM on top.
+- **Cannot:** read or modify content. Everything is TLS, WSS or DTLS, and the app adds AES-256-GCM
+  (messages) or age (files, Share text) on top.
+- **Record now, decrypt later:** a recording of today's traffic stays protected against a future
+  quantum computer. Breaking DTLS (classical ECDHE) still leaves keys that come only from the link
+  secret and the passphrase, which never cross the network, and files and Share text are
+  encrypted to a post-quantum hybrid (ML-KEM-768 + X25519) age identity. Signatures (ECDSA) are
+  classical, but forging one only helps during a live session.
 - **Residual:** traffic analysis. File sizes are approximately visible.
 
 ### 2. Nostr relay operators (third parties used for discovery)
@@ -61,7 +67,8 @@
 ### 9. Supply chain: the static host, the npm packages, the build
 - **This is the most important residual risk.** Whoever controls the served JavaScript controls the app.
 - **Mitigations:**
-  - one runtime dependency (Trystero, with two small dependencies of its own) and two build tools
+  - two runtime dependencies (Trystero, with two small dependencies of its own, and
+    `age-encryption`, with the noble/scure crypto libraries) and two build tools
     (TypeScript, esbuild), at exact versions locked with integrity hashes in `package-lock.json`,
     installed with `npm ci`, no install scripts, and only releases at least 7 days old;
   - everything is **bundled at build time**: no CDN, and the CSP lets scripts load only from `'self'`;
@@ -78,7 +85,7 @@
 - Received file names are sanitized. Files are offered as downloads (`application/octet-stream`), never rendered.
 
 ### 11. Someone with later access to the device
-- Share stores nothing.
+- Share stores nothing. The room's age identity is computed in memory and never stored.
 - Chat hosts keep the room state (link secret, non-extractable keys) in IndexedDB **only to
   survive a reload**: the open page refreshes it every 30 s, a record not refreshed for 2 minutes
   (a closed tab) is refused and deleted, and so is one past the room's time limit. Closing the

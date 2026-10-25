@@ -4,6 +4,27 @@ All notable changes, one section per version. See [docs/ROADMAP.md](docs/ROADMAP
 
 ## [Unreleased]
 
+### Changed (breaking: protocol v3)
+- **Files and Share text use the standard [age](https://age-encryption.org) encryption format**
+  instead of our own AES-GCM framing (roadmap 0.8.0). They're encrypted to a **post-quantum**
+  hybrid identity (ML-KEM-768 + X25519) that both sides derive from the link secret and the
+  passphrase, so security stays the same, recordings stay safe from a future quantum computer, and
+  the reference `age` tool (≥ 1.3) can decrypt a payload given the room's identity. Chat messages
+  keep their signed AES-GCM envelope. See [D23](docs/DECISIONS.md) and
+  [PROTOCOL.md §7](docs/PROTOCOL.md#7-messages-and-files).
+- **Links made with earlier versions stop working**, and older and newer pages don't connect: the
+  handshake is `v: 3` and the Trystero app IDs are now `commonsec-share.<app>.v3`, which also
+  moves discovery to a different set of public relays
+  ([COMMUNICATION.md](docs/COMMUNICATION.md#where-the-relays-come-from)).
+- New runtime dependency: `age-encryption` 0.3.1 (and `@scure/base` 2.4.0), pinned and bundled
+  like Trystero, loaded only when a room is used.
+
+### Testing
+- Unit tests for the age format (round trips, tampering, truncation, wrong passphrase, passphrase
+  and foreign files refused) in all three engines, and a new interoperability check against the
+  reference `age` tool v1.3.2, built from source in the test image
+  ([TESTING.md](docs/TESTING.md#interoperability-with-the-reference-age-tool)).
+
 ### Security
 - **The chat passphrase is no longer stored in the browser** (code scanning alert #1). It used to
   be kept in clear in sessionStorage so the host could see it after a reload; now it stays in

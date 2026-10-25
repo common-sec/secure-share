@@ -51,7 +51,7 @@ https://share.common-sec.org/#/share?r=Q7nmLtvgH6OIiTJ387mbqQ&k=G4laNCs8p9dVdjEw
 
 | Parameter | Example | What it is | Used for |
 |---|---|---|---|
-| `#/share` or `#/chat` | `#/share` | Which tool | Picks the screen, and the Trystero app ID: `user-sec-tools.share.v2` or `user-sec-tools.chat.v2` (the project's original name, kept on purpose: changing it would split peers, see [PROTOCOL.md §3](PROTOCOL.md)) |
+| `#/share` or `#/chat` | `#/share` | Which tool | Picks the screen, and the Trystero app ID: `commonsec-share.share.v3` or `commonsec-share.chat.v3` (it changes only with the protocol version, because it would split peers, see [PROTOCOL.md §3](PROTOCOL.md)) |
 | `r`: room ID | `Q7nmLtvgH6OIiTJ387mbqQ` | 16 random bytes, base64url (22 chars) | Names the room: the Nostr topics and key-derivation salts come from it |
 | `k`: link secret | `G4laNCs8…KiO1nY` | 32 random bytes, base64url (43 chars) | Encrypts the business cards on the relays, and, with the passphrase, all data |
 | `h`: host key fingerprint | `0UfLJ2Hf…gJIVdY` | SHA-256 of the host's public key (43 chars) | Lets guests check they reached the real host |
@@ -66,6 +66,7 @@ What's derived from them ([PROTOCOL.md §2](PROTOCOL.md)):
 ```
 signaling password = HKDF(k, salt "uss/v2/" + r, info "signaling")   → given to Trystero (step 2)
 group key, auth key = HKDF(k ‖ PBKDF2(passphrase, 600 000 rounds), …) → our own encryption (step 4)
+age identity        = from a third key derived the same way          → files and Share text (step 4)
 ```
 
 ## Step 1: the problem, two browsers behind NATs
@@ -144,10 +145,10 @@ Trystero derives every name from the app ID and room ID (formula from its source
 for the example room):
 
 ```
-room topic   = SHA-1("Trystero@user-sec-tools.share.v2@Q7nmLtvgH6OIiTJ387mbqQ")
-             = ce6b3751177551996a09cc9e67de61f224fa5ffe
-peer topic   = SHA-1("Trystero@user-sec-tools.share.v2@Q7nmLtvgH6OIiTJ387mbqQ@<peerId>")
-event kind   = 20000 + (sum of the topic's character codes mod 10000) = 22824 for the room topic
+room topic   = SHA-1("Trystero@commonsec-share.share.v3@Q7nmLtvgH6OIiTJ387mbqQ")
+             = 08735bec95d5f7d3280bfb751c8b164fadbdf153
+peer topic   = SHA-1("Trystero@commonsec-share.share.v3@Q7nmLtvgH6OIiTJ387mbqQ@<peerId>")
+event kind   = 20000 + (sum of the topic's character codes mod 10000) = 22901 for the room topic
 ```
 
 Each browser also has a random Trystero **peer ID** for the session (e.g. `1ZWzQtkzeNWT740wEGd4`).
@@ -246,12 +247,15 @@ The messages in full (Trystero's message shapes, from its source):
 The relay list is **built into Trystero** (`@trystero-p2p/nostr`, `defaultRelayUrls`): 29 public
 relays run by independent volunteers. Trystero shuffles that list with a seed computed from the
 app ID and takes the first 3 (we set `redundancy: 3`), so every browser using the same tool picks
-the same 3. With Trystero 0.26.0, observed and computed:
+the same 3. With Trystero 0.26.0, computed from its source:
 
 | Tool | App ID | The 3 relays (`wss://…`, TCP 443) |
 |---|---|---|
-| Secure Share | `user-sec-tools.share.v2` | `nostr.chaima.info`, `relay.hackshed.dev`, `testr.nymble.world` |
-| Secure Chat | `user-sec-tools.chat.v2` | `relay.bullishbounty.com`, `nostr.christiansass.de`, `relay.nostr.dev.br` |
+| Secure Share | `commonsec-share.share.v3` | `0x-nostr-relay.fly.dev`, `nostr.rblb.it`, `nostr.stakey.net` |
+| Secure Chat | `commonsec-share.chat.v3` | `relay.kaleidoswap.com`, `testr.nymble.world`, `nostr.stakey.net` |
+
+(Protocol v2, `user-sec-tools.<app>.v2`, used other relays; the app IDs change with the protocol
+version, see [PROTOCOL.md](PROTOCOL.md#3-discovery-and-transport).)
 
 Updating Trystero can change its built-in list. The end-to-end tests instead use a tiny local
 Nostr relay inside the test server (see the end of this document).
@@ -442,7 +446,7 @@ sequenceDiagram
 | 5 | Result | `ok` | Accepted, or refused with a reason: wrong passphrase, room locked, room full, nickname taken… |
 | 6 | Admission | `welcome` | The host admits Bob (after approval in Chat). Encrypted with the group key |
 | 7 | Admission | `roster` | Who's in the room: nicknames and public keys, so everyone can check each message's signature |
-| 8 | Messages | A chat message, Share manifest or file | Signed by the sender, encrypted with the group key. In a group chat the host relays it unchanged |
+| 8 | Messages | A chat message, Share manifest or file | Signed by the sender, encrypted with the group key; file bytes and Share text are age files. In a group chat the host relays it unchanged |
 
 The same messages in full:
 
@@ -479,8 +483,15 @@ The same messages in full:
 { "d": "{\"t\":\"text\",\"body\":\"hi Alice\",\"id\":\"gQFn3YU252dSprF1\",\"from\":\"<Bob's member id>\",\"ts\":1791700042000}",
   "s": "<base64url ECDSA signature by Bob's session key>" }
 
-// Files: the bytes go AES-GCM encrypted as one binary payload. Their name, size, type and SHA-256
-// travel as a signed, encrypted message like 8 (t: "file").
+// Share manifest: like 8, with t: "manifest"; its "text" field is itself an age file (base64url),
+//    so the reference tool can decrypt it given the room's age identity.
+// Files: the bytes go as one binary payload, an age file:
+//    age-encryption.org/v1
+//    -> mlkem768x25519 <encapsulated key, base64>
+//    <wrapped file key>
+//    --- <header MAC>
+//    <16-byte nonce><64 KiB ChaCha20-Poly1305 chunks…>
+//    Their name, size, type and SHA-256 travel as a signed, encrypted message like 8 (t: "file").
 ```
 
 ## Step 5: leaving the relays

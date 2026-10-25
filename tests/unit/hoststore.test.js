@@ -2,7 +2,8 @@
 import { test, assert } from './harness.js';
 import { saveHost, loadHost, sweepHosts, RELOAD_GRACE_MS } from '../../build/modules/lib/hoststore.js';
 
-const record = (roomId, extra = {}) => ({ roomId, secret: 's', hostFp: 'fp', nick: 'A', identity: {}, keys: {}, approved: [], expiresAt: Date.now() + 60_000, ...extra });
+const ageKey = await crypto.subtle.generateKey({ name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+const record = (roomId, extra = {}) => ({ roomId, secret: 's', hostFp: 'fp', nick: 'A', identity: {}, keys: { ageKey }, approved: [], expiresAt: Date.now() + 60_000, ...extra });
 
 // Writes a record directly, with a chosen savedAt (saveHost always uses now).
 function put(key, value) {
@@ -51,4 +52,11 @@ test('the sweep deletes every stale record and keeps live ones', async () => {
     };
   });
   assert.equal(raw, undefined);
+});
+
+test('a record saved before protocol v3 (no age key) is refused and deleted', async () => {
+  await saveHost('t', record('v2', { keys: {} }));
+  assert.equal(await loadHost('t', 'v2', 'fp'), null);
+  await saveHost('t', record('v2'));
+  assert.ok(await loadHost('t', 'v2', 'fp'), 'the same record with an age key resumes');
 });

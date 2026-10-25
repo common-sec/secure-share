@@ -1,7 +1,8 @@
-# Protocol specification (v2)
+# Protocol specification (v3)
 
 This is the protocol implemented by `SecureRoom` in `src/lib/room.ts`, with primitives from
-`src/lib/crypto.ts`. All primitives are Web Crypto. Encodings: `b64u` = base64url without padding,
+`src/lib/crypto.ts`. All primitives are Web Crypto, except files and Share text, which are
+[age v1](https://age-encryption.org/v1) files (§7). Encodings: `b64u` = base64url without padding,
 UTF-8 for strings, `‖` = byte concatenation, `|` = the literal character `|` in a string.
 
 ## 1. Identifiers and the room link
@@ -27,19 +28,31 @@ pw        = PBKDF2-HMAC-SHA-256(NFKC(passphrase), salt = "uss/v2/" + roomId, 600
 base      = secret ‖ pw
 groupKey  = HKDF-SHA-256(ikm = base, salt = "uss/v2/" + roomId, info = "group") → AES-256-GCM key
 authKey   = HKDF-SHA-256(ikm = base, salt = "uss/v2/" + roomId, info = "auth")  → HMAC-SHA-256 key
+ageKey    = HKDF-SHA-256(ikm = base, salt = "uss/v2/" + roomId, info = "age")   → HMAC-SHA-256 key
+ageSeed   = HMAC-SHA-256(ageKey, "uss-age-identity")                             32 bytes
+ageIdentity  = bech32("AGE-SECRET-KEY-PQ-", ageSeed), upper case                age hybrid identity
+ageRecipient = its age1pq1… recipient (ML-KEM-768 + X25519, "mlkem768x25519")
 ```
+
+The KDF labels keep `uss/v2/`: v3 changes the payload format, not the derivation of v2's keys.
 
 - `b64u(signaling)` is given to Trystero as its room `password`. Trystero encrypts every published
   WebRTC offer/answer with `AES-GCM(SHA-256(password ":" appId ":" roomId))`.
 - **`signaling` does not depend on the passphrase.** Anything derived from the passphrase and
   visible to third parties (relays) would let them test passphrase guesses offline.
-- All derived keys are non-extractable `CryptoKey`s.
+- All derived keys are non-extractable `CryptoKey`s. `ageSeed` and `ageIdentity` are computed
+  from `ageKey` when first needed and kept in memory for the page's lifetime (the age library takes
+  the identity as a string); they're never stored, and only `ageKey` goes into the host's saved
+  state (§9).
+- **The age identity needs the link and the passphrase**, like `groupKey`, and is post-quantum: a
+  recording of the traffic can't be decrypted later by breaking X25519 alone.
 
 ## 3. Discovery and transport
 
-- Trystero `appId` = `"user-sec-tools.<app>.v2"`, `<app>` ∈ {`chat`, `share`}. (This keeps the
-  project's original name on purpose: the `appId` decides which relays peers meet on and must match
-  on both sides, so changing it is a protocol break, kept for a future protocol version.) Strategy: Nostr,
+- Trystero `appId` = `"commonsec-share.<app>.v3"`, `<app>` ∈ {`chat`, `share`}. The `appId`
+  decides which relays peers meet on and must match on both sides, so it changes only with the
+  protocol version: v2 (`user-sec-tools.<app>.v2`, the project's original name) and v3 pages never
+  meet. Strategy: Nostr,
   `relayConfig.redundancy = 3`, `manualReconnection = true`.
 - WebRTC data channels (DTLS + SCTP) carry everything below. Trystero's `onPeerHandshake` hook
   runs the handshake (§4) on a dedicated channel **before** the peer becomes active. A peer whose
@@ -53,8 +66,8 @@ authKey   = HKDF-SHA-256(ikm = base, salt = "uss/v2/" + roomId, info = "auth")  
 Messages are JSON objects. `nonceH`, `nonceG` are 16 random bytes, `b64u`.
 
 ```
-Host  → Guest   { v: 2, role: "host",  pub: pubH, nonce: nonceH }
-Guest → Host    { v: 2, role: "guest", pub: pubG, nonce: nonceG, nick }
+Host  → Guest   { v: 3, role: "host",  pub: pubH, nonce: nonceH }
+Guest → Host    { v: 3, role: "guest", pub: pubG, nonce: nonceG, nick }
 
 Guest:  if role ≠ "host" or b64u(SHA-256(pubH)) ≠ h  → abort ("not-host")
         (this also makes guests refuse each other)
@@ -124,8 +137,10 @@ packet = b64u(seal(groupKey, UTF-8(JSON.stringify({ d, s }))))
 seal(k, m) = iv ‖ AES-256-GCM(k, iv, m)      iv = 12 random bytes, 128-bit tag
 ```
 
-Message types: `text {body ≤ 100 000 chars}`; Share uses `manifest {text, files: [{name, size}]}`
-and `ack {}`.
+Message types: `text {body ≤ 100 000 chars}`; Share uses `manifest {text?, files: [{name, size}]}`
+and `ack {}`, where `text = b64u(ageEncrypt(UTF-8(text)))` (≤ 100 000 chars once decrypted). A
+manifest whose `text` doesn't decrypt is ignored. Chat messages stay in the envelope alone (see
+[D23](DECISIONS.md)).
 
 **Receiving**:
 1. The sending connection must be trusted: for the host, a member's connection; for a guest, the
@@ -137,9 +152,18 @@ and `ack {}`.
 5. Drop if `inner.id` was already seen (replay protection for the session).
 6. Host only: forward the identical `packet` to all other members.
 
-**Files**: `data = seal(groupKey, bytes)`, with metadata `{ m: packet }` where `inner = { t: "file",
-name, size, type, sha256: b64u(SHA-256(bytes)) }`. The receiver applies the same checks plus
-`len(bytes) = size` and the SHA-256 match. Maximum 512 MiB, held in memory.
+**Files**: `data = ageEncrypt(bytes)`, with metadata `{ m: packet }` where `inner = { t: "file",
+name, size, type, sha256: b64u(SHA-256(bytes)) }`. The receiver applies the same checks, decrypts
+`data` with `ageIdentity` only, and checks `len(bytes) = size` and the SHA-256. Maximum 512 MiB,
+held in memory.
+
+**age**: `ageEncrypt(m)` is an age v1 file with exactly one `mlkem768x25519` stanza, to
+`ageRecipient`: a fresh 16-byte file key, a header MAC, then the payload in 64 KiB
+ChaCha20-Poly1305 chunks (STREAM), the last one marked final. Decryption uses `ageIdentity` and
+nothing else, so passphrase (scrypt) files and files for other recipients fail; tampered,
+truncated or extended files fail too. Anyone holding `ageIdentity` can decrypt such a file with the
+reference tool: `age -d -i key.txt file.age` (age ≥ 1.3). The overhead is under 4 KiB plus 16 bytes
+per chunk.
 
 ## 8. Safety code
 
@@ -175,7 +199,7 @@ treat a vanished host as `host-lost`, search again, and are re-admitted per §5.
 | Max guests | Chat 7, Share 1 |
 | Wrong-passphrase attempts before auto-lock | 5 |
 | Handshake timeout | 15 s |
-| Max file | 512 MiB |
+| Max file | 512 MiB (plus the age overhead on the wire) |
 | Max text | 100,000 characters |
 | Relays | 3 (Trystero default list, seeded shuffle) |
 
@@ -184,10 +208,12 @@ treat a vanished host as `host-lost`, search again, and are re-admitted per §5.
 - **The host is trusted for membership.** It publishes the roster that binds nicknames to keys,
   so a malicious host could swap in its own key under another member's nickname. The host can
   already read everything, but it can't forge the signature of a key it doesn't hold.
-- **There's no application-level forward secrecy.** `groupKey` is fixed for the room's lifetime.
+- **There's no application-level forward secrecy.** `groupKey` and the age identity are fixed for the room's lifetime.
   Recorded traffic is still protected by DTLS (ephemeral ECDHE), but anyone who later obtains the
   link and the passphrase **and** can see application-layer data could decrypt it.
 - **The handshake isn't bound to the DTLS channel.** Interposing on it would require decrypting
   Trystero's signaling, which needs the link secret. A safety-code comparison detects it either way.
 - **Replay protection** is per session, using an in-memory set of message IDs. `ts` isn't validated.
+- **Signatures are classical** (ECDSA P-256). A quantum computer could forge them only during a live
+  session, not from a recording; ML-DSA can replace them once browsers' Web Crypto offers it.
 - **Anyone with the link can lock the room** by sending 5 wrong passphrases (denial of service).

@@ -202,7 +202,8 @@ function senderView(body: HTMLElement, room: SecureRoom, { text, files, passphra
       setStatus(`Recipient connected (safety code ${member.code ?? '…'}). Sending…`);
       void (async () => {
         try {
-          await room.send({ t: 'manifest', text, files: files.map((f) => ({ name: f.name, size: f.size })) });
+          // The text is an age file inside the signed manifest, like the files that follow.
+          await room.send({ t: 'manifest', ...(text ? { text: await room.sealText(text) } : {}), files: files.map((f) => ({ name: f.name, size: f.size })) });
           for (const [i, f] of files.entries()) {
             await room.sendFile(f, (p) => setStatus(`Sending ${f.name} (${i + 1}/${files.length}): ${Math.round(p * 100)}%`));
           }
@@ -272,11 +273,13 @@ function receiveForm(body: HTMLElement, invite: Invite, setSession: SetSession):
 /** What the sender announces before the files; it comes from the peer, so it's validated. */
 interface Manifest { text: string; fileCount: number }
 
-function parseManifest(fields: Record<string, unknown>): Manifest {
-  return {
-    text: typeof fields.text === 'string' ? fields.text : '',
-    fileCount: Array.isArray(fields.files) ? fields.files.length : 0,
-  };
+/** The text is an age file (room.sealText); a manifest whose text doesn't decrypt is refused. */
+async function parseManifest(room: SecureRoom, fields: Record<string, unknown>): Promise<Manifest | null> {
+  let text = '';
+  if (typeof fields.text === 'string' && fields.text) {
+    try { text = await room.openText(fields.text); } catch { return null; }
+  }
+  return { text, fileCount: Array.isArray(fields.files) ? fields.files.length : 0 };
 }
 
 /** The received text: masked until the recipient asks to see it, and removable from the page. */
@@ -328,9 +331,10 @@ function receiverView(body: HTMLElement, room: SecureRoom, retry: () => void): S
       clearTimeout(slow);
       status.textContent = `Connected to the sender. Safety code: ${code}`;
     })
-    .on('message', ({ inner }) => {
+    .on('message', async ({ inner }) => {
       if (inner.t !== 'manifest' || manifest) return;
-      const m = parseManifest(inner);
+      const m = await parseManifest(room, inner);
+      if (!m || manifest) return;
       manifest = m;
       if (m.text) result.append(receivedText(m.text));
       if (m.fileCount) progress.hidden = false;

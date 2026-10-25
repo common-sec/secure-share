@@ -16,7 +16,7 @@ src/index.html  ── strict CSP, loads app.js (built from src/main.ts, hash ro
 │   ├── passphrase.ts      passphrase generator + exact entropy estimates
 │   ├── strength.ts        strength labels + conservative estimate for typed passphrases
 │   ├── words.ts           word list used by the generator
-│   ├── crypto.ts          key derivation, AES-GCM, ECDSA, HMAC, safety codes (Web Crypto only)
+│   ├── crypto.ts          key derivation, AES-GCM, ECDSA, HMAC, age files, safety codes
 │   ├── room.ts            SecureRoom: the protocol (handshake, approvals, relay, files), typed messages
 │   ├── hoststore.ts       resume hosting after a reload (IndexedDB + Web Locks)
 │   ├── encoding.ts        base64url / UTF-8
@@ -61,7 +61,7 @@ the build version (`vX.Y.Z · build <commit>`).
         ◀═════════════ WebRTC data channel (DTLS/SCTP over UDP, direct) ═════════════▶
           1. handshake: host signature, passphrase proof (HMAC), result
           2. host approval, safety code comparison
-          3. signed + AES-GCM-encrypted messages and files
+          3. signed + AES-GCM-encrypted messages; files and Share text as age files
 ```
 
 With several guests the topology is a **star**: every guest connects only to the host, and the host
@@ -102,14 +102,17 @@ same app pick the same 3. The list is in Trystero's source (`@trystero-p2p/nostr
 
 ## Cryptography: what is and isn't ours
 
-**No cryptographic primitive is implemented in this project.** Every primitive comes from the
-browser's Web Crypto API, which browsers implement natively (BoringSSL in Chrome, NSS in Firefox,
-CoreCrypto in Safari):
+**No cryptographic primitive is implemented in this project.** They come from the browser's Web
+Crypto API, which browsers implement natively (BoringSSL in Chrome, NSS in Firefox, CoreCrypto in
+Safari), and, for files and Share text, from `age-encryption`, the TypeScript implementation of
+the [age](https://age-encryption.org) format by its author (pure-JavaScript noble libraries, with
+Web Crypto where the browser offers it):
 
 | Purpose | Primitive |
 |---|---|
 | Randomness | `crypto.getRandomValues` |
-| Encryption | AES-256-GCM, random 96-bit IV per message |
+| Encryption (messages) | AES-256-GCM, random 96-bit IV per message |
+| Encryption (files, Share text) | age v1: ML-KEM-768 + X25519 hybrid recipient (HPKE), ChaCha20-Poly1305 in 64 KiB chunks |
 | Passphrase stretching | PBKDF2-HMAC-SHA-256, 600,000 iterations |
 | Key derivation | HKDF-SHA-256 |
 | Passphrase proof | HMAC-SHA-256 challenge-response |

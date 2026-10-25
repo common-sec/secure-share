@@ -29,8 +29,9 @@ The aim is to make secure sharing easy for anyone: **privacy by default, not ano
    [Trystero](https://github.com/dmotz/trystero)). Only encrypted connection offers pass through
    them, and the browsers disconnect from the relays as soon as they're no longer needed.
 3. The browsers connect **directly** with WebRTC, using public STUN servers to get through NATs.
-   Data is encrypted twice: by WebRTC (DTLS) and by the app (AES-256-GCM, keyed from the link
-   secret and the passphrase).
+   Data is encrypted twice: by WebRTC (DTLS) and by the app, with keys from the link secret and
+   the passphrase: AES-256-GCM for messages, and the standard [age](https://age-encryption.org)
+   format, post-quantum, for files and Share text.
 4. The host proves its identity, the guest proves the passphrase, the host approves, and both
    screens show a **safety code** to compare, which detects a man-in-the-middle.
 
@@ -77,11 +78,14 @@ Pages, Netlify). The Web Crypto API needs a secure context (HTTPS or `localhost`
 - **No backend, no storage.** Nothing is uploaded, and nothing outlives the browser tab, except
   the host's non-extractable keys while a chat room is open (to survive a reload, not a closed
   tab). Rooms close on their own after a time limit (4 hours by default).
-- **No hand-rolled cryptographic primitives.** All of them come from the browser's Web Crypto
-  API: AES-GCM, ECDSA P-256, HKDF, PBKDF2, HMAC, SHA-256 and the CSPRNG. The protocol that combines
-  them is documented in [PROTOCOL.md](docs/PROTOCOL.md) and covered by adversarial tests.
-- **Minimal dependencies.** One runtime dependency (Trystero, locked), bundled at build time,
-  no framework, no CDN. Every line that runs is in this repository or in the locked library.
+- **No hand-rolled cryptographic primitives.** They come from the browser's Web Crypto API
+  (AES-GCM, ECDSA P-256, HKDF, PBKDF2, HMAC, SHA-256 and the CSPRNG) and, for files, from the
+  reference TypeScript implementation of [age](https://age-encryption.org), which interoperates
+  with the `age` command-line tool. The protocol that combines them is documented in
+  [PROTOCOL.md](docs/PROTOCOL.md) and covered by adversarial tests.
+- **Minimal dependencies.** Two runtime dependencies (Trystero and `age-encryption`, locked),
+  bundled at build time, no framework, no CDN. Every line that runs is in this repository or in
+  the locked libraries.
 - **Readable and verifiable.** Strict TypeScript, a strict Content Security Policy, and a
   [reproducible build](docs/RELEASES.md): anyone can check the served files match the source.
   Static analysis (Semgrep) runs on every push.

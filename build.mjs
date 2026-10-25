@@ -4,7 +4,7 @@
 //   npm run build:check    the same, then build again into a temporary folder and fail unless
 //                          every file is byte-identical (the reproducibility check CI runs)
 //
-// dist/ contains index.html, app.js, chunks/ (Trystero and its dependencies, from the lockfile:
+// dist/ contains index.html, app.js, chunks/ (Trystero, the age library and their dependencies, from the lockfile:
 // nothing is fetched from a CDN at run time), styles.css, and SHA256SUMS. The build is deterministic: same commit, same
 // lockfile -> same bytes. The version shown in the app is package.json's version plus the short
 // commit, read straight from .git (no git binary needed) or from $BUILD_COMMIT. The footer links it
@@ -80,11 +80,14 @@ async function buildApp(outdir) {
   return sums;
 }
 
-// The unit tests import the app's modules one by one (no bundling), as plain JavaScript.
+// The unit tests import the app's modules one by one (no bundling), as plain JavaScript. The age
+// library is the exception: the tests run the real one, so its wrapper is bundled with it.
+const AGE_VENDOR = join('src', 'vendor', 'age.ts');
+
 async function buildModules(outdir) {
   rmSync(outdir, { recursive: true, force: true });
   await build({
-    entryPoints: listFiles('src').filter((f) => f.endsWith('.ts')),
+    entryPoints: listFiles('src').filter((f) => f.endsWith('.ts') && f !== AGE_VENDOR),
     outdir,
     outbase: 'src',
     bundle: false,
@@ -92,6 +95,15 @@ async function buildModules(outdir) {
     target: 'es2022',
     platform: 'browser',
     define,
+    logLevel: 'warning',
+  });
+  await build({
+    entryPoints: [AGE_VENDOR],
+    outfile: join(outdir, 'vendor', 'age.js'),
+    bundle: true,
+    format: 'esm',
+    target: 'es2022',
+    platform: 'browser',
     logLevel: 'warning',
   });
 }

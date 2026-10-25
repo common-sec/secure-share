@@ -27,7 +27,7 @@ Run from the repository root (in WSL on Windows):
 | `docker compose run --rm build` | `npm ci`, type-check, build `dist/` and check a second build is byte-identical |
 | `docker compose up web` | Serve the built app (`dist/`) at http://127.0.0.1:8080 |
 | `docker compose run --rm dev` | Shell in the Node dev image (npm, scripts) |
-| `docker compose run --rm test-unit` | Unit tests in Chromium, Firefox and WebKit, **no network** (see [TESTING.md](TESTING.md)) |
+| `docker compose run --rm test-unit` | Unit tests in Chromium, Firefox and WebKit, then the check against the reference `age` tool, **no network** (see [TESTING.md](TESTING.md)) |
 | `docker compose run --rm test-e2e` | End-to-end tests of `dist/` through the real UI, local relay, **third-party requests blocked** |
 | `docker compose run --rm test-e2e-public` | End-to-end tests over the real public relays and STUN |
 | `docker compose run --rm trufflehog` | Secrets in the working tree and in every commit of git history |
@@ -69,7 +69,8 @@ to itself with no change.
 - **Two small images are built** from `Dockerfile`:
   - `dev`: the official Node image and its non-root `node` user, for npm and scripts;
   - `test`: Microsoft's Playwright image (browsers) plus the hash-pinned Python test packages,
-    installed **at build time** under `pip.conf`'s rules. Test runs then need no install step and
+    installed **at build time** under `pip.conf`'s rules, and the reference `age` tool, built from
+    source in a pinned Go image. Test runs then need no install step and
     no network, and the image is rebuilt only when the pins change.
 - **Everything else is an official image used as-is**, declared in `compose.yaml` and pinned
   there by tag and digest: Python (serves the app), TruffleHog, Semgrep, Trivy. Each tool runs in
@@ -94,7 +95,8 @@ to itself with no change.
 | Test base image | Tag + digest in `Dockerfile` | Non-root (`pwuser`) | Dependabot (`docker`) |
 | Tool images | Tag + digest in `compose.yaml` | Non-root, no caps, read-only | Dependabot (`docker-compose`) |
 | Python test packages | Exact version + SHA-256 of every file, the whole tree (`tests/requirements.txt`), installed when the `test` image is built | `pip.conf`: `require-hashes`, wheels only (no build code runs), uploaded ≥ 7 days ago | Dependabot (`pip`) |
-| npm packages (Trystero, esbuild, TypeScript) | `package.json` exact versions + `package-lock.json` integrity hashes, installed with `npm ci` | `.npmrc`: `ignore-scripts`, `min-release-age=7`, `save-exact`, `engine-strict` | Dependabot (`npm`) |
+| npm packages (Trystero, age-encryption, esbuild, TypeScript) | `package.json` exact versions + `package-lock.json` integrity hashes, installed with `npm ci` | `.npmrc`: `ignore-scripts`, `min-release-age=7`, `save-exact`, `engine-strict` | Dependabot (`npm`) |
+| Reference `age` tool (test image only) | Exact module version in `Dockerfile` (`go install filippo.io/age/cmd/age@v1.3.2`), on a Go image pinned by tag + digest | Every module verified against the Go checksum database (sum.golang.org); static build, no cgo | By hand |
 | GitHub Actions | Commit SHA | `persist-credentials: false`, read-only token | Dependabot (`github-actions`) |
 
 All of these use a **7-day minimum age**: npm `min-release-age=7`, pip

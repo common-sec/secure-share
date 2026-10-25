@@ -85,3 +85,60 @@ test('safety codes match on both ends and differ for another connection', async 
   assert.notEqual(ab, am);
   assert.equal(await C.safetyCode({ localDescription: { sdp: '' }, remoteDescription: { sdp: fp('x') } }), null);
 });
+
+// ---- age (files and Share text) ----
+// getRandomValues fills at most 64 KiB per call.
+function randomBytes(n) {
+  const out = new Uint8Array(n);
+  for (let i = 0; i < n; i += 65_536) crypto.getRandomValues(out.subarray(i, Math.min(n, i + 65_536)));
+  return out;
+}
+
+test('both sides derive the same post-quantum age identity; the passphrase changes it', async () => {
+  const a = await C.deriveRoomKeys(room, secret, 'orbit-lemmon');
+  const b = await C.deriveRoomKeys(room, secret, 'orbit-lemmon');
+  const c = await C.deriveRoomKeys(room, secret, 'orbit-lemmon2');
+  assert.match(await C.ageIdentity(a), /^AGE-SECRET-KEY-PQ-1[0-9A-Z]+$/);
+  assert.match(await C.ageRecipient(a), /^age1pq1[0-9a-z]+$/);
+  assert.equal(await C.ageIdentity(a), await C.ageIdentity(b));
+  assert.notEqual(await C.ageIdentity(a), await C.ageIdentity(c));
+});
+
+test('age files round-trip, use the hybrid recipient, and fit the overhead bound', async () => {
+  const keys = await C.deriveRoomKeys(room, secret, 'pw');
+  for (const size of [0, 1, 65_536, 200_001]) {
+    const bytes = randomBytes(size);
+    const file = await C.ageEncrypt(keys, bytes);
+    assert.ok(file.length - size <= C.ageOverhead(size), `overhead for ${size} bytes`);
+    assert.deepEqual([...await C.ageDecrypt(keys, file)], [...bytes]);
+  }
+  const header = new TextDecoder().decode((await C.ageEncrypt(keys, new Uint8Array(1))).slice(0, 64));
+  assert.match(header, /^age-encryption\.org\/v1\n-> mlkem768x25519 /);
+});
+
+test('age files fail with another passphrase, when tampered, truncated or extended', async () => {
+  const keys = await C.deriveRoomKeys(room, secret, 'right');
+  const wrong = await C.deriveRoomKeys(room, secret, 'wrong');
+  const file = await C.ageEncrypt(keys, randomBytes(100_000));
+  await assert.rejects(C.ageDecrypt(wrong, file), 'wrong passphrase');
+  const flipped = file.slice(); flipped[flipped.length - 10] ^= 1;
+  await assert.rejects(C.ageDecrypt(keys, flipped), 'tampered body');
+  const header = file.slice(); header[30] ^= 1;
+  await assert.rejects(C.ageDecrypt(keys, header), 'tampered header');
+  await assert.rejects(C.ageDecrypt(keys, file.slice(0, 65_536 + 200)), 'truncated at a chunk boundary');
+  const longer = new Uint8Array(file.length + 1); longer.set(file);
+  await assert.rejects(C.ageDecrypt(keys, longer), 'extra trailing data');
+});
+
+test('only age files for the room identity are accepted, never passphrase (scrypt) files', async () => {
+  const { loadAge } = await import('../../build/modules/vendor/age.js');
+  const { age } = await loadAge();
+  const keys = await C.deriveRoomKeys(room, secret, 'pw');
+  const e = new age.Encrypter();
+  e.setScryptWorkFactor(10);
+  e.setPassphrase('pw');
+  await assert.rejects(C.ageDecrypt(keys, await e.encrypt('hello')), 'passphrase file');
+  const x = new age.Encrypter();
+  x.addRecipient(await age.identityToRecipient(await age.generateIdentity()));
+  await assert.rejects(C.ageDecrypt(keys, await x.encrypt('hello')), 'file for another recipient');
+});

@@ -37,7 +37,7 @@ CI/CD, testing infrastructure and security process work is tracked separately, i
 | 0.1.0 | **Baseline**: password/passphrase generator, Secure Chat, Secure Share, docs, browser test suite | ✅ Done |
 | 0.4.0 | **First real-world test feedback**: Secure Share as the home page, clearer naming, stronger and masked room passphrases with a strength meter | ✅ Done |
 | 0.7.0 | **Names, organisation and domain**: CommonSec organisation, CommonSec Share app, served at `share.common-sec.org` | ✅ Done (to tag) |
-| 0.8.0 | **Standard encryption format**: Share payloads in the audited `age` format instead of our own framing (breaking) | Next |
+| 0.8.0 | **Standard encryption format**: Share payloads in the standard, post-quantum `age` format instead of our own framing (breaking) | In progress |
 | 0.9.0 | **Connectivity on restrictive networks**: users behind symmetric NAT or UDP-blocking firewalls can still connect, through an end-to-end encrypted relay fallback | Planned |
 | 0.10.0 | **Static pages and SEO**: pre-rendered static pages, metadata and social previews, How it works and FAQ, sitemap, Search Console | Planned |
 | 1.0.0 | **Public launch**: release checklist and announcement, once the [pre-launch internal work](TODO.md#before-launch) is done | Planned |
@@ -93,14 +93,14 @@ Moved out on 2026-10-15: organisation 2FA, rulesets and owners go to the GitHub 
 unscheduled item at the end.
 
 ### 0.8.0: Standard encryption format
-**Goal:** encrypt with a standard, audited format instead of our own framing, so reviewers check
-a known construction rather than ours. See
-[IDEAS.md](IDEAS.md#encrypt-share-payloads-in-the-age-format).
+**Goal:** encrypt with a standard, specified format instead of our own framing, so reviewers check
+a known construction rather than ours. Decision: [D23](DECISIONS.md) (2026-10-24: a post-quantum
+hybrid age identity derived from the room keys).
 **Why before launch:** it changes the wire format, so old links and peers stop working. Before
 1.0 that's a minor version; after it, a major one.
 **Done when:**
-- Share payloads use the **`age` format** (the `typage` library, pinned and bundled like
-  Trystero); the key schedule is reviewed at the same time (e.g. scrypt as in `age`'s passphrase
+- Share payloads use the **`age` format** (the `age-encryption` npm package, also known as
+  typage, pinned and bundled like Trystero); the key schedule is reviewed at the same time (e.g. scrypt as in `age`'s passphrase
   recipient, or our PBKDF2-derived key as an X25519 or symmetric recipient), and the choice is
   recorded as a decision;
 - Chat's message framing is assessed for the same change; it either moves too or the reason it

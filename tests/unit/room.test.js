@@ -264,10 +264,45 @@ test('a file whose content does not match its signed hash is dropped', async () 
   const inner = { t: 'file', name: 'x', size: 3, type: '', sha256: bytesToB64url(await C.sha256(real)), id: C.randomId(12), from: bob.identity.id, ts: Date.now() };
   const d = JSON.stringify(inner);
   const m = await C.sealJson(bob.keys.groupKey, { d, s: await C.sign(bob.identity, d) });
-  await bob.fileAction.send(await C.seal(bob.keys.groupKey, fake), { target: [bob.hostPeerId], metadata: { m } });
+  await bob.fileAction.send(await C.ageEncrypt(bob.keys, fake), { target: [bob.hostPeerId], metadata: { m } });
   await sleep(500);
   assert.equal(files.length, 0);
   cleanup(host, bob);
+});
+
+test('file data that is not an age file for this room is dropped (v2 framing, other room)', async () => {
+  const net = new FakeNetwork();
+  const host = await hostRoom(net);
+  const bob = await joinGuest(net, host, 'Bob');
+  const files = collect(host, 'file');
+  const bytes = new Uint8Array([1, 2, 3]);
+  const { bytesToB64url } = await import('../../build/modules/lib/encoding.js');
+  const other = await C.deriveRoomKeys(C.randomId(16), C.randomId(32), PASS);
+  for (const data of [await C.seal(bob.keys.groupKey, bytes), await C.ageEncrypt(other, bytes)]) {
+    const inner = { t: 'file', name: 'x', size: 3, type: '', sha256: bytesToB64url(await C.sha256(bytes)), id: C.randomId(12), from: bob.identity.id, ts: Date.now() };
+    const d = JSON.stringify(inner);
+    const m = await C.sealJson(bob.keys.groupKey, { d, s: await C.sign(bob.identity, d) });
+    await bob.fileAction.send(data, { target: [bob.hostPeerId], metadata: { m } });
+  }
+  await sleep(500);
+  assert.equal(files.length, 0);
+  cleanup(host, bob);
+});
+
+test('text sealed for the room opens for every member, and nowhere else', async () => {
+  const net = new FakeNetwork();
+  const host = await hostRoom(net);
+  const bob = await joinGuest(net, host, 'Bob');
+  const sealed = await host.sealText('the wifi password is 🦊 hunter2');
+  assert.equal(await bob.openText(sealed), 'the wifi password is 🦊 hunter2');
+  const other = await hostRoom(new FakeNetwork());
+  await assert.rejects(other.openText(sealed), 'another room must not open it');
+  const { b64urlToBytes, bytesToB64url } = await import('../../build/modules/lib/encoding.js');
+  const tampered = b64urlToBytes(sealed);
+  tampered[tampered.length - 1] ^= 1;
+  await assert.rejects(bob.openText(bytesToB64url(tampered)), 'tampered text must fail');
+  await assert.rejects(host.sealText('x'.repeat(100_001)), 'over the text limit');
+  cleanup(host, bob, other);
 });
 
 // ---- host controls ----

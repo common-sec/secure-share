@@ -1,12 +1,16 @@
-// All cryptography for chat/share rooms, using only the native Web Crypto API.
+// All cryptography for chat/share rooms: the native Web Crypto API, plus the age format for files
+// (src/vendor/age.ts).
 //
 // Room link:  #/<tool>?r=<room id>&k=<link secret>&h=<host key fingerprint>
 //   link secret  --HKDF-->  Trystero signaling password (encrypts offers on public relays)
-//   link secret + PBKDF2(passphrase)  --HKDF-->  group key (AES-256-GCM, all payloads)
+//   link secret + PBKDF2(passphrase)  --HKDF-->  group key (AES-256-GCM, messages and control)
 //                                     --HKDF-->  auth key  (HMAC, proves the passphrase to the host)
+//                                     --HKDF-->  age key   (HMAC; its output seeds the room's age
+//                                                 post-quantum hybrid identity, for files and Share text)
 // The passphrase is never mixed into anything published on the relays, so it can only be
 // guessed online, against the host, who rejects and counts every wrong attempt.
 import { utf8, fromUtf8, bytesToB64url, b64urlToBytes } from './encoding.js';
+import { loadAge } from '../vendor/age.js';
 
 const subtle = crypto.subtle;
 const ECDSA: EcKeyImportParams = { name: 'ECDSA', namedCurve: 'P-256' };
@@ -31,6 +35,8 @@ export interface RoomKeys {
   signalingPassword: string;
   groupKey: CryptoKey;
   authKey: CryptoKey;
+  /** HMAC key whose output over a fixed label is the seed of the room's age identity */
+  ageKey: CryptoKey;
 }
 
 export const randomId = (bytes: number): string => bytesToB64url(crypto.getRandomValues(new Uint8Array(bytes)));
@@ -60,9 +66,58 @@ export async function deriveRoomKeys(roomId: string, secret: string, passphrase:
     { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
   const authKey = await subtle.deriveKey(hkdf(`uss/v2/${roomId}`, 'auth'), base,
     { name: 'HMAC', hash: 'SHA-256', length: 256 }, false, ['sign', 'verify']);
+  const ageKey = await subtle.deriveKey(hkdf(`uss/v2/${roomId}`, 'age'), base,
+    { name: 'HMAC', hash: 'SHA-256', length: 256 }, false, ['sign']);
 
-  return { signalingPassword: bytesToB64url(signaling), groupKey, authKey };
+  return { signalingPassword: bytesToB64url(signaling), groupKey, authKey, ageKey };
 }
+
+// ---- age (files and Share text) ----
+// Every member derives the same age identity from the room keys: a post-quantum hybrid
+// (ML-KEM-768 + X25519) identity, whose secret is a 32-byte seed. Payloads are age files
+// encrypted to its recipient, so a reference age tool given the identity can decrypt them.
+const AGE_SEED_LABEL = 'uss-age-identity';
+const ageIdentities = new WeakMap<CryptoKey, Promise<{ identity: string; recipient: string }>>();
+
+function ageIdentityPair(ageKey: CryptoKey): Promise<{ identity: string; recipient: string }> {
+  let pair = ageIdentities.get(ageKey);
+  if (!pair) {
+    pair = (async () => {
+      const { age, bech32 } = await loadAge();
+      const seed = new Uint8Array(await subtle.sign('HMAC', ageKey, utf8.encode(AGE_SEED_LABEL)));
+      const identity = bech32.encode('AGE-SECRET-KEY-PQ-', bech32.toWords(seed), false).toUpperCase();
+      seed.fill(0);
+      return { identity, recipient: await age.identityToRecipient(identity) };
+    })();
+    pair.catch(() => ageIdentities.delete(ageKey));
+    ageIdentities.set(ageKey, pair);
+  }
+  return pair;
+}
+
+/** The room's age identity (`AGE-SECRET-KEY-PQ-1…`): secret, like the link and the passphrase. */
+export const ageIdentity = async (keys: RoomKeys): Promise<string> => (await ageIdentityPair(keys.ageKey)).identity;
+/** The room's age recipient (`age1pq1…`). */
+export const ageRecipient = async (keys: RoomKeys): Promise<string> => (await ageIdentityPair(keys.ageKey)).recipient;
+
+/** Encrypts to the room's age recipient; the result is a binary age file. */
+export async function ageEncrypt(keys: RoomKeys, bytes: Uint8Array): Promise<Bytes> {
+  const { age } = await loadAge();
+  const e = new age.Encrypter();
+  e.addRecipient(await ageRecipient(keys));
+  return new Uint8Array(await e.encrypt(bytes));
+}
+
+/** Decrypts an age file with the room's identity only; anything else (other recipients, passphrase files) fails. */
+export async function ageDecrypt(keys: RoomKeys, file: Uint8Array): Promise<Bytes> {
+  const { age } = await loadAge();
+  const d = new age.Decrypter();
+  d.addIdentity(await ageIdentity(keys));
+  return new Uint8Array(await d.decrypt(file));
+}
+
+/** Largest age overhead for a payload of `size` bytes: header (one hybrid stanza) + 16 bytes per 64 KiB chunk. */
+export const ageOverhead = (size: number): number => 4096 + 16 * (Math.floor(size / 65536) + 1);
 
 // ---- identities (ECDSA P-256, fresh per session, private key non-extractable) ----
 export async function newIdentity(): Promise<Identity> {

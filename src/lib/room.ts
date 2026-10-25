@@ -14,15 +14,20 @@
 // Messages: {d: JSON, s: ECDSA signature by the sender's per-session key} sealed with the
 // AES-GCM group key. Receivers check the signature against the roster the host publishes, so
 // members (and the relaying host) can't forge each other's messages or nicknames.
+// Files: age files encrypted to the room's age identity, announced by a signed message with their
+// plaintext size and SHA-256.
 //
 // Everything received from a peer is untrusted: it's validated (parse*) before use. The message
 // shapes below are the ones specified in docs/PROTOCOL.md.
 import type { HandshakeReceiver, HandshakeSender, JoinError, JsonValue, MessageAction, Room } from 'trystero';
 import { loadTrystero, type Trystero } from '../vendor/trystero.js';
 import * as C from './crypto.js';
-import { bytesToB64url } from './encoding.js';
+import { bytesToB64url, b64urlToBytes, utf8, fromUtf8 } from './encoding.js';
 
 export const MAX_FILE_BYTES = 512 * 1024 ** 2;
+const MAX_FILE_WIRE_BYTES = MAX_FILE_BYTES + C.ageOverhead(MAX_FILE_BYTES);
+/** Protocol version: in the handshake, and in the Trystero appId so other versions never meet. */
+export const PROTOCOL_VERSION = 3;
 export const MAX_TEXT = 100_000;
 const MAX_FAILURES = 5;
 // Public Nostr relays used for discovery. Fewer relays = fewer third parties seeing that a room
@@ -72,7 +77,7 @@ interface Guest {
   state: 'pending' | 'member';
 }
 
-interface Hello { v: 2; role: 'host' | 'guest'; pub: string; nonce: string; nick?: string }
+interface Hello { v: typeof PROTOCOL_VERSION; role: 'host' | 'guest'; pub: string; nonce: string; nick?: string }
 type Ctl =
   | { t: 'welcome'; ttl?: number }
   | { t: 'roster'; members: Array<Pick<Member, 'id' | 'nick' | 'pub' | 'host'>> }
@@ -107,8 +112,8 @@ const isObj = (v: unknown): v is Obj => typeof v === 'object' && v !== null && !
 const isStr = (v: unknown): v is string => typeof v === 'string';
 
 function parseHello(v: unknown): Hello | null {
-  if (!isObj(v) || v.v !== 2 || (v.role !== 'host' && v.role !== 'guest') || !isStr(v.pub) || !isStr(v.nonce)) return null;
-  return { v: 2, role: v.role, pub: v.pub, nonce: v.nonce, ...(isStr(v.nick) ? { nick: v.nick } : {}) };
+  if (!isObj(v) || v.v !== PROTOCOL_VERSION || (v.role !== 'host' && v.role !== 'guest') || !isStr(v.pub) || !isStr(v.nonce)) return null;
+  return { v: PROTOCOL_VERSION, role: v.role, pub: v.pub, nonce: v.nonce, ...(isStr(v.nick) ? { nick: v.nick } : {}) };
 }
 
 function parseCtl(v: unknown): Ctl | null {
@@ -329,9 +334,9 @@ export class SecureRoom extends EventTarget {
     const testIceServers = Array.isArray(hooks.__USS_TEST_ICE_SERVERS__) ? hooks.__USS_TEST_ICE_SERVERS__ as RTCIceServer[] : null;
     const room = trystero.joinRoom(
       {
-        appId: `user-sec-tools.${this.app}.v2`,
+        appId: `commonsec-share.${this.app}.v${PROTOCOL_VERSION}`,
         password: keys.signalingPassword,
-        maxReceiveBytes: MAX_FILE_BYTES + 4096,
+        maxReceiveBytes: MAX_FILE_WIRE_BYTES + 4096,
         // We decide when to reconnect to relays (see #syncDiscovery), not the browser's online events.
         relayConfig: {
           ...(testRelays ? { urls: testRelays } : { redundancy: RELAY_REDUNDANCY }),
@@ -370,7 +375,7 @@ export class SecureRoom extends EventTarget {
     msg.onMessage = queue<string>((data, ctx) => this.#onMsg(data, ctx));
     file.onMessage = queue<Uint8Array>((data, ctx) => this.#onFile(data, ctx));
     // Membership is re-checked when the data is processed; here only the connection matters.
-    file.onReceive = ({ peerId, byteLength }) => byteLength <= MAX_FILE_BYTES + 1024
+    file.onReceive = ({ peerId, byteLength }) => byteLength <= MAX_FILE_WIRE_BYTES
       && (this.isHost ? this.guests.has(peerId) : peerId === this.hostPeerId);
     file.onReceiveProgress = (progress, { peerId, metadata }) => {
       if (!this.#trusted(peerId)) return;
@@ -385,7 +390,7 @@ export class SecureRoom extends EventTarget {
   // ---- handshake ----
   async #hostHandshake(peerId: string, send: HandshakeSender, receive: HandshakeReceiver): Promise<void> {
     const nonce = C.randomId(16);
-    await send({ v: 2, role: 'host', pub: this.identity.pub, nonce });
+    await send({ v: PROTOCOL_VERSION, role: 'host', pub: this.identity.pub, nonce });
     const hello = parseHello((await receive()).data);
     if (hello?.role !== 'guest') throw new Error('protocol');
     await send({ sig: await C.sign(this.identity, `uss-host|${hello.nonce}|${nonce}`) });
@@ -419,7 +424,7 @@ export class SecureRoom extends EventTarget {
 
   async #guestHandshake(peerId: string, send: HandshakeSender, receive: HandshakeReceiver): Promise<void> {
     const nonce = C.randomId(16);
-    await send({ v: 2, role: 'guest', pub: this.identity.pub, nonce, nick: this.nick });
+    await send({ v: PROTOCOL_VERSION, role: 'guest', pub: this.identity.pub, nonce, nick: this.nick });
     const hello = parseHello((await receive()).data);
     if (hello?.role !== 'host') throw new Error('not-host');
     if (await C.fingerprint(hello.pub) !== this.hostFp) throw new Error('not-host');
@@ -617,6 +622,19 @@ export class SecureRoom extends EventTarget {
     return inner;
   }
 
+  /** Encrypts text as an age file for this room, base64url (Share's text travels this way in its manifest). */
+  async sealText(text: string): Promise<string> {
+    if (text.length > MAX_TEXT) throw new Error('Text too long');
+    return bytesToB64url(await C.ageEncrypt(this.#k, utf8.encode(text)));
+  }
+
+  /** Decrypts what sealText produced; throws on anything else. The text is untrusted peer data. */
+  async openText(sealed: string): Promise<string> {
+    const text = fromUtf8.decode(await C.ageDecrypt(this.#k, b64urlToBytes(sealed)));
+    if (text.length > MAX_TEXT) throw new Error('Text too long');
+    return text;
+  }
+
   async #verifyEnvelope(sealed: string, peerId: string): Promise<{ inner: Inner; member: Member } | null> {
     const env = parseEnvelope(await C.openJson(this.#k.groupKey, sealed));
     const inner = env && parseInner(env.d);
@@ -649,7 +667,7 @@ export class SecureRoom extends EventTarget {
     const hash = bytesToB64url(await C.sha256(bytes));
     const { inner, sealed: m } = await this.#envelope({ t: 'file', name: file.name, size: file.size, type: file.type, sha256: hash });
     this.#seen.add(inner.id);
-    const data = await C.seal(this.#k.groupKey, bytes);
+    const data = await C.ageEncrypt(this.#k, bytes);
     await this.fileAction.send(data, { target: targets, metadata: { m }, onProgress: (p) => onProgress?.(p) });
     return inner;
   }
@@ -681,7 +699,7 @@ export class SecureRoom extends EventTarget {
     const meta = await this.#readFileMeta(key);
     if (!meta || this.#seen.has(meta.inner.id)) return;
     if (this.isHost && meta.member.peerId !== peerId) return;
-    const bytes = await C.open(this.#k.groupKey, data);
+    const bytes = await C.ageDecrypt(this.#k, data);
     if (bytes.length !== meta.inner.size || bytesToB64url(await C.sha256(bytes)) !== meta.inner.sha256) return;
     this.#seen.add(meta.inner.id);
     this.#fileMeta.delete(key);

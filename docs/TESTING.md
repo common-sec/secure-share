@@ -48,11 +48,22 @@ docker compose run --rm test-unit python tests/unit/run.py chromium --filter roo
 |---|---|
 | `random.test.js` | Range, invalid bounds, **uniformity (chi-squared)**, shuffle |
 | `encoding.test.js` | base64url round-trips, large inputs, invalid input |
-| `crypto.test.js` | Key agreement between both sides, **the passphrase never affects the signaling key**, tamper detection, fresh IVs, signatures, safety codes |
+| `crypto.test.js` | Key agreement between both sides, **the passphrase never affects the signaling key**, tamper detection, fresh IVs, signatures, safety codes, **age**: same post-quantum identity on both sides, round trips across chunk sizes, overhead bound, **wrong passphrase, tampered header or body, truncated or extended files fail**, **passphrase (scrypt) files and files for other recipients are refused** |
 | `password.test.js` | Length, required sets, exclusions, entropy, impossible settings |
 | `passphrase.test.js` | Never only dictionary words, structure, minimum strength, entropy monotonicity, syllable capitals, spelling rules |
-| `room.test.js` | The protocol between host and guests, including attacks: wrong passphrase, **auto-lock**, declined and pending guests, unique nicknames, **impostor host with link + passphrase**, star topology, **forged and tampered messages**, **replays**, wrong-key data, **files that don't match their signed hash**, removal, **relay disconnection**, host reload, **room time limit** (host and stranded guests close, cap, not extended by a reload) |
-| `hoststore.test.js` | Host resume only across a reload: closed-tab and expired records are refused, the sweep deletes them |
+| `room.test.js` | The protocol between host and guests, including attacks: wrong passphrase, **auto-lock**, declined and pending guests, unique nicknames, **impostor host with link + passphrase**, star topology, **forged and tampered messages**, **replays**, wrong-key data, **files that don't match their signed hash**, **file data that isn't an age file for the room** (v2 framing, another room), Share text sealed for the room only, removal, **relay disconnection**, host reload, **room time limit** (host and stranded guests close, cap, not extended by a reload) |
+| `hoststore.test.js` | Host resume only across a reload: closed-tab, expired and pre-v3 records are refused, the sweep deletes them |
+| `age_cli.py` | Interoperability with the reference `age` tool (next section) |
+
+### Interoperability with the reference age tool
+
+Files and Share text are age files ([PROTOCOL.md §7](PROTOCOL.md#7-messages-and-files)).
+`tests/unit/age_cli.py` checks that the app and the reference implementation agree, both ways: in
+Chromium, the app derives a room's age identity and encrypts a text and a multi-chunk file, which
+`age -d` decrypts; then `age -r` encrypts to the room's recipient and the app decrypts it.
+`test-unit` runs it after the unit tests, still with no network. The `age` binary (v1.3.2, the
+first versions to read post-quantum recipients are 1.3.x) is built from source in the `test`
+image, from the Go module proxy, with every module checked against the Go checksum database.
 
 ### How the unit tests work
 
