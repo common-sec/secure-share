@@ -44,6 +44,27 @@ function openHowItWorks(root: HTMLElement): void {
   how.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
+/** What's copied for the recipient: an invitation with the link, never the passphrase. */
+export const invitation = (link: string): string =>
+  `I’m sending you something privately with ${APP_NAME}. Open this link, and I’ll tell you the words: ${link}`;
+
+/**
+ * Copies text that isn't known yet. Browsers only allow copying shortly after a click, and the
+ * link takes a moment to create (key derivation), so the write starts inside the click with a
+ * ClipboardItem whose content resolves later (Chrome, Safari, recent Firefox); writeText once the
+ * text exists is the fallback. Resolves to whether the copy worked.
+ */
+function copyWhenReady(text: Promise<string>): Promise<boolean> {
+  const fallback = (): Promise<boolean> => text.then((t) => navigator.clipboard.writeText(t)).then(() => true, () => false);
+  try {
+    if (typeof ClipboardItem !== 'undefined' && navigator.clipboard?.write) {
+      const item = new ClipboardItem({ 'text/plain': text.then((t) => new Blob([t], { type: 'text/plain' })) });
+      return navigator.clipboard.write([item]).then(() => true, fallback);
+    }
+  } catch { /* unsupported: fall back */ }
+  return fallback();
+}
+
 // One question and one button: the passphrase is generated when the link is created and shown on
 // the next screen, where it's used. Choosing your own words and checking who's receiving are under
 // More options; keeping the screen on is offered on the waiting screen.
@@ -82,12 +103,18 @@ function sendForm(body: HTMLElement, setSession: SetSession): void {
     // The words in More options: generated unless the sender chose their own.
     const passphrase = pass.input.value.trim() || roomPassphrase();
     if (!text.value.trim() && files.length === 0) return showError('Add some text or at least one file.');
+    let linkReady!: (link: string) => void;
+    let linkFailed!: (err: unknown) => void;
+    const link = new Promise<string>((resolve, reject) => { linkReady = resolve; linkFailed = reject; });
+    const copied = copyWhenReady(link.then(invitation));
     submit.disabled = true;
     submit.textContent = 'Creating the link…';
     try {
       const room = await SecureRoom.host({ app: 'share', passphrase, nick: 'Sender', maxGuests: 1, autoAccept: !approve.checked });
-      setSession(senderView(body, room, { text: text.value, files, passphrase }));
+      linkReady(room.link('share'));
+      setSession(senderView(body, room, { text: text.value, files, passphrase, copied }));
     } catch (err) {
+      linkFailed(err);
       showError(`Could not start: ${errorText(err)}`);
       submit.disabled = false;
       submit.textContent = 'Create link';
@@ -128,9 +155,20 @@ function sendForm(body: HTMLElement, setSession: SetSession): void {
   );
 }
 
-interface Outgoing { text: string; files: File[]; passphrase: string }
+interface Outgoing { text: string; files: File[]; passphrase: string; copied: Promise<boolean> }
 
-function senderView(body: HTMLElement, room: SecureRoom, { text, files, passphrase }: Outgoing): Session {
+function senderView(body: HTMLElement, room: SecureRoom, { text, files, passphrase, copied }: Outgoing): Session {
+  const link = room.link('share');
+  const invite = invitation(link);
+  const copyNote = h('p', { class: 'copy-note', 'aria-live': 'polite' }, 'Copying the invitation…');
+  void copied.then((ok) => {
+    copyNote.textContent = ok ? 'Link copied ✓ Paste it in your chat with them.' : 'Copy the link and paste it in your chat with them.';
+    copyNote.classList.toggle('ok', ok);
+  });
+  const copyInvite = h('button', { type: 'button', class: 'btn btn-small', onclick: () => copyText(invite, copyInvite) }, 'Copy invitation');
+  const shareButton = 'share' in navigator
+    ? h('button', { type: 'button', class: 'btn btn-small', onclick: () => { navigator.share({ text: invite }).catch(() => {}); } }, 'Share…')
+    : null;
   const status = h('p', { class: 'status-big', role: 'status' });
   const steps = h('ol', { class: 'progress-steps' },
     h('li', { class: 'active' }, 'Share the link and passphrase'),
@@ -197,7 +235,9 @@ function senderView(body: HTMLElement, room: SecureRoom, { text, files, passphra
 
   body.replaceChildren(h('div', { class: 'card narrow' },
     steps,
-    copyRow('One-time link', room.link('share'), true),
+    copyNote,
+    copyRow('One-time link', link, true, 'Copy link only'),
+    h('div', { class: 'row tight' }, copyInvite, shareButton),
     copyRow('Passphrase', passphrase, true),
     h('p', { class: 'hint warn' }, '⚠ Keep this tab open until the delivery completes. Nothing is stored on a server, so closing it cancels the share.'),
     room.expiresAt ? h('p', { class: 'hint' }, `⏱ If nobody receives it, the link stops working at ${closesAt(room.expiresAt)}.`) : null,

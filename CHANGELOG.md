@@ -5,6 +5,12 @@ All notable changes, one section per version. See [docs/ROADMAP.md](docs/ROADMAP
 ## [Unreleased]
 
 ### Changed
+- **The link is copied for you** (roadmap G3, without the QR code yet). Creating a Share copies a
+  short invitation straight away: "I’m sending you something privately with CommonSec Share.
+  Open this link, and I’ll tell you the words: https://…". It never contains the passphrase. The
+  screen says "Link copied ✓ Paste it in your chat with them", or asks you to copy the link if
+  the browser refused. "Copy link only", "Copy invitation" and the system share sheet (where
+  available) are next to it.
 - **One question, one button** to create a Share (roadmap G2). The page asks "What do you want
   to send?", with "+ Add files" (or drop files anywhere on the card) and **Create link**. The
   passphrase is generated when the link is created and shown on the next screen. Choosing your
