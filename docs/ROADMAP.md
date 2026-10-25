@@ -37,7 +37,7 @@ CI/CD, testing infrastructure and security process work is tracked separately, i
 | 0.1.0 | **Baseline**: password/passphrase generator, Secure Chat, Secure Share, docs, browser test suite | ✅ Done |
 | 0.4.0 | **First real-world test feedback**: Secure Share as the home page, clearer naming, stronger and masked room passphrases with a strength meter | ✅ Done |
 | 0.7.0 | **Names, organisation and domain**: CommonSec organisation, CommonSec Share app, served at `share.common-sec.org` | ✅ Done (to tag) |
-| 0.8.0 | **Standard secure channel**: our own handshake and message encryption replaced by a published protocol (Noise `IKpsk2` under study), with forward secrecy (breaking) | Next (study) |
+| 0.8.0 | **Standard secure channel**: our own handshake and message encryption replaced by a published protocol (Noise `IKpsk1` on the snow library, under study), with forward secrecy (breaking) | Next (study) |
 | 0.9.0 | **Connectivity on restrictive networks**: users behind symmetric NAT or UDP-blocking firewalls can still connect, through an end-to-end encrypted relay fallback | Planned |
 | 0.10.0 | **Static pages and SEO**: pre-rendered static pages, metadata and social previews, How it works and FAQ, sitemap, Search Console | Planned |
 | 1.0.0 | **Public launch**: release checklist and announcement, once the [pre-launch internal work](TODO.md#before-launch) is done | Planned |
@@ -101,8 +101,11 @@ construction next to ours ([D23](DECISIONS.md)).
 **Why before launch:** it changes the protocol, so old links and peers stop working. Before 1.0
 that's a minor version; after it, a major one.
 **Now:** a study of the options (Noise, binding to WebRTC's DTLS, PAKE, MLS, HPKE) and their
-browser libraries. The current recommendation is Noise `IKpsk2` (WireGuard's pattern) on Web
-Crypto, with a pre-shared key from the link secret and the passphrase.
+browser libraries. The current recommendation is `Noise_IKpsk1_25519_ChaChaPoly_SHA256` with the
+snow library compiled to WebAssembly, and a pre-shared key from the link secret and the
+passphrase. A prototype in [prototypes/noise-wasm](../prototypes/noise-wasm/README.md) passes the
+published test vectors and runs in Chromium; it showed that `IKpsk2` (WireGuard's position) would
+let anyone with the link test passphrase guesses offline, which D9 rules out.
 **Done when:**
 - the protocol and its library (or our implementation of a published pattern, checked against
   its test vectors) are chosen and recorded as a decision;

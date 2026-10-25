@@ -85,8 +85,9 @@ kept under "History".
   sat next to them inside the same channel, so there was more to review, not less. It also has no
   sender authentication or forward secrecy, and costs about 1.6 KB per message, so it doesn't fit
   chat. The goal is that the **whole channel** uses a reviewed construction.
-- **Next:** roadmap 0.8.0 is now a standard secure channel; the study compares Noise (`IKpsk2`,
-  as WireGuard), binding our handshake to WebRTC's DTLS, PAKE (CPace), MLS and HPKE.
+- **Next:** roadmap 0.8.0 is now a standard secure channel; the study compares Noise (`IK` with a
+  pre-shared key, on the snow library), binding our handshake to WebRTC's DTLS, PAKE (CPace), MLS
+  and HPKE.
 - **Revisit:** age (or HPKE) for data that leaves the live channel: a saved encrypted file, or
   payloads through the 0.9.0 relay fallback.
 
