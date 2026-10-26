@@ -511,25 +511,27 @@ function parseManifest(fields: Record<string, unknown>): Manifest {
   };
 }
 
-/** The received text: masked until the recipient asks to see it, and removable from the page. */
+/**
+ * The received text, hidden until the recipient asks to see it: the next step is one large
+ * button, not a small Show among others. Once shown: Copy, Hide, and Clear from screen.
+ */
 function receivedText(text: string): HTMLElement {
   const secret = h('pre', { class: 'secret', hidden: true }, text);
-  const masked = h('div', { class: 'secret masked' },
-    h('span', { 'aria-hidden': 'true' }, '••••••••••••'), h('span', { class: 'sr-only' }, 'Hidden'));
-  const show = h('button', { type: 'button', class: 'btn btn-small', 'aria-pressed': 'false' }, 'Show');
-  show.addEventListener('click', () => {
-    const reveal = secret.hidden;
-    secret.hidden = !reveal;
-    masked.hidden = reveal;
-    show.textContent = reveal ? 'Hide' : 'Show';
-    show.setAttribute('aria-pressed', String(reveal));
-  });
+  const reveal = h('button', { type: 'button', class: 'btn btn-primary btn-tap reveal' }, 'Show the secret text');
+  const hide = h('button', { type: 'button', class: 'btn btn-small' }, 'Hide');
   const copy = h('button', { type: 'button', class: 'btn btn-small', onclick: () => copyText(text, copy) }, 'Copy');
   const clear = h('button', { type: 'button', class: 'btn btn-ghost btn-small', onclick: () =>
     box.replaceChildren(h('p', { class: 'hint' }, 'The text was cleared from the screen.')) }, 'Clear from screen');
-  const box = h('div', { class: 'field' },
-    h('div', { class: 'row spread' }, h('span', { class: 'label' }, 'Text'), h('div', { class: 'row tight' }, show, copy, clear)),
-    masked, secret);
+  const actions = h('div', { class: 'row tight', hidden: true }, copy, hide, clear);
+  const toggle = (show: boolean) => {
+    secret.hidden = !show;
+    actions.hidden = !show;
+    reveal.hidden = show;
+    (show ? copy : reveal).focus();
+  };
+  reveal.addEventListener('click', () => toggle(true));
+  hide.addEventListener('click', () => toggle(false));
+  const box = h('div', { class: 'field' }, reveal, secret, actions);
   return box;
 }
 
@@ -541,18 +543,20 @@ function receiverView(body: HTMLElement, room: SecureRoom, retry: () => void): S
   let received = 0;
   let done = false;
   const progress = h('progress', { max: 1, value: 0, hidden: true });
+  const connecting = h('div', { class: 'step-title' }, 'Connecting to the sender');
+  const receiving = h('p', { class: 'status-big', 'aria-live': 'polite', hidden: true }, 'Receiving…');
   const code = h('p', { class: 'hint', hidden: true });
   const finish = h('div', { hidden: true },
     h('div', { class: 'row' },
-      h('button', { type: 'button', class: 'btn btn-primary btn-tap', onclick: () => clearAll() }, 'Done'),
+      h('button', { type: 'button', class: 'btn btn-tap', onclick: () => clearAll() }, 'Done'),
       h('span', { class: 'hint inline' }, 'clears it from this page.')),
     h('p', { class: 'hint' }, h('a', { href: '#/share?' }, 'Send something back ›')));
 
   // Words → connecting (finding the sender, connected, receiving %) → what they sent → Done.
   const steps = h('ol', { class: 'guide-steps' },
     h('li', { class: 'done' }, h('div', { class: 'step-title' }, 'Words typed')),
-    h('li', { class: 'active' }, h('div', { class: 'step-title' }, 'Connecting to the sender'), status, progress, code),
-    h('li', null, h('div', { class: 'step-title' }, 'Here’s what they sent'), result, finish));
+    h('li', { class: 'active' }, connecting, status, code),
+    h('li', null, h('div', { class: 'step-title' }, 'Here’s what they sent'), receiving, progress, result, finish));
   const step = (n: number) => [...steps.children].forEach((li, i) => {
     li.classList.toggle('done', i < n);
     li.classList.toggle('active', i === n);
@@ -577,16 +581,20 @@ function receiverView(body: HTMLElement, room: SecureRoom, retry: () => void): S
     if (!manifest || received < manifest.fileCount || done) return;
     done = true;
     progress.hidden = true;
-    step(2);
+    step(3);
     finish.hidden = false;
-    status.textContent = 'Received ✓ This was a one-time delivery: save what you need before closing this tab.';
+    receiving.textContent = 'Received ✓ This was a one-time delivery: save what you need before closing this tab.';
     await room.send({ t: 'ack' }).catch(() => {});
   };
 
   room
     .on('connected', ({ code: c }) => {
       clearTimeout(slow);
-      status.textContent = 'Connected to the sender. Receiving…';
+      connecting.textContent = 'Connected to the sender';
+      status.hidden = true;
+      // Receiving happens in step 3, which ticks when everything has arrived.
+      step(2);
+      receiving.hidden = false;
       // Small, for people who compare it with the sender.
       code.textContent = `Safety code: ${c}`;
       code.hidden = false;
@@ -601,7 +609,7 @@ function receiverView(body: HTMLElement, room: SecureRoom, retry: () => void): S
     })
     .on('file-progress', ({ progress: p, inner }) => {
       progress.value = p;
-      status.textContent = `Receiving ${safeFileName(inner.name)}… ${Math.round(p * 100)}%`;
+      receiving.textContent = `Receiving ${safeFileName(inner.name)}… ${Math.round(p * 100)}%`;
     })
     .on('file', ({ inner, blob }) => {
       const url = URL.createObjectURL(blob);
@@ -609,7 +617,7 @@ function receiverView(body: HTMLElement, room: SecureRoom, retry: () => void): S
       result.append(h('div', { class: 'file-card' },
         h('span', { class: 'file-icon', 'aria-hidden': 'true' }, '📄'),
         h('div', { class: 'file-info' }, h('strong', null, safeFileName(inner.name)), h('span', { class: 'muted' }, formatBytes(inner.size))),
-        h('a', { class: 'btn btn-primary btn-small', href: url, download: safeFileName(inner.name) }, 'Download')));
+        h('a', { class: 'btn btn-primary btn-tap', href: url, download: safeFileName(inner.name) }, 'Download')));
       received++;
       void finishIfComplete();
     })
@@ -620,6 +628,7 @@ function receiverView(body: HTMLElement, room: SecureRoom, retry: () => void): S
     clearTimeout(slow);
     void room.leave();
     status.textContent = text;
+    status.hidden = false;
     status.classList.add('error');
     if (canRetry) result.append(h('button', { class: 'btn', onclick: retry }, 'Try again'));
   }
