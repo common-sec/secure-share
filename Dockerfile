@@ -13,7 +13,7 @@ CMD ["sh"]
 # Microsoft's image ships the browsers but not the Python package. Installing it here, at build
 # time, under pip.conf's rules (hashes required, wheels only, >= 7 days old) bakes the exact
 # pinned versions into the image: test runs need no install step and no network.
-FROM mcr.microsoft.com/playwright/python:v1.63.0-noble@sha256:72bd171a9ffc2b4b59532aaa6210e21014d07093120dc25528870c0b840da1f0 AS test
+FROM mcr.microsoft.com/playwright/python:v1.64.1-noble@sha256:330d401ae23c905896a0c26c66c36fc971b621519e7b11b435a8328d7bf6e031 AS test
 COPY pip.conf tests/requirements.txt /tmp/deps/
 RUN PIP_CONFIG_FILE=/tmp/deps/pip.conf pip install --no-cache-dir --target /opt/pydeps -r /tmp/deps/requirements.txt \
  && rm -rf /tmp/deps
