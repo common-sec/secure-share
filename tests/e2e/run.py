@@ -134,9 +134,9 @@ def share_send(env, page, text, files=(), approve=False, keep_awake=False, own_w
         expect(page.get_by_text("estimate for a typed passphrase")).to_be_visible()
     page.get_by_role("button", name="Create link").click()
     # The invitation is copied straight away, or the sender is told to copy it (G3).
-    expect(page.get_by_text(re.compile("Link copied ✓|Copy the invitation and paste it"))).to_be_visible()
+    expect(page.get_by_text(re.compile("^Link copied$|Copy the invitation with the link"))).to_be_visible()
     # There's no "copy the link alone": read it from a Send with button (icons, named by aria-label).
-    telegram = page.get_by_role("link", name="Telegram", exact=True).get_attribute("href")
+    telegram = page.locator(".share-to").first.get_by_role("link", name="Telegram", exact=True).get_attribute("href")
     link = urllib.parse.parse_qs(urllib.parse.urlparse(telegram).query)["url"][0]
     # The generated words are shown on the waiting screen, where they're used.
     # Step 2 shows them masked, word by word, with Show (G4).
@@ -266,21 +266,40 @@ def share_happy_path(env, b):
 
     expect(sender.locator(".page-head .lead").first).to_be_hidden()   # the intro is hidden while waiting
     expect(sender.get_by_role("status")).to_contain_text("Waiting for the recipient")
+    # Steps 1-3 are the sender's; 4 waits on the recipient (orange timer), 5 hasn't started.
+    expect(sender.locator(".guide-steps > li").nth(3)).to_have_class(re.compile("waiting"))
 
     if b == "chromium":
         # What was copied is an invitation with the link, never the passphrase.
-        expect(sender.get_by_text("Link copied ✓")).to_be_visible()
+        expect(sender.get_by_text("Link copied", exact=True)).to_be_visible()
         copied = sender.evaluate("navigator.clipboard.readText()")
         assert link in copied and copied.startswith("I’m sending you something privately"), copied
         assert passphrase not in copied, copied
     # One copy button, for the invitation with the link: no copy of the link alone.
     expect(sender.locator('input[aria-label="One-time link"]')).to_have_count(0)
     expect(sender.get_by_role("button", name=re.compile("^Copy (again|invitation)$"))).to_be_visible()
-    # Messenger share links and the QR code hold the link, never the words.
+    # Messenger share links and the QR code hold the link, never the words...
+    link_row, words_row = sender.locator(".share-to").nth(0), sender.locator(".share-to").nth(1)
     for name in ("Email", "Gmail", "Outlook", "WhatsApp", "Telegram", "Teams"):
-        href = sender.get_by_role("link", name=name, exact=True).get_attribute("href")
+        href = link_row.get_by_role("link", name=name, exact=True).get_attribute("href")
         assert urllib.parse.quote(link, safe="") in href, href
         assert urllib.parse.quote(passphrase, safe="") not in href and passphrase not in href, href
+    # ...and the "send the words another way" links hold the words, never the link.
+    for name in ("Text message", "WhatsApp", "Telegram", "Email", "Gmail", "Outlook"):
+        href = words_row.get_by_role("link", name=name, exact=True).get_attribute("href")
+        assert urllib.parse.quote(passphrase, safe="") in href, href
+        assert urllib.parse.quote(link, safe="") not in href and link not in href, href
+    # Sending the words the same way as the link is discouraged, not blocked.
+    sender.context.route("https://wa.me/**", lambda route: route.abort())
+    with sender.expect_popup() as popup:
+        link_row.get_by_role("link", name="WhatsApp", exact=True).click()
+    popup.value.close()
+    words_row.get_by_role("link", name="WhatsApp", exact=True).click()
+    warning = sender.get_by_role("alert").filter(has_text="Not recommended")
+    expect(warning).to_contain_text("You sent the link with WhatsApp")
+    expect(warning.get_by_role("link", name="Send anyway")).to_have_attribute("href", re.compile("^https://wa.me/"))
+    warning.get_by_role("button", name="Choose another way").click()
+    expect(warning).to_be_hidden()
     sender.get_by_role("button", name="QR code").click()
     expect(sender.get_by_role("img", name="QR code of the one-time link")).to_be_visible()
 
@@ -292,6 +311,7 @@ def share_happy_path(env, b):
     assert download(recipient, ".file-card", "keys.bin") == secret_file["buffer"]
     expect(sender.get_by_text("Delivered ✓")).to_be_visible()
     expect(sender).to_have_title(re.compile("^✓ Delivered"))
+    expect(sender.locator(".guide-steps > li.done")).to_have_count(5)   # every step ticked
     audit(recipient, "share-received")
     recipient.get_by_role("button", name="Clear from screen").click()
     expect(recipient.locator("pre.secret")).to_have_count(0)
