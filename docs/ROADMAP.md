@@ -113,7 +113,7 @@ these cover point here.
 - [x] **G4. Guided waiting screen.** Numbered steps (paste the link, say the words, keep this
       page open), with "Keep my screen on" as part of the last step, and a line for when you're
       not on a call.
-- [ ] **G5. Guided recipient page.** What this is and that nothing is stored, "type the words they
+- [x] **G5. Guided recipient page.** What this is and that nothing is stored, "type the words they
       tell you", live connection stages, the result, then Done (clears everything) and Send
       something back.
 

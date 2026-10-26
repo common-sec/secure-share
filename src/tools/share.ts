@@ -4,7 +4,7 @@ import { readInvite, type Invite, type Session } from './chat.js';
 import { passphraseField, copyRow, field } from './widgets.js';
 import { roomPassphrase } from '../lib/passphrase.js';
 import { qrSvg } from '../vendor/qrcode.js';
-import { APP_NAME } from '../lib/app.js';
+import { APP_NAME, REPOSITORY } from '../lib/app.js';
 
 type SetSession = (s: Session) => void;
 const errorText = (e: unknown): string => (e instanceof Error ? e.message : String(e));
@@ -18,14 +18,14 @@ export function mount(root: HTMLElement, params: URLSearchParams): () => void {
   }
 
   const intro = h('div', null,
-    invite
-      ? h('p', { class: 'lead' }, 'Someone sent you a one-time, end-to-end encrypted delivery.')
-      : h('p', { class: 'lead' },
-        'Send a password or a file privately. It goes straight to the other person and works only once. ',
-        // A button, not a link: the hash holds the route, so an in-page anchor would navigate away.
-        h('button', { type: 'button', class: 'link-button', onclick: () => openHowItWorks(root) }, 'How it works ›')),
+    h('p', { class: 'lead' },
+      invite
+        ? 'It comes straight from their browser to yours, can be opened only once, and isn’t stored anywhere. '
+        : 'Send a password or a file privately. It goes straight to the other person and works only once. ',
+      // A button, not a link: the hash holds the route, so an in-page anchor would navigate away.
+      h('button', { type: 'button', class: 'link-button', onclick: () => openHowItWorks(root) }, 'How it works ›')),
   );
-  root.append(h('section', { class: 'page-head' }, h('h1', null, 'Secure Share'), intro));
+  root.append(h('section', { class: 'page-head' }, h('h1', null, invite ? 'Someone sent you something privately' : 'Secure Share'), intro));
   const body = h('div');
   root.append(body);
 
@@ -37,6 +37,30 @@ export function mount(root: HTMLElement, params: URLSearchParams): () => void {
 }
 
 // ---------------------------------------------------------------- sender
+/** The "How it works" box under the page: for the sender, or for someone who received a link. */
+function howItWorks(recipient: boolean): HTMLElement {
+  return h('details', { class: 'card narrow guide how-it-works' },
+    h('summary', null, h('h2', null, 'How it works')),
+    recipient
+      ? [
+        h('p', null, 'Someone used ', APP_NAME, ' to send you something privately: a password, a note or a file. It’s encrypted end to end and comes straight from their browser to yours. Nothing is uploaded or stored anywhere, and no account is needed.'),
+        h('p', null, 'The link alone isn’t enough: you also need the words they tell you, typed exactly as they say them. Once you’ve received it, the link stops working.'),
+        h('p', null, 'This app is open source: you can ', h('a', { href: REPOSITORY, rel: 'noopener' }, 'read its code'), '.'),
+      ]
+      : [
+        h('p', null, 'The delivery is encrypted end to end and goes straight from your browser to the recipient’s, from computer to computer or phone. No special software is needed, and nothing is uploaded or stored anywhere.'),
+        h('p', null, 'The recipient needs the link ', h('em', null, 'and'), ' the words. On a call, paste the link in the chat and say the words aloud: they’re never written anywhere. If the calling app itself is the concern, send the link another way.'),
+        h('p', null, 'Keep this page open until the delivery completes: it comes from your browser, so closing the page cancels it. The link works once, and stops working after a time limit if nobody uses it.'),
+        h('h3', null, 'Which one should I use?'),
+        h('ul', null,
+          h('li', null, h('strong', null, 'Secure Share'), ' (this page): send something ', h('em', null, 'once'),
+            ' to ', h('em', null, 'one'), ' person: a password, a key, a document. The link stops working after delivery.'),
+          h('li', null, h('strong', null, h('a', { href: '#/chat' }, 'Secure Chat')), ': several things to exchange, replies, or more than two people. You host a private room and approve everyone who joins.'),
+        ),
+      ],
+  );
+}
+
 /** Opens the "How it works" box under the form and scrolls to it. */
 function openHowItWorks(root: HTMLElement): void {
   const how = root.querySelector<HTMLDetailsElement>('details.how-it-works');
@@ -170,18 +194,7 @@ function sendForm(body: HTMLElement, setSession: SetSession): void {
 
   body.append(form,
     h('p', { class: 'narrow hint chat-pointer' }, 'Several things to exchange, or a conversation? ', h('a', { href: '#/chat' }, 'Use Secure Chat ›')),
-    h('details', { class: 'card narrow guide how-it-works' },
-      h('summary', null, h('h2', null, 'How it works')),
-      h('p', null, 'The delivery is encrypted end to end and goes straight from your browser to the recipient’s, from computer to computer or phone. No special software is needed, and nothing is uploaded or stored anywhere.'),
-      h('p', null, 'The recipient needs the link ', h('em', null, 'and'), ' the words. On a call, paste the link in the chat and say the words aloud: they’re never written anywhere. If the calling app itself is the concern, send the link another way.'),
-      h('p', null, 'Keep this page open until the delivery completes: it comes from your browser, so closing the page cancels it. The link works once, and stops working after a time limit if nobody uses it.'),
-      h('h3', null, 'Which one should I use?'),
-      h('ul', null,
-        h('li', null, h('strong', null, 'Secure Share'), ' (this page): send something ', h('em', null, 'once'),
-          ' to ', h('em', null, 'one'), ' person: a password, a key, a document. The link stops working after delivery.'),
-        h('li', null, h('strong', null, h('a', { href: '#/chat' }, 'Secure Chat')), ': several things to exchange, replies, or more than two people. You host a private room and approve everyone who joins.'),
-      ),
-    ),
+    howItWorks(false),
   );
 }
 
@@ -386,14 +399,15 @@ function senderView(body: HTMLElement, room: SecureRoom, { text, files, passphra
 // ---------------------------------------------------------------- recipient
 function receiveForm(body: HTMLElement, invite: Invite, setSession: SetSession): void {
   const pass = passphraseField({ generate: false });
+  pass.input.placeholder = 'e.g. six words';
   const error = h('p', { class: 'error', hidden: true });
-  const submit = h('button', { class: 'btn btn-primary', type: 'submit' }, 'Receive');
+  const submit = h('button', { class: 'btn btn-primary btn-tap', type: 'submit' }, 'Open');
   body.replaceChildren(h('form', { class: 'card narrow', onsubmit: async (e: Event) => {
     e.preventDefault();
     const passphrase = pass.input.value.trim();
-    if (!passphrase) { error.textContent = 'Enter the passphrase the sender gave you.'; error.hidden = false; return; }
+    if (!passphrase) { error.textContent = 'Type the words they tell you.'; error.hidden = false; return; }
     submit.disabled = true;
-    submit.textContent = 'Deriving keys…';
+    submit.textContent = 'Opening…';
     try {
       const room = await SecureRoom.join({ app: 'share', ...invite, passphrase, nick: 'Recipient' });
       setSession(receiverView(body, room, () => receiveForm(body, invite, setSession)));
@@ -401,14 +415,18 @@ function receiveForm(body: HTMLElement, invite: Invite, setSession: SetSession):
       error.textContent = `Could not start: ${errorText(err)}`;
       error.hidden = false;
       submit.disabled = false;
-      submit.textContent = 'Receive';
+      submit.textContent = 'Open';
     }
   } },
-  field('Passphrase', pass.el,
-    h('p', { class: 'hint' }, 'The sender should have given you this separately from the link.')),
-  error,
-  h('div', { class: 'row' }, submit),
-  ));
+  h('ol', { class: 'guide-steps' },
+    h('li', { class: 'active' },
+      field('Type the words they tell you', pass.el,
+        h('p', { class: 'hint' }, 'Usually six words, exactly as they say them. Not on a call? They should have sent them separately from the link.')),
+      error,
+      h('div', { class: 'row' }, submit)),
+    h('li', null, h('div', { class: 'step-title' }, 'Connect to the sender')),
+    h('li', null, h('div', { class: 'step-title' }, 'See what they sent'))),
+  ), howItWorks(true));
   pass.input.focus();
 }
 
@@ -452,24 +470,55 @@ function receiverView(body: HTMLElement, room: SecureRoom, retry: () => void): S
   let received = 0;
   let done = false;
   const progress = h('progress', { max: 1, value: 0, hidden: true });
+  const code = h('p', { class: 'hint', hidden: true });
+  const finish = h('div', { hidden: true },
+    h('div', { class: 'row' },
+      h('button', { type: 'button', class: 'btn btn-primary btn-tap', onclick: () => clearAll() }, 'Done'),
+      h('span', { class: 'hint inline' }, 'clears it from this page.')),
+    h('p', { class: 'hint' }, h('a', { href: '#/share?' }, 'Send something back ›')));
 
-  body.replaceChildren(h('div', { class: 'card narrow' }, status, progress, result));
+  // Words → connecting (finding the sender, connected, receiving %) → what they sent → Done.
+  const steps = h('ol', { class: 'guide-steps' },
+    h('li', { class: 'done' }, h('div', { class: 'step-title' }, 'Words typed')),
+    h('li', { class: 'active' }, h('div', { class: 'step-title' }, 'Connecting to the sender'), status, progress, code),
+    h('li', null, h('div', { class: 'step-title' }, 'Here’s what they sent'), result, finish));
+  const step = (n: number) => [...steps.children].forEach((li, i) => {
+    li.classList.toggle('done', i < n);
+    li.classList.toggle('active', i === n);
+  });
+  body.replaceChildren(h('div', { class: 'card narrow' }, steps), howItWorks(true));
   const slow = setTimeout(() => {
-    if (!done) status.textContent = 'Still looking. The sender’s tab must be open. The link may have already been used.';
+    if (!done) status.textContent = 'Still looking for the sender. Ask them to keep their page open. If someone already opened this link, it no longer works.';
   }, 20000);
+
+  /** Done: nothing from the delivery stays on the page, and the room is left. */
+  function clearAll(): void {
+    void room.leave();
+    objectUrls.forEach((u) => URL.revokeObjectURL(u));
+    objectUrls.length = 0;
+    body.replaceChildren(h('div', { class: 'card narrow' },
+      h('p', { class: 'status-big' }, 'All done ✓'),
+      h('p', null, 'Nothing from this delivery is left on this page.'),
+      h('div', { class: 'row' }, h('a', { class: 'btn btn-tap', href: '#/share?' }, 'Send something back'))));
+  }
 
   const finishIfComplete = async () => {
     if (!manifest || received < manifest.fileCount || done) return;
     done = true;
     progress.hidden = true;
+    step(2);
+    finish.hidden = false;
     status.textContent = 'Received ✓ This was a one-time delivery: save what you need before closing this tab.';
     await room.send({ t: 'ack' }).catch(() => {});
   };
 
   room
-    .on('connected', ({ code }) => {
+    .on('connected', ({ code: c }) => {
       clearTimeout(slow);
-      status.textContent = `Connected to the sender. Safety code: ${code}`;
+      status.textContent = 'Connected to the sender. Receiving…';
+      // Small, for people who compare it with the sender.
+      code.textContent = `Safety code: ${c}`;
+      code.hidden = false;
     })
     .on('message', ({ inner }) => {
       if (inner.t !== 'manifest' || manifest) return;
