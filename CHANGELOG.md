@@ -10,6 +10,15 @@ All notable changes, one section per version. See [docs/ROADMAP.md](docs/ROADMAP
   password managers don't treat them as logins to save. Where that masking isn't available
   (Firefox), the field falls back to a password field with autocomplete off and the password
   managers' "ignore" attributes.
+- **Five clear steps on the sender's screen:** 1. Link copied, 2. Paste it in your chat or email
+  (Copy again, Share…, QR code, Send with icons), 3. Tell them these words, 4. They open the link
+  and type the words, 5. They receive it. Your steps tick as you do them; the recipient's show an
+  orange timer while they're pending, with the live status inside, and tick when they happen.
+  Keeping the page open and the screen on moved below the steps.
+- **Send the words another way:** under the words, Text message, WhatsApp, Telegram, Email,
+  Gmail and Outlook links carry the words only, never the link. Picking the same app the link
+  went through shows a "Not recommended" warning (anyone who reads that conversation gets both),
+  with Send anyway or Choose another way.
 - **The recipient is guided step by step** (roadmap G5). The page says what this is ("Someone
   sent you something privately… can be opened only once, and isn’t stored anywhere"), with How
   it works and a link to the source code. Then: 1. type the words they tell you ("usually six

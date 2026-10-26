@@ -1,13 +1,14 @@
 // Small monochrome icons for the "Send with" buttons, drawn without innerHTML. They take the text
 // colour, so they follow the theme. Gmail, WhatsApp and Telegram are the Simple Icons glyphs
-// (CC0, https://simpleicons.org); Email, Outlook and Teams are drawn here (Simple Icons has no
-// Microsoft logos).
+// (CC0, https://simpleicons.org); Email, Text message, Outlook and Teams are drawn here (Simple
+// Icons has no Microsoft logos).
 const SVG = 'http://www.w3.org/2000/svg';
 
 type Shape = { d: string; stroke?: boolean; holes?: boolean };
 
 const ICONS: Record<string, Shape[]> = {
   Email: [{ d: 'M3 5h18v14H3zM3 6l9 7 9-7', stroke: true }],
+  'Text message': [{ d: 'M3 4h18v12H9l-5 4v-4H3z', stroke: true }],
   Gmail: [{ d: 'M24 5.457v13.909c0 .904-.732 1.636-1.636 1.636h-3.819V11.73L12 16.64l-6.545-4.91v9.273H1.636A1.636 1.636 0 0 1 0 19.366V5.457c0-2.023 2.309-3.178 3.927-1.964L5.455 4.64 12 9.548l6.545-4.91 1.528-1.145C21.69 2.28 24 3.434 24 5.457z' }],
   Outlook: [
     { d: 'M1 5h13v14H1zM7.5 8a3.2 4 0 1 0 .001 0zM7.5 9.8a1.5 2.2 0 1 1-.001 0z', holes: true },
