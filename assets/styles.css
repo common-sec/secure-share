@@ -167,7 +167,6 @@ select {
 .advanced .check { margin-top: 12px; }
 .qr-box { margin-top: 12px; }
 .qr-box .qr { display: block; width: min(240px, 100%); height: auto; border-radius: 8px; }
-.copy-note { font-weight: 600; margin: 12px 0 0; }
 .how-it-works summary h2 { display: inline; }
 .file-list { list-style: none; padding: 0; margin: 8px 0 0; display: grid; gap: 4px; }
 .file-list li { display: flex; gap: 8px; align-items: center; justify-content: space-between; overflow-wrap: anywhere; }
@@ -184,15 +183,21 @@ select {
 }
 
 /* Share steps */
-.progress-steps { list-style: none; padding: 0; margin: 0 0 8px; display: flex; gap: 8px; flex-wrap: wrap; counter-reset: step; }
-.progress-steps li {
-  counter-increment: step; flex: 1; min-width: 140px; font-size: .85rem; color: var(--muted);
-  padding: 8px 10px; border-radius: 8px; background: var(--code-bg); border: 1px solid transparent;
+.guide-steps { list-style: none; padding: 0; margin: 0; counter-reset: step; display: grid; gap: 16px; }
+.guide-steps > li { counter-increment: step; position: relative; padding-left: 40px; color: var(--muted); }
+.guide-steps > li::before {
+  content: counter(step); position: absolute; left: 0; top: 0; width: 28px; height: 28px; border-radius: 50%;
+  display: grid; place-items: center; font-weight: 700; background: var(--code-bg); color: var(--text);
 }
-.progress-steps li::before { content: counter(step) ". "; font-weight: 700; }
-.progress-steps li.active { border-color: var(--accent); color: var(--text); }
-.progress-steps li.done { color: var(--ok); }
-.progress-steps li.done::before { content: "✓ "; }
+.guide-steps > li.active { color: var(--text); }
+.guide-steps > li.active::before { background: var(--accent); color: var(--accent-text); }
+.guide-steps > li.done::before { content: "✓"; background: var(--code-bg); color: var(--ok); }
+.guide-steps .step-title { font-weight: 600; color: var(--text); }
+.guide-steps .row { margin-top: 8px; }
+.words { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 8px; }
+.words-text { display: flex; flex-wrap: wrap; gap: 6px; }
+.words-text[hidden] { display: none; }
+.word { font-size: 1.25rem; padding: 4px 10px; border-radius: 8px; background: var(--code-bg); color: var(--text); }
 .request {
   display: flex; gap: 12px; align-items: center; justify-content: space-between; flex-wrap: wrap;
   padding: 10px 12px; margin-bottom: 8px; border-radius: 10px;

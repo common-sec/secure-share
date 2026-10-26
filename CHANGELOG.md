@@ -5,6 +5,12 @@ All notable changes, one section per version. See [docs/ROADMAP.md](docs/ROADMAP
 ## [Unreleased]
 
 ### Changed
+- **The waiting screen is the instructions** (roadmap G4), as three numbered steps that tick as
+  they happen: 1. the link is copied, paste it in your chat (Copy again, Share…, Send with, QR code, and the link
+  itself under "Show the link"); 2. tell them these words, shown large and word by word, masked
+  until you click Show, with a line for when you're not on a call; 3. keep this page open, with
+  **Keep my screen on** where the browser supports it. With "Check who's receiving" on, step 2
+  asks you to read your code to them, with Deliver and Decline.
 - **The link is copied for you** (roadmap G3). Creating a Share copies a
   short invitation straight away: "I’m sending you something privately with CommonSec Share.
   Open this link, and I’ll tell you the words: https://…". It never contains the passphrase. The

@@ -110,7 +110,7 @@ these cover point here.
 - [x] **G3. Link copied automatically.** An invitation with the link (never the passphrase) is
       copied on creation, with a fallback; "Copy link only", the share sheet and a QR code as
       secondary actions.
-- [ ] **G4. Guided waiting screen.** Numbered steps (paste the link, say the words, keep this
+- [x] **G4. Guided waiting screen.** Numbered steps (paste the link, say the words, keep this
       page open), with "Keep my screen on" as part of the last step, and a line for when you're
       not on a call.
 - [ ] **G5. Guided recipient page.** What this is and that nothing is stored, "type the words they

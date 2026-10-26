@@ -138,7 +138,11 @@ def share_send(env, page, text, files=(), approve=False, keep_awake=False, own_w
     # The invitation is copied straight away, or the sender is told to copy the link (G3).
     expect(page.get_by_text(re.compile("Link copied ✓|Copy the link and paste it"))).to_be_visible()
     # The generated words are shown on the waiting screen, where they're used.
-    passphrase = page.locator('input[aria-label="Passphrase"]').input_value()
+    # Step 2 shows them masked, word by word, with Show (G4).
+    words = page.locator(".words")
+    expect(words.locator(".words-text:not([hidden])")).not_to_contain_text(re.compile("[A-Za-z]"))
+    words.get_by_role("button", name="Show").click()
+    passphrase = " ".join(words.locator(".words-text:not([hidden]) .word").all_inner_texts())
     if own_words:
         assert passphrase == own_words, passphrase
     else:
@@ -146,7 +150,7 @@ def share_send(env, page, text, files=(), approve=False, keep_awake=False, own_w
     warning = page.get_by_text("Don’t leave your phone or computer unattended")
     expect(warning).to_be_hidden()          # off by default
     if keep_awake:
-        page.get_by_text("Keep the screen on while waiting").click()
+        page.get_by_text("Keep my screen on").click()
         expect(warning).to_be_visible()
     return link.input_value(), passphrase
 
