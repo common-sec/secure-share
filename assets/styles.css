@@ -165,6 +165,8 @@ select {
 .chat-pointer { margin: 12px 0 0; }
 .how-it-works summary { cursor: pointer; }
 .advanced .check { margin-top: 12px; }
+.qr-box { margin-top: 12px; }
+.qr-box .qr { display: block; width: min(240px, 100%); height: auto; border-radius: 8px; }
 .copy-note { font-weight: 600; margin: 12px 0 0; }
 .how-it-works summary h2 { display: inline; }
 .file-list { list-style: none; padding: 0; margin: 8px 0 0; display: grid; gap: 4px; }

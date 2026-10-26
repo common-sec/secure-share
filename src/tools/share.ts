@@ -3,6 +3,7 @@ import { SecureRoom, DENY_REASONS, MAX_TEXT, MAX_FILE_BYTES } from '../lib/room.
 import { readInvite, type Invite, type Session } from './chat.js';
 import { passphraseField, copyRow, field } from './widgets.js';
 import { roomPassphrase } from '../lib/passphrase.js';
+import { qrSvg } from '../vendor/qrcode.js';
 import { APP_NAME } from '../lib/app.js';
 
 type SetSession = (s: Session) => void;
@@ -45,8 +46,22 @@ function openHowItWorks(root: HTMLElement): void {
 }
 
 /** What's copied for the recipient: an invitation with the link, never the passphrase. */
-export const invitation = (link: string): string =>
-  `I’m sending you something privately with ${APP_NAME}. Open this link, and I’ll tell you the words: ${link}`;
+const INVITATION = `I’m sending you something privately with ${APP_NAME}. Open this link, and I’ll tell you the words:`;
+export const invitation = (link: string): string => `${INVITATION} ${link}`;
+
+/**
+ * Official "share to" links of messengers that have one (Slack and Google Chat don't: Copy and the
+ * system share sheet cover them). Plain links: nothing is loaded from these sites until the sender
+ * clicks, and then the invitation with the link goes to that messenger, never the words.
+ */
+export function messengerLinks(link: string): [name: string, href: string][] {
+  const e = encodeURIComponent;
+  return [
+    ['WhatsApp', `https://wa.me/?text=${e(invitation(link))}`],
+    ['Telegram', `https://t.me/share/url?url=${e(link)}&text=${e(INVITATION)}`],
+    ['Teams', `https://teams.microsoft.com/share?href=${e(link)}&msgText=${e(INVITATION)}&preview=false`],
+  ];
+}
 
 /**
  * Copies text that isn't known yet. Browsers only allow copying shortly after a click, and the
@@ -169,6 +184,19 @@ function senderView(body: HTMLElement, room: SecureRoom, { text, files, passphra
   const shareButton = 'share' in navigator
     ? h('button', { type: 'button', class: 'btn btn-small', onclick: () => { navigator.share({ text: invite }).catch(() => {}); } }, 'Share…')
     : null;
+  // For a recipient in the same room: scan the link from this screen. Drawn on first use.
+  const qrBox = h('div', { class: 'qr-box', hidden: true });
+  const qrButton = h('button', { type: 'button', class: 'btn btn-small', 'aria-expanded': 'false', onclick: async () => {
+    if (!qrBox.firstChild) {
+      try {
+        qrBox.append(await qrSvg(link, 'QR code of the one-time link'), h('p', { class: 'hint' }, 'Scan it with the recipient’s phone camera. It holds the link only, not the words.'));
+      } catch {
+        qrBox.append(h('p', { class: 'error' }, 'The QR code could not be drawn. Copy the link instead.'));
+      }
+    }
+    qrBox.hidden = !qrBox.hidden;
+    qrButton.setAttribute('aria-expanded', String(!qrBox.hidden));
+  } }, 'QR code');
   const status = h('p', { class: 'status-big', role: 'status' });
   const steps = h('ol', { class: 'progress-steps' },
     h('li', { class: 'active' }, 'Share the link and passphrase'),
@@ -237,7 +265,11 @@ function senderView(body: HTMLElement, room: SecureRoom, { text, files, passphra
     steps,
     copyNote,
     copyRow('One-time link', link, true, 'Copy link only'),
-    h('div', { class: 'row tight' }, copyInvite, shareButton),
+    h('div', { class: 'row tight' }, copyInvite, shareButton, qrButton),
+    h('div', { class: 'row tight share-to' }, h('span', { class: 'hint inline' }, 'Send with'),
+      ...messengerLinks(link).map(([name, href]) =>
+        h('a', { class: 'btn btn-small', href, target: '_blank', rel: 'noopener noreferrer' }, name))),
+    qrBox,
     copyRow('Passphrase', passphrase, true),
     h('p', { class: 'hint warn' }, '⚠ Keep this tab open until the delivery completes. Nothing is stored on a server, so closing it cancels the share.'),
     room.expiresAt ? h('p', { class: 'hint' }, `⏱ If nobody receives it, the link stops working at ${closesAt(room.expiresAt)}.`) : null,

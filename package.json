@@ -15,6 +15,7 @@
     "build:check": "tsc --noEmit && node build.mjs --check"
   },
   "dependencies": {
+    "qrcode-generator": "2.0.4",
     "trystero": "0.26.0"
   },
   "devDependencies": {

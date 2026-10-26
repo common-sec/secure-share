@@ -61,7 +61,8 @@
 ### 9. Supply chain: the static host, the npm packages, the build
 - **This is the most important residual risk.** Whoever controls the served JavaScript controls the app.
 - **Mitigations:**
-  - one runtime dependency (Trystero, with two small dependencies of its own) and two build tools
+  - two runtime dependencies (Trystero, with two small dependencies of its own, and
+    qrcode-generator, with none) and two build tools
     (TypeScript, esbuild), at exact versions locked with integrity hashes in `package-lock.json`,
     installed with `npm ci`, no install scripts, and only releases at least 7 days old;
   - everything is **bundled at build time**: no CDN, and the CSP lets scripts load only from `'self'`;

@@ -107,7 +107,7 @@ these cover point here.
 - [x] **G2. One-question creation page.** "What do you want to send?" and one button; the
       passphrase moves to the next screen; choosing your own words and "check who's receiving"
       go under More options; the Secure Chat pointer is one line; details move to How it works.
-- [ ] **G3. Link copied automatically.** An invitation with the link (never the passphrase) is
+- [x] **G3. Link copied automatically.** An invitation with the link (never the passphrase) is
       copied on creation, with a fallback; "Copy link only", the share sheet and a QR code as
       secondary actions.
 - [ ] **G4. Guided waiting screen.** Numbered steps (paste the link, say the words, keep this

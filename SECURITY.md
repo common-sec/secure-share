@@ -26,6 +26,6 @@ browser extensions.
   `src/lib/crypto.ts` and `src/lib/room.ts` (strict TypeScript).
 - `tests/unit/room.test.js` shows the intended security properties as executable tests. Adversarial
   peers are built with `tests/unit/fake-transport.js`.
-- The only runtime dependency is `trystero@0.26.0` (MIT), locked in `package-lock.json`, bundled
-  at build time and imported from `src/vendor/trystero.ts`. Builds are reproducible: see
+- The runtime dependencies are `trystero@0.26.0` and `qrcode-generator@2.0.4` (both MIT), locked
+  in `package-lock.json`, bundled at build time and imported only from `src/vendor/`. Builds are reproducible: see
   [docs/RELEASES.md](docs/RELEASES.md) to check that served files match the source.

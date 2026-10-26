@@ -25,6 +25,7 @@ import re
 import sys
 import time
 import traceback
+import urllib.parse
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -267,6 +268,13 @@ def share_happy_path(env, b):
         copied = sender.evaluate("navigator.clipboard.readText()")
         assert link in copied and copied.startswith("I’m sending you something privately"), copied
         assert passphrase not in copied, copied
+    # Messenger share links and the QR code hold the link, never the words.
+    for name in ("WhatsApp", "Telegram", "Teams"):
+        href = sender.get_by_role("link", name=name).get_attribute("href")
+        assert urllib.parse.quote(link, safe="") in href, href
+        assert urllib.parse.quote(passphrase, safe="") not in href and passphrase not in href, href
+    sender.get_by_role("button", name="QR code").click()
+    expect(sender.get_by_role("img", name="QR code of the one-time link")).to_be_visible()
 
     share_open(recipient, link, passphrase)
     expect(recipient).to_have_title(re.compile("received a secure delivery"))
