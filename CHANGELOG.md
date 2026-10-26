@@ -5,6 +5,10 @@ All notable changes, one section per version. See [docs/ROADMAP.md](docs/ROADMAP
 ## [Unreleased]
 
 ### Changed
+- **The recipient's next step is one clear button.** The received text stays hidden behind a
+  large **Show the secret text** button (then Copy, Hide, Clear from screen), and each file has
+  a large **Download** button. The steps tick as they happen, including "Here's what they
+  sent" once everything has arrived.
 - **The recipient is guided step by step** (roadmap G5). The page says what this is ("Someone
   sent you something privately… can be opened only once, and isn’t stored anywhere"), with How
   it works and a link to the source code. Then: 1. type the words they tell you ("usually six

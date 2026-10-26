@@ -165,7 +165,8 @@ def share_open(page, link, passphrase):
 def received_text(page):
     """The received text is masked until the recipient clicks Show."""
     expect(page.locator("pre.secret")).to_be_hidden()
-    page.locator(".result").get_by_role("button", name="Show").click()
+    # One large button is the next step, not a small Show among others.
+    page.locator(".result").get_by_role("button", name="Show the secret text").click()
     return page.locator("pre.secret").inner_text()
 
 
@@ -288,6 +289,7 @@ def share_happy_path(env, b):
     expect(recipient).to_have_title(re.compile("received a secure delivery"))
     expect(recipient.get_by_role("heading", name="Someone sent you something privately")).to_be_visible()
     expect(recipient.get_by_text("Received ✓")).to_be_visible()
+    expect(recipient.locator(".guide-steps > li.done")).to_have_count(3)   # every step ticked
     assert received_text(recipient) == "db-password: Karrot~Over~Stone42"
     assert download(recipient, ".file-card", "keys.bin") == secret_file["buffer"]
     expect(sender.get_by_text("Delivered ✓")).to_be_visible()
