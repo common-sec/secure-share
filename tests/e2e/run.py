@@ -131,6 +131,7 @@ def share_send(env, page, text, files=(), approve=False, keep_awake=False, own_w
         page.get_by_text("Let me check who’s receiving before sending").click()
     if own_words:
         page.locator("form input[aria-label=Passphrase]").fill(own_words)
+        no_password_fields(page)
         expect(page.get_by_text("estimate for a typed passphrase")).to_be_visible()
     page.get_by_role("button", name="Create link").click()
     # The invitation is copied straight away, or the sender is told to copy it (G3).
@@ -156,9 +157,17 @@ def share_send(env, page, text, files=(), approve=False, keep_awake=False, own_w
     return link, passphrase
 
 
+def no_password_fields(page):
+    """Secrets are masked without type=password, so the browser doesn't offer to save them."""
+    if page.evaluate("CSS.supports('-webkit-text-security', 'disc')"):
+        assert page.locator("input[type=password]").count() == 0
+        expect(page.locator("input[aria-label=Passphrase]").first).to_have_attribute("autocomplete", "off")
+
+
 def share_open(page, link, passphrase):
     page.goto(link)
     page.locator("form input[aria-label=Passphrase]").fill(passphrase)
+    no_password_fields(page)
     page.get_by_role("button", name="Open", exact=True).click()
 
 

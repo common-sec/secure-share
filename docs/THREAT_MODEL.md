@@ -92,6 +92,8 @@
   the stored keys, as it could use the ones in memory. Encrypting the record with another key
   kept in the same origin wouldn't change that, so we keep the record small and short-lived
   instead.
+- Passphrase fields aren't password fields, so browsers don't offer to save them in their
+  password manager (Firefox, which lacks the masking used, may still offer).
 - **Residual:** browser history contains room links (the fragment includes the link secret). The
   clipboard and OS clipboard history may retain copied secrets.
 

@@ -5,6 +5,11 @@ All notable changes, one section per version. See [docs/ROADMAP.md](docs/ROADMAP
 ## [Unreleased]
 
 ### Changed
+- **Browsers no longer offer to save passphrases.** Passphrase fields are masked without
+  `type=password` (with `-webkit-text-security`, in Chrome, Edge and Safari), so browsers and
+  password managers don't treat them as logins to save. Where that masking isn't available
+  (Firefox), the field falls back to a password field with autocomplete off and the password
+  managers' "ignore" attributes.
 - **The recipient is guided step by step** (roadmap G5). The page says what this is ("Someone
   sent you something privately… can be opened only once, and isn’t stored anywhere"), with How
   it works and a link to the source code. Then: 1. type the words they tell you ("usually six
