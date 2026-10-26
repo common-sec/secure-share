@@ -80,8 +80,9 @@ Pages, Netlify). The Web Crypto API needs a secure context (HTTPS or `localhost`
 - **No hand-rolled cryptographic primitives.** All of them come from the browser's Web Crypto
   API: AES-GCM, ECDSA P-256, HKDF, PBKDF2, HMAC, SHA-256 and the CSPRNG. The protocol that combines
   them is documented in [PROTOCOL.md](docs/PROTOCOL.md) and covered by adversarial tests.
-- **Minimal dependencies.** One runtime dependency (Trystero, locked), bundled at build time,
-  no framework, no CDN. Every line that runs is in this repository or in the locked library.
+- **Minimal dependencies.** Two runtime dependencies (Trystero, and qrcode-generator for the QR
+  code), locked and bundled at build time, no framework, no CDN. Every line that runs is in this
+  repository or in the locked libraries.
 - **Readable and verifiable.** Strict TypeScript, a strict Content Security Policy, and a
   [reproducible build](docs/RELEASES.md): anyone can check the served files match the source.
   Static analysis (Semgrep) runs on every push.

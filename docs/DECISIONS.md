@@ -110,6 +110,9 @@ kept under "History".
   CSP allows scripts only from `'self'`.
 - **Why:** no third party serves code at runtime.
 - **Before:** loaded from jsDelivr at a pinned URL.
+- **Since 0.8.0:** a second one, `qrcode-generator@2.0.4` (MIT, no dependencies), for the QR code
+  of the Share link (roadmap G3), under the same rules: locked, bundled, loaded lazily from
+  `src/vendor/qrcode.ts`, and only used to compute the grid (the SVG is drawn by our code).
 
 ### D14. All development, tests and scans in containers ✅
 - **What:** pinned images (tag + digest), non-root, no capabilities, read-only filesystems, tests

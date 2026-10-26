@@ -25,6 +25,7 @@ import re
 import sys
 import time
 import traceback
+import urllib.parse
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -73,6 +74,9 @@ class Env:
     def person(self, browser="chromium"):
         """A new person: an isolated browser context (own storage, own WebRTC identity)."""
         ctx = self.browser(browser).new_context(accept_downloads=True)
+        if browser == "chromium":
+            # Lets the test read what the app copied; the app itself only writes.
+            ctx.grant_permissions(["clipboard-read", "clipboard-write"])
         if self.init_script:
             # Guards first: WebSocket routing patches the page, and must be in place before any script.
             ctx.route(lambda url: not self.local(url), self.block_http)
@@ -131,6 +135,8 @@ def share_send(env, page, text, files=(), approve=False, keep_awake=False, own_w
     page.get_by_role("button", name="Create link").click()
     link = page.locator('input[aria-label="One-time link"]')
     expect(link).to_be_attached()
+    # The invitation is copied straight away, or the sender is told to copy the link (G3).
+    expect(page.get_by_text(re.compile("Link copied ✓|Copy the link and paste it"))).to_be_visible()
     # The generated words are shown on the waiting screen, where they're used.
     passphrase = page.locator('input[aria-label="Passphrase"]').input_value()
     if own_words:
@@ -255,6 +261,20 @@ def share_happy_path(env, b):
 
     expect(sender.locator(".page-head .lead").first).to_be_hidden()   # the intro is hidden while waiting
     expect(sender.get_by_role("status")).to_contain_text("Waiting for the recipient")
+
+    if b == "chromium":
+        # What was copied is an invitation with the link, never the passphrase.
+        expect(sender.get_by_text("Link copied ✓")).to_be_visible()
+        copied = sender.evaluate("navigator.clipboard.readText()")
+        assert link in copied and copied.startswith("I’m sending you something privately"), copied
+        assert passphrase not in copied, copied
+    # Messenger share links and the QR code hold the link, never the words.
+    for name in ("Email", "Gmail", "Outlook", "WhatsApp", "Telegram", "Teams"):
+        href = sender.get_by_role("link", name=name).get_attribute("href")
+        assert urllib.parse.quote(link, safe="") in href, href
+        assert urllib.parse.quote(passphrase, safe="") not in href and passphrase not in href, href
+    sender.get_by_role("button", name="QR code").click()
+    expect(sender.get_by_role("img", name="QR code of the one-time link")).to_be_visible()
 
     share_open(recipient, link, passphrase)
     expect(recipient).to_have_title(re.compile("received a secure delivery"))
