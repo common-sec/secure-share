@@ -269,7 +269,7 @@ def share_happy_path(env, b):
         assert link in copied and copied.startswith("I’m sending you something privately"), copied
         assert passphrase not in copied, copied
     # Messenger share links and the QR code hold the link, never the words.
-    for name in ("WhatsApp", "Telegram", "Teams"):
+    for name in ("Email", "Gmail", "Outlook", "WhatsApp", "Telegram", "Teams"):
         href = sender.get_by_role("link", name=name).get_attribute("href")
         assert urllib.parse.quote(link, safe="") in href, href
         assert urllib.parse.quote(passphrase, safe="") not in href and passphrase not in href, href

@@ -10,8 +10,9 @@ All notable changes, one section per version. See [docs/ROADMAP.md](docs/ROADMAP
   Open this link, and I’ll tell you the words: https://…". It never contains the passphrase. The
   screen says "Link copied ✓ Paste it in your chat with them", or asks you to copy the link if
   the browser refused. "Copy link only", "Copy invitation" and the system share sheet (where
-  available) are next to it, plus **Send with WhatsApp, Telegram or Teams** (their official
-  share links: plain links, nothing loaded from them until clicked) and a **QR code** of the link
+  available) are next to it, plus **Send with** Email, Gmail, Outlook, WhatsApp, Telegram or
+  Teams (plain links: the mail app or the service's official compose/share page, nothing loaded
+  from them until clicked) and a **QR code** of the link
   for a recipient in the same room. Slack and Google Chat have no share link; Copy and the share
   sheet cover them.
 - **A second runtime dependency:** `qrcode-generator@2.0.4` (MIT, no dependencies) computes the

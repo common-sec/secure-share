@@ -49,15 +49,22 @@ function openHowItWorks(root: HTMLElement): void {
 const INVITATION = `I’m sending you something privately with ${APP_NAME}. Open this link, and I’ll tell you the words:`;
 export const invitation = (link: string): string => `${INVITATION} ${link}`;
 
+const EMAIL_SUBJECT = `Something for you, sent privately with ${APP_NAME}`;
+
 /**
- * Official "share to" links of messengers that have one (Slack and Google Chat don't: Copy and the
- * system share sheet cover them). Plain links: nothing is loaded from these sites until the sender
- * clicks, and then the invitation with the link goes to that messenger, never the words.
+ * "Send with" links: email (the default mail app, Gmail and Outlook on the web) and the messengers
+ * that have an official share link (Slack and Google Chat don't: Copy and the system share sheet
+ * cover them). Plain links: nothing is loaded from these sites until the sender clicks, and then
+ * the invitation with the link goes there, never the words.
  */
 export function messengerLinks(link: string): [name: string, href: string][] {
   const e = encodeURIComponent;
+  const body = e(invitation(link));
   return [
-    ['WhatsApp', `https://wa.me/?text=${e(invitation(link))}`],
+    ['Email', `mailto:?subject=${e(EMAIL_SUBJECT)}&body=${body}`],
+    ['Gmail', `https://mail.google.com/mail/?view=cm&fs=1&su=${e(EMAIL_SUBJECT)}&body=${body}`],
+    ['Outlook', `https://outlook.office.com/mail/deeplink/compose?subject=${e(EMAIL_SUBJECT)}&body=${body}`],
+    ['WhatsApp', `https://wa.me/?text=${body}`],
     ['Telegram', `https://t.me/share/url?url=${e(link)}&text=${e(INVITATION)}`],
     ['Teams', `https://teams.microsoft.com/share?href=${e(link)}&msgText=${e(INVITATION)}&preview=false`],
   ];
@@ -78,6 +85,14 @@ function copyWhenReady(text: Promise<string>): Promise<boolean> {
     }
   } catch { /* unsupported: fall back */ }
   return fallback();
+}
+
+/** The "Send with" buttons. Web pages open in a new tab; mailto: opens the mail app. */
+function sendWith(link: string): HTMLElement {
+  return h('div', { class: 'row tight share-to' }, h('span', { class: 'hint inline' }, 'Send with'),
+    ...messengerLinks(link).map(([name, href]) => h('a', {
+      class: 'btn btn-small', href, rel: 'noopener noreferrer', target: href.startsWith('https:') ? '_blank' : null,
+    }, name)));
 }
 
 // One question and one button: the passphrase is generated when the link is created and shown on
@@ -266,9 +281,7 @@ function senderView(body: HTMLElement, room: SecureRoom, { text, files, passphra
     copyNote,
     copyRow('One-time link', link, true, 'Copy link only'),
     h('div', { class: 'row tight' }, copyInvite, shareButton, qrButton),
-    h('div', { class: 'row tight share-to' }, h('span', { class: 'hint inline' }, 'Send with'),
-      ...messengerLinks(link).map(([name, href]) =>
-        h('a', { class: 'btn btn-small', href, target: '_blank', rel: 'noopener noreferrer' }, name))),
+    sendWith(link),
     qrBox,
     copyRow('Passphrase', passphrase, true),
     h('p', { class: 'hint warn' }, '⚠ Keep this tab open until the delivery completes. Nothing is stored on a server, so closing it cancels the share.'),
