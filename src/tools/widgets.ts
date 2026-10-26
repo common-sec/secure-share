@@ -83,9 +83,9 @@ export function passphraseField({ generate, enough = 'Strong enough ✓' }: { ge
 }
 
 /** Read-only value with a Copy button; secrets are masked, with a Show toggle. */
-export function copyRow(label: string, value: string, secret: boolean, copyLabel = 'Copy'): HTMLElement {
+export function copyRow(label: string, value: string, secret: boolean): HTMLElement {
   const input = h('input', { type: secret ? 'password' : 'text', readOnly: true, value, class: 'mono', 'aria-label': label });
-  const btn = h('button', { class: 'btn btn-small', onclick: () => copyText(value, btn) }, copyLabel);
+  const btn = h('button', { class: 'btn btn-small', onclick: () => copyText(value, btn) }, 'Copy');
   return field(label, h('div', { class: 'row grow tight' }, input, secret ? revealToggle(input) : null, btn));
 }
 

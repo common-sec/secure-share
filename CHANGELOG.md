@@ -6,8 +6,9 @@ All notable changes, one section per version. See [docs/ROADMAP.md](docs/ROADMAP
 
 ### Changed
 - **The waiting screen is the instructions** (roadmap G4), as three numbered steps that tick as
-  they happen: 1. the link is copied, paste it in your chat (Copy again, Share…, Send with, QR code, and the link
-  itself under "Show the link"); 2. tell them these words, shown large and word by word, masked
+  they happen: 1. the link is copied, paste it in your chat, with what's happening right under it
+  ("Waiting for the recipient to open the link…"), then Copy again, Share…, QR code and the Send
+  with buttons as icons; 2. tell them these words, shown large and word by word, masked
   until you click Show, with a line for when you're not on a call; 3. keep this page open, with
   **Keep my screen on** where the browser supports it. With "Check who's receiving" on, step 2
   asks you to read your code to them, with Deliver and Decline.
@@ -15,8 +16,8 @@ All notable changes, one section per version. See [docs/ROADMAP.md](docs/ROADMAP
   short invitation straight away: "I’m sending you something privately with CommonSec Share.
   Open this link, and I’ll tell you the words: https://…". It never contains the passphrase. The
   screen says "Link copied ✓ Paste it in your chat with them", or asks you to copy the link if
-  the browser refused. "Copy link only", "Copy invitation" and the system share sheet (where
-  available) are next to it, plus **Send with** Email, Gmail, Outlook, WhatsApp, Telegram or
+  the browser refused. One copy button (the invitation with the link, never the link alone) and the
+  system share sheet (where available) are next to it, plus **Send with** Email, Gmail, Outlook, WhatsApp, Telegram or
   Teams (plain links: the mail app or the service's official compose/share page, nothing loaded
   from them until clicked) and a **QR code** of the link
   for a recipient in the same room. Slack and Google Chat have no share link; Copy and the share

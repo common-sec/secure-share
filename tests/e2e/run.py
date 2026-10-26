@@ -133,10 +133,11 @@ def share_send(env, page, text, files=(), approve=False, keep_awake=False, own_w
         page.locator("form input[aria-label=Passphrase]").fill(own_words)
         expect(page.get_by_text("estimate for a typed passphrase")).to_be_visible()
     page.get_by_role("button", name="Create link").click()
-    link = page.locator('input[aria-label="One-time link"]')
-    expect(link).to_be_attached()
-    # The invitation is copied straight away, or the sender is told to copy the link (G3).
-    expect(page.get_by_text(re.compile("Link copied ✓|Copy the link and paste it"))).to_be_visible()
+    # The invitation is copied straight away, or the sender is told to copy it (G3).
+    expect(page.get_by_text(re.compile("Link copied ✓|Copy the invitation and paste it"))).to_be_visible()
+    # There's no "copy the link alone": read it from a Send with button (icons, named by aria-label).
+    telegram = page.get_by_role("link", name="Telegram", exact=True).get_attribute("href")
+    link = urllib.parse.parse_qs(urllib.parse.urlparse(telegram).query)["url"][0]
     # The generated words are shown on the waiting screen, where they're used.
     # Step 2 shows them masked, word by word, with Show (G4).
     words = page.locator(".words")
@@ -152,7 +153,7 @@ def share_send(env, page, text, files=(), approve=False, keep_awake=False, own_w
     if keep_awake:
         page.get_by_text("Keep my screen on").click()
         expect(warning).to_be_visible()
-    return link.input_value(), passphrase
+    return link, passphrase
 
 
 def share_open(page, link, passphrase):
@@ -272,9 +273,12 @@ def share_happy_path(env, b):
         copied = sender.evaluate("navigator.clipboard.readText()")
         assert link in copied and copied.startswith("I’m sending you something privately"), copied
         assert passphrase not in copied, copied
+    # One copy button, for the invitation with the link: no copy of the link alone.
+    expect(sender.locator('input[aria-label="One-time link"]')).to_have_count(0)
+    expect(sender.get_by_role("button", name=re.compile("^Copy (again|invitation)$"))).to_be_visible()
     # Messenger share links and the QR code hold the link, never the words.
     for name in ("Email", "Gmail", "Outlook", "WhatsApp", "Telegram", "Teams"):
-        href = sender.get_by_role("link", name=name).get_attribute("href")
+        href = sender.get_by_role("link", name=name, exact=True).get_attribute("href")
         assert urllib.parse.quote(link, safe="") in href, href
         assert urllib.parse.quote(passphrase, safe="") not in href and passphrase not in href, href
     sender.get_by_role("button", name="QR code").click()
