@@ -41,6 +41,7 @@ CI/CD, testing infrastructure and security process work is tracked separately, i
 | 0.9.0 | **Standard encryption format**: Share payloads in the audited `age` format instead of our own framing (breaking) | Planned |
 | 0.10.0 | **Connectivity on restrictive networks**: users behind symmetric NAT or UDP-blocking firewalls can still connect, through an end-to-end encrypted relay fallback | Planned |
 | 0.11.0 | **Static pages and SEO**: pre-rendered static pages, metadata and social previews, How it works and FAQ, sitemap, Search Console | Planned |
+| 0.12.0 | **Encrypted files**: encrypt and open files in the browser in the standard `age` format, view them without saving the plaintext, and send them with Secure Share | Planned |
 | 1.0.0 | **Public launch**: release checklist and announcement, once the [pre-launch internal work](TODO.md#before-launch) is done | Planned |
 | 1.1.0 | **Share a generated password**: a button on the password generator opens a one-way Secure Share with it, passphrase and link ready | Planned |
 | 1.2.0 | **Local version of the app** (architecture to define: PWA, Electron, Docker image, single file) | Planned |
@@ -58,7 +59,8 @@ has what each contained. Features planned at that point were renumbered: the `ag
 because the main flows should be right before more is built on them, and it's the next thing
 people testing the site will see. Then the one breaking protocol change, because it's cheap
 before 1.0 and a major version after it. Then the relay fallback, so
-people on restrictive networks can connect at launch, and the static pages and SEO. The site is
+people on restrictive networks can connect at launch, and the static pages and SEO. Encrypted files
+come after the static pages (decided 2026-10-26), so the tool is built as a static page from the start. The site is
 already public, so the security basics in [TODO.md](TODO.md#before-launch) (repository hardening,
 staging, tagged production) come before the `age` format (0.9.0), and the external security review
 comes **just before launch**, so it reviews what actually ships. The logo needs iterations with
@@ -177,6 +179,32 @@ and shared links show a trustworthy preview. See
 - the site is verified in Google Search Console and Bing Webmaster Tools (search impressions
   without any tracking script);
 - the Lighthouse budgets in [TODO.md I4](TODO.md#i4-lighthouse-ci) pass.
+
+### 0.12.0: Encrypted files
+**Goal:** create and open encrypted files easily, locally in the browser, and pass them through
+Secure Share so the recipient keeps a file that stays encrypted at rest. See
+[IDEAS.md](IDEAS.md#encrypted-files-in-the-browser-age).
+**Why `age` here:** D23 dropped `age` for the live channel, but kept it for data that leaves the
+connection, such as a saved file. This is that case, and `.age` files open with the official
+`age` tool and other age apps.
+**Why after static pages:** the tool gets its own static page (`/files/`) and mounts into it,
+"static first, JS enhances".
+**Done when:**
+- a **Files** page encrypts one or more files (one `.age` each) with a passphrase (`age`'s scrypt
+  mode, a speakable passphrase suggested) or with recipients' public keys, including post-quantum
+  hybrid keys, using the `typage` library pinned and bundled like Trystero; nothing is uploaded and
+  it works offline;
+- it opens `.age` files (binary or armored) with a passphrase or a private key, and a **viewer**
+  shows text, images, audio, video and PDF from memory, so no plaintext file is written unless the
+  user chooses "Save decrypted copy" after a warning; HTML and SVG never run scripts;
+- **Secure Share hand-off**: "Send with Secure Share" opens Share with the encrypted file attached
+  (in memory, never stored), and a received `.age` file can be opened in the viewer from Share;
+- a key pair can be generated in the page (public key to give out, private key to save), and the
+  app stores no keys;
+- a decision records `age` for files at rest; ARCHITECTURE, THREAT_MODEL (what "no plaintext on
+  disk" does and doesn't cover: swap, browser viewer caches) and the CSP changes are documented;
+- unit and end-to-end tests cover encryption, the viewer and the hand-off, including
+  interoperability with the reference `age` tool and its test vectors.
 
 ### 1.0.0: Public launch
 **Goal:** announce the app, once the features above and the

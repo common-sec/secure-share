@@ -168,6 +168,17 @@ Argon2) would change. Its outcome could become `docs/HOW_IT_WORKS.md` for users 
 **Proposal:** use the audited, standard `age` format (`typage`) for Share payloads instead of our
 AES-GCM framing. One more dependency, but a standard and interoperable format.
 
+## Encrypted files in the browser (`age`)
+**Status:** ✅ Accepted → 0.12.0 (after static pages)
+**Problem:** encrypting a file to keep or send usually means installing a tool; and opening one
+means saving a decrypted copy to disk.
+**Proposal:** a Files page that encrypts and decrypts `.age` files locally (passphrase or public
+keys, post-quantum hybrid included), a viewer that shows the decrypted file from memory, and a
+one-click hand-off to and from Secure Share. Standard `age`, so files open with the `age` tool too.
+**Trade-offs / risks:** one more pinned dependency (`typage`, already vetted in the closed PR #26);
+the CSP gains `media-src blob:` and possibly `frame-src blob:` for PDFs; memory limits file size;
+the OS or the browser's viewers may still leave traces.
+
 ## Group chat on MLS (RFC 9420)
 **Status:** 🅿️ Parked: heavy (WASM). Only worth it if Chat becomes the primary product. It would
 remove trust in the host for membership and add forward secrecy.
