@@ -42,6 +42,8 @@ body {
 }
 a { color: var(--accent); }
 code, .mono, pre { font-family: ui-monospace, "Cascadia Code", Consolas, monospace; }
+/* Masks a secret without type=password, so browsers don't offer to save it (widgets.ts). */
+.masked { -webkit-text-security: disc; }
 h1 { font-size: 1.9rem; margin: 0 0 .25rem; letter-spacing: -.01em; }
 h2 { font-size: 1.05rem; margin: 0 0 .75rem; }
 .card h2:not(:first-child) { margin-top: 1.25rem; }

@@ -31,12 +31,36 @@ export function strengthMeter(): StrengthMeter {
   };
 }
 
-/** A Show/Hide button that toggles an input between masked and visible. */
+// Secrets are never in type=password fields, so browsers and password managers don't offer to
+// save them (a room passphrase is used once; a saved copy only leaks it). They're masked with
+// -webkit-text-security instead (Chrome, Edge, Safari); where that's missing, type=password is
+// the fallback, with autocomplete off and the password managers' own "ignore" attributes.
+const TEXT_SECURITY = typeof CSS !== 'undefined' && CSS.supports('-webkit-text-security', 'disc');
+const NO_SAVE = {
+  autocomplete: 'off', 'data-1p-ignore': 'true', 'data-lpignore': 'true', 'data-bwignore': 'true', 'data-form-type': 'other',
+};
+
+function setMasked(input: HTMLInputElement, masked: boolean): void {
+  if (TEXT_SECURITY) input.classList.toggle('masked', masked);
+  else input.type = masked ? 'password' : 'text';
+}
+
+const isMasked = (input: HTMLInputElement): boolean =>
+  TEXT_SECURITY ? input.classList.contains('masked') : input.type === 'password';
+
+/** A masked input for a secret, which the browser won't offer to save. */
+export function secretInput(attrs: Record<string, unknown>): HTMLInputElement {
+  const input = h('input', { type: 'text', ...NO_SAVE, ...attrs });
+  setMasked(input, true);
+  return input;
+}
+
+/** A Show/Hide button that toggles a secretInput between masked and visible. */
 export function revealToggle(input: HTMLInputElement): HTMLButtonElement {
   const btn = h('button', { type: 'button', class: 'btn btn-ghost', 'aria-pressed': 'false' }, 'Show');
   btn.addEventListener('click', () => {
-    const show = input.type === 'password';
-    input.type = show ? 'text' : 'password';
+    const show = isMasked(input);
+    setMasked(input, !show);
     btn.textContent = show ? 'Hide' : 'Show';
     btn.setAttribute('aria-pressed', String(show));
   });
@@ -52,9 +76,8 @@ export function revealToggle(input: HTMLInputElement): HTMLButtonElement {
  * Nothing is normalised: what is typed must match exactly (callers only trim the ends).
  */
 export function passphraseField({ generate, enough = 'Strong enough ✓' }: { generate: boolean; enough?: string }): { input: HTMLInputElement; el: HTMLElement } {
-  const input = h('input', {
-    type: 'password', spellcheck: 'false', autocomplete: 'off', autocapitalize: 'off', autocorrect: 'off',
-    class: 'mono', required: true, 'aria-label': 'Passphrase',
+  const input = secretInput({
+    spellcheck: 'false', autocapitalize: 'off', autocorrect: 'off', class: 'mono', required: true, 'aria-label': 'Passphrase',
   });
   const controls: HTMLElement[] = [input, revealToggle(input)];
   let meter: StrengthMeter | null = null;
@@ -84,7 +107,8 @@ export function passphraseField({ generate, enough = 'Strong enough ✓' }: { ge
 
 /** Read-only value with a Copy button; secrets are masked, with a Show toggle. */
 export function copyRow(label: string, value: string, secret: boolean): HTMLElement {
-  const input = h('input', { type: secret ? 'password' : 'text', readOnly: true, value, class: 'mono', 'aria-label': label });
+  const attrs = { readOnly: true, value, class: 'mono', 'aria-label': label };
+  const input = secret ? secretInput(attrs) : h('input', { type: 'text', ...attrs });
   const btn = h('button', { class: 'btn btn-small', onclick: () => copyText(value, btn) }, 'Copy');
   return field(label, h('div', { class: 'row grow tight' }, input, secret ? revealToggle(input) : null, btn));
 }

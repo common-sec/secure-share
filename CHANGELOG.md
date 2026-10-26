@@ -5,6 +5,11 @@ All notable changes, one section per version. See [docs/ROADMAP.md](docs/ROADMAP
 ## [Unreleased]
 
 ### Changed
+- **Browsers no longer offer to save passphrases.** Passphrase fields are masked without
+  `type=password` (with `-webkit-text-security`, in Chrome, Edge and Safari), so browsers and
+  password managers don't treat them as logins to save. Where that masking isn't available
+  (Firefox), the field falls back to a password field with autocomplete off and the password
+  managers' "ignore" attributes.
 - **The recipient's next step is one clear button.** The received text stays hidden behind a
   large **Show the secret text** button (then Copy, Hide, Clear from screen), and each file has
   a large **Download** button. The steps tick as they happen, including "Here's what they
