@@ -1,7 +1,8 @@
 import { h, copyText, formatBytes, safeFileName, closesAt } from '../lib/dom.js';
 import { SecureRoom, DENY_REASONS, MAX_TEXT, MAX_FILE_BYTES } from '../lib/room.js';
 import { readInvite, type Invite, type Session } from './chat.js';
-import { passphraseField, copyRow, field } from './widgets.js';
+import { passphraseField, field } from './widgets.js';
+import { icon } from './icons.js';
 import { roomPassphrase } from '../lib/passphrase.js';
 import { qrSvg } from '../vendor/qrcode.js';
 import { APP_NAME, REPOSITORY } from '../lib/app.js';
@@ -115,8 +116,9 @@ function copyWhenReady(text: Promise<string>): Promise<boolean> {
 function sendWith(link: string): HTMLElement {
   return h('div', { class: 'row tight share-to' }, h('span', { class: 'hint inline' }, 'Send with'),
     ...messengerLinks(link).map(([name, href]) => h('a', {
-      class: 'btn btn-small', href, rel: 'noopener noreferrer', target: href.startsWith('https:') ? '_blank' : null,
-    }, name)));
+      class: 'btn btn-icon', href, rel: 'noopener noreferrer', target: href.startsWith('https:') ? '_blank' : null,
+      'aria-label': name, title: name,
+    }, icon(name) ?? name)));
 }
 
 // One question and one button: the passphrase is generated when the link is created and shown on
@@ -223,11 +225,14 @@ function senderView(body: HTMLElement, room: SecureRoom, { text, files, passphra
   const link = room.link('share');
   const invite = invitation(link);
   const copyNote = h('span', { class: 'copy-note', 'aria-live': 'polite' }, 'Copying the invitation…');
+  // One copy button: the invitation with the link, never the link alone, so the recipient knows
+  // what it is and that words will follow.
+  const copyInvite = h('button', { type: 'button', class: 'btn btn-small', onclick: () => copyText(invite, copyInvite) }, 'Copy invitation');
   void copied.then((ok) => {
-    copyNote.textContent = ok ? 'Link copied ✓ Paste it in your chat with them.' : 'Copy the link and paste it in your chat with them.';
+    copyNote.textContent = ok ? 'Link copied ✓ Paste it in your chat with them.' : 'Copy the invitation and paste it in your chat with them.';
+    if (ok) copyInvite.textContent = 'Copy again';
     if (ok && current === 0) step(1);
   });
-  const copyInvite = h('button', { type: 'button', class: 'btn btn-small', onclick: () => copyText(invite, copyInvite) }, 'Copy again');
   const shareButton = 'share' in navigator
     ? h('button', { type: 'button', class: 'btn btn-small', onclick: () => { navigator.share({ text: invite }).catch(() => {}); } }, 'Share…')
     : null;
@@ -308,11 +313,10 @@ function senderView(body: HTMLElement, room: SecureRoom, { text, files, passphra
   const steps = h('ol', { class: 'guide-steps' },
     h('li', null,
       h('div', { class: 'step-title' }, copyNote),
+      status,
       h('div', { class: 'row tight' }, copyInvite, shareButton, qrButton),
       sendWith(link),
-      qrBox,
-      h('details', { class: 'advanced' }, h('summary', null, 'Show the link'),
-        copyRow('One-time link', link, true, 'Copy link only'))),
+      qrBox),
     h('li', null,
       h('div', { class: 'step-title' }, 'Tell them these words:'),
       words,
@@ -320,7 +324,7 @@ function senderView(body: HTMLElement, room: SecureRoom, { text, files, passphra
       request),
     h('li', null,
       h('div', { class: 'step-title' }, 'Keep this page open until they’ve got it.'),
-      awakeOption, awakeNote, status, extra));
+      awakeOption, awakeNote, extra));
   let current = 0;
   const step = (n: number) => {
     current = n;
