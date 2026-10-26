@@ -5,6 +5,12 @@ All notable changes, one section per version. See [docs/ROADMAP.md](docs/ROADMAP
 ## [Unreleased]
 
 ### Changed
+- **The recipient is guided step by step** (roadmap G5). The page says what this is ("Someone
+  sent you something privately… can be opened only once, and isn’t stored anywhere"), with How
+  it works and a link to the source code. Then: 1. type the words they tell you ("usually six
+  words, exactly as they say them") and Open; 2. connecting to the sender, with live stages and
+  the safety code shown small; 3. what they sent, with **Done**, which clears everything from the
+  page, and **Send something back**. The slow-connection message no longer talks about tabs.
 - **The waiting screen is the instructions** (roadmap G4), as three numbered steps that tick as
   they happen: 1. the link is copied, paste it in your chat, with what's happening right under it
   ("Waiting for the recipient to open the link…"), then Copy again, Share…, QR code and the Send
