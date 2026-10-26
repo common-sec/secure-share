@@ -5,6 +5,10 @@ All notable changes, one section per version. See [docs/ROADMAP.md](docs/ROADMAP
 ## [Unreleased]
 
 ### Changed
+- **The recipient's next step is one clear button.** The received text stays hidden behind a
+  large **Show the secret text** button (then Copy, Hide, Clear from screen), and each file has
+  a large **Download** button. The steps tick as they happen, including "Here's what they
+  sent" once everything has arrived.
 - **Five clear steps on the sender's screen:** 1. Link copied, 2. Paste it in your chat or email
   (Copy again, Share…, QR code, Send with icons), 3. Tell them these words, 4. They open the link
   and type the words, 5. They receive it. Your steps tick as you do them; the recipient's show an
