@@ -114,22 +114,34 @@ def file_payload(name, size):
     return {"name": name, "mimeType": "application/octet-stream", "buffer": data}
 
 
-def share_send(env, page, text, files=(), approve=False, keep_awake=False):
+def share_send(env, page, text, files=(), approve=False, keep_awake=False, own_words=None):
     page.goto(env.app + "#/share")
-    page.locator("form textarea").fill(text)
+    page.get_by_label("What do you want to send?").fill(text)
     if files:
         page.locator("form input[type=file]").set_input_files(list(files))
-    passphrase = page.locator("form input[aria-label=Passphrase]").input_value()
+    # One question, one button: the passphrase isn't on the creation page (G2).
+    expect(page.locator("form input[aria-label=Passphrase]")).to_be_hidden()
+    if approve or own_words:
+        page.get_by_text("More options").click()
     if approve:
         page.get_by_text("Let me check who’s receiving before sending").click()
+    if own_words:
+        page.locator("form input[aria-label=Passphrase]").fill(own_words)
+        expect(page.get_by_text("estimate for a typed passphrase")).to_be_visible()
+    page.get_by_role("button", name="Create link").click()
+    link = page.locator('input[aria-label="One-time link"]')
+    expect(link).to_be_attached()
+    # The generated words are shown on the waiting screen, where they're used.
+    passphrase = page.locator('input[aria-label="Passphrase"]').input_value()
+    if own_words:
+        assert passphrase == own_words, passphrase
+    else:
+        assert re.fullmatch(r"[a-z]+( [a-z]+){5}", passphrase), passphrase
     warning = page.get_by_text("Don’t leave your phone or computer unattended")
     expect(warning).to_be_hidden()          # off by default
     if keep_awake:
         page.get_by_text("Keep the screen on while waiting").click()
         expect(warning).to_be_visible()
-    page.get_by_role("button", name="Create one-time link").click()
-    link = page.locator('input[aria-label="One-time link"]')
-    expect(link).to_be_attached()
     return link.input_value(), passphrase
 
 
@@ -275,13 +287,21 @@ def share_wrong_passphrase(env, b):
 def share_with_approval(env, b):
     sender, recipient = env.person(b), env.person(b)
     link, passphrase = share_send(env, sender, "approved secret", approve=True, keep_awake=True)
-    expect(sender.get_by_text("Don’t leave this device unattended")).to_be_visible()
     share_open(recipient, link, passphrase)
     expect(sender.get_by_role("button", name="Deliver")).to_be_visible()
     stays_quiet(lambda: recipient.get_by_text("Received ✓").is_visible())
     sender.get_by_role("button", name="Deliver").click()
     expect(recipient.get_by_text("Received ✓")).to_be_visible()
     assert received_text(recipient) == "approved secret"
+
+
+@scenario("share: the sender can choose their own words under More options")
+def share_own_words(env, b):
+    sender, recipient = env.person(b), env.person(b)
+    link, passphrase = share_send(env, sender, "my own words", own_words="Purple Kettle 7 sings!")
+    share_open(recipient, link, passphrase)
+    expect(recipient.get_by_text("Received ✓")).to_be_visible()
+    assert received_text(recipient) == "my own words"
 
 
 @scenario("chat: approve guests, messages and files relay through the host, remove a member",

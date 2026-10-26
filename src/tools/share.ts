@@ -2,6 +2,7 @@ import { h, copyText, formatBytes, safeFileName, closesAt } from '../lib/dom.js'
 import { SecureRoom, DENY_REASONS, MAX_TEXT, MAX_FILE_BYTES } from '../lib/room.js';
 import { readInvite, type Invite, type Session } from './chat.js';
 import { passphraseField, copyRow, field } from './widgets.js';
+import { roomPassphrase } from '../lib/passphrase.js';
 import { APP_NAME } from '../lib/app.js';
 
 type SetSession = (s: Session) => void;
@@ -18,13 +19,10 @@ export function mount(root: HTMLElement, params: URLSearchParams): () => void {
   const intro = h('div', null,
     invite
       ? h('p', { class: 'lead' }, 'Someone sent you a one-time, end-to-end encrypted delivery.')
-      : [
-        h('p', { class: 'lead' },
-          'Encrypted transfer from computer to computer, browser to browser. Ideal for passwords and sensitive files, between any kind of user.'),
-        h('p', { class: 'lead' },
-          'No special software needed: it works in any modern browser, and nothing is uploaded or stored anywhere. For longer or back-and-forth exchanges, open a ',
-          h('a', { href: '#/chat' }, 'Secure Chat'), ' channel instead.'),
-      ],
+      : h('p', { class: 'lead' },
+        'Send a password or a file privately. It goes straight to the other person and works only once. ',
+        // A button, not a link: the hash holds the route, so an in-page anchor would navigate away.
+        h('button', { type: 'button', class: 'link-button', onclick: () => openHowItWorks(root) }, 'How it works ›')),
   );
   root.append(h('section', { class: 'page-head' }, h('h1', null, 'Secure Share'), intro));
   const body = h('div');
@@ -38,6 +36,17 @@ export function mount(root: HTMLElement, params: URLSearchParams): () => void {
 }
 
 // ---------------------------------------------------------------- sender
+/** Opens the "How it works" box under the form and scrolls to it. */
+function openHowItWorks(root: HTMLElement): void {
+  const how = root.querySelector<HTMLDetailsElement>('details.how-it-works');
+  if (!how) return;
+  how.open = true;
+  how.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// One question and one button: the passphrase is generated when the link is created and shown on
+// the next screen, where it's used. Choosing your own words and checking who's receiving are under
+// More options; keeping the screen on is offered on the waiting screen.
 function sendForm(body: HTMLElement, setSession: SetSession): void {
   const files: File[] = [];
   const text = h('textarea', { rows: 5, maxlength: MAX_TEXT, placeholder: 'Paste a password, a note, a key…' });
@@ -46,19 +55,11 @@ function sendForm(body: HTMLElement, setSession: SetSession): void {
     type: 'file', multiple: true, hidden: true,
     onchange: (e: Event) => { const t = e.target as HTMLInputElement; addFiles(t.files); t.value = ''; },
   });
-  const drop = h('div', { class: 'dropzone' }, 'Drop files here, or ',
-    h('button', { type: 'button', class: 'btn btn-small', onclick: () => fileInput.click() }, 'choose files'), fileInput);
+  const addButton = h('button', { type: 'button', class: 'btn btn-tap', onclick: () => fileInput.click() }, '+ Add files');
   const pass = passphraseField({ generate: true, enough: 'Strong enough for this one-time link ✓' });
+  pass.input.required = false; // inside the closed More options; empty means generated words
   const approve = h('input', { type: 'checkbox' });
-  // Off by default: an unlocked device left alone exposes this page and everything else on it.
-  const awakeWarning = h('p', { class: 'hint warn', hidden: true },
-    '⚠ This device will stay awake and unlocked until the delivery completes, as long as this tab is open and in front. Don’t leave your phone or computer unattended while it’s on.');
-  const awake = h('input', { type: 'checkbox', onchange: () => { awakeWarning.hidden = !awake.checked; } });
   const error = h('p', { class: 'error', hidden: true });
-
-  drop.addEventListener('dragover', (e) => { e.preventDefault(); drop.classList.add('over'); });
-  drop.addEventListener('dragleave', () => drop.classList.remove('over'));
-  drop.addEventListener('drop', (e) => { e.preventDefault(); drop.classList.remove('over'); addFiles(e.dataTransfer?.files); });
 
   function addFiles(list: FileList | null | undefined): void {
     for (const f of Array.from(list ?? [])) {
@@ -70,56 +71,66 @@ function sendForm(body: HTMLElement, setSession: SetSession): void {
   function renderFiles(): void {
     fileList.replaceChildren(...files.map((f, i) => h('li', null,
       h('span', null, '📄 ', f.name), h('span', { class: 'muted' }, formatBytes(f.size)),
-      h('button', { type: 'button', class: 'btn btn-ghost btn-small', onclick: () => { files.splice(i, 1); renderFiles(); } }, '✕'))));
+      h('button', { type: 'button', class: 'btn btn-ghost btn-small', 'aria-label': `Remove ${f.name}`, onclick: () => { files.splice(i, 1); renderFiles(); } }, '✕'))));
   }
   const showError = (msg: string): void => { error.textContent = msg; error.hidden = false; };
 
-  const submit = h('button', { class: 'btn btn-primary', type: 'submit' }, 'Create one-time link');
-  body.append(h('form', { class: 'card narrow', onsubmit: async (e: Event) => {
+  const submit = h('button', { class: 'btn btn-primary btn-tap', type: 'submit' }, 'Create link');
+  const form = h('form', { class: 'card narrow', onsubmit: async (e: Event) => {
     e.preventDefault();
     error.hidden = true;
-    const passphrase = pass.input.value.trim();
+    // The words in More options: generated unless the sender chose their own.
+    const passphrase = pass.input.value.trim() || roomPassphrase();
     if (!text.value.trim() && files.length === 0) return showError('Add some text or at least one file.');
-    if (!passphrase) return showError('A passphrase is required.');
     submit.disabled = true;
-    submit.textContent = 'Deriving keys…';
+    submit.textContent = 'Creating the link…';
     try {
       const room = await SecureRoom.host({ app: 'share', passphrase, nick: 'Sender', maxGuests: 1, autoAccept: !approve.checked });
-      setSession(senderView(body, room, { text: text.value, files, passphrase, keepScreenOn: awake.checked }));
+      setSession(senderView(body, room, { text: text.value, files, passphrase }));
     } catch (err) {
       showError(`Could not start: ${errorText(err)}`);
       submit.disabled = false;
-      submit.textContent = 'Create one-time link';
+      submit.textContent = 'Create link';
     }
   } },
-  field('Text', text),
-  drop, fileList,
-  field('Passphrase', pass.el,
-    h('p', { class: 'hint' }, 'The recipient needs it in addition to the link. Send it through a different channel.')),
-  h('label', { class: 'check' }, approve, h('span', null, 'Let me check who’s receiving before sending',
-    h('small', null, 'you compare a short code with them, e.g. by phone, then click Deliver'))),
-  h('label', { class: 'check' }, awake, h('span', null, 'Keep the screen on while waiting',
-    h('small', null, 'stops the screen from turning off or locking until the delivery completes'))),
-  awakeWarning,
+  field('What do you want to send?', text),
+  h('div', { class: 'row' }, addButton, fileInput, h('span', { class: 'hint inline' }, 'or drop them here')),
+  fileList,
   error,
-  h('p', { class: 'hint' }, 'The delivery goes straight from this page to the recipient, so keep it open until they have it. On a phone, keep the screen on and stay in the browser.'),
   h('div', { class: 'row' }, submit),
-  ));
-  body.append(h('aside', { class: 'card narrow guide' },
-    h('h2', null, 'Which one should I use?'),
-    h('ul', null,
-      h('li', null, h('strong', null, 'Secure Share'), ' (this page): send something ', h('em', null, 'once'),
-        ' to ', h('em', null, 'one'), ' person: a password, a key, a document. The link stops working after delivery.'),
-      h('li', null, h('strong', null, h('a', { href: '#/chat' }, 'Secure Chat')), ': several things to exchange, replies, or more than two people. You host a private room and approve everyone who joins.'),
-      h('li', null, 'Either way, nothing is uploaded: data goes straight from browser to browser, end-to-end encrypted, and both people need the link ',
-        h('em', null, 'and'), ' the passphrase.'),
+  h('details', { class: 'advanced' },
+    h('summary', null, 'More options'),
+    field('Choose my own words', pass.el,
+      h('p', { class: 'hint' }, 'The recipient needs these words as well as the link. Tell them, or send them another way.')),
+    h('label', { class: 'check' }, approve, h('span', null, 'Let me check who’s receiving before sending',
+      h('small', null, 'you compare a short code with them, e.g. by phone, then click Deliver'))),
+  ),
+  );
+  // Files can be dropped anywhere on the card.
+  form.addEventListener('dragover', (e) => { e.preventDefault(); form.classList.add('over'); });
+  form.addEventListener('dragleave', (e) => { if (!form.contains(e.relatedTarget as Node | null)) form.classList.remove('over'); });
+  form.addEventListener('drop', (e) => { e.preventDefault(); form.classList.remove('over'); addFiles(e.dataTransfer?.files); });
+
+  body.append(form,
+    h('p', { class: 'narrow hint chat-pointer' }, 'Several things to exchange, or a conversation? ', h('a', { href: '#/chat' }, 'Use Secure Chat ›')),
+    h('details', { class: 'card narrow guide how-it-works' },
+      h('summary', null, h('h2', null, 'How it works')),
+      h('p', null, 'The delivery is encrypted end to end and goes straight from your browser to the recipient’s, from computer to computer or phone. No special software is needed, and nothing is uploaded or stored anywhere.'),
+      h('p', null, 'The recipient needs the link ', h('em', null, 'and'), ' the words. On a call, paste the link in the chat and say the words aloud: they’re never written anywhere. If the calling app itself is the concern, send the link another way.'),
+      h('p', null, 'Keep this page open until the delivery completes: it comes from your browser, so closing the page cancels it. The link works once, and stops working after a time limit if nobody uses it.'),
+      h('h3', null, 'Which one should I use?'),
+      h('ul', null,
+        h('li', null, h('strong', null, 'Secure Share'), ' (this page): send something ', h('em', null, 'once'),
+          ' to ', h('em', null, 'one'), ' person: a password, a key, a document. The link stops working after delivery.'),
+        h('li', null, h('strong', null, h('a', { href: '#/chat' }, 'Secure Chat')), ': several things to exchange, replies, or more than two people. You host a private room and approve everyone who joins.'),
+      ),
     ),
-  ));
+  );
 }
 
-interface Outgoing { text: string; files: File[]; passphrase: string; keepScreenOn: boolean }
+interface Outgoing { text: string; files: File[]; passphrase: string }
 
-function senderView(body: HTMLElement, room: SecureRoom, { text, files, passphrase, keepScreenOn }: Outgoing): Session {
+function senderView(body: HTMLElement, room: SecureRoom, { text, files, passphrase }: Outgoing): Session {
   const status = h('p', { class: 'status-big', role: 'status' });
   const steps = h('ol', { class: 'progress-steps' },
     h('li', { class: 'active' }, 'Share the link and passphrase'),
@@ -128,8 +139,18 @@ function senderView(body: HTMLElement, room: SecureRoom, { text, files, passphra
   const extra = h('div', { 'aria-live': 'polite' });
   const away = h('p', { class: 'hint warn', hidden: true },
     'You left this page. Keep it open and in front until the delivery completes: phones may pause or close pages in the background.');
-  const awakeNote = h('p', { class: 'hint warn', hidden: !keepScreenOn },
-    '⚠ The screen stays on until the delivery completes. Don’t leave this device unattended.');
+  // Off by default: an unlocked device left alone exposes this page and everything else on it.
+  let keepScreenOn = false;
+  const awakeNote = h('p', { class: 'hint warn', hidden: true },
+    '⚠ This device will stay awake and unlocked until the delivery completes, as long as this tab is open and in front. Don’t leave your phone or computer unattended while it’s on.');
+  const awake = h('input', { type: 'checkbox', onchange: () => {
+    keepScreenOn = awake.checked;
+    awakeNote.hidden = !keepScreenOn;
+    if (keepScreenOn) void keepAwake();
+    else { void wakeLock?.release().catch(() => {}); wakeLock = null; }
+  } });
+  const awakeOption = h('label', { class: 'check' }, awake, h('span', null, 'Keep the screen on while waiting',
+    h('small', null, 'stops the screen from turning off or locking until the delivery completes')));
   const cancel = h('button', { class: 'btn btn-ghost', onclick: () => { location.hash = '#/share?'; } }, 'Cancel');
   let delivered = false;
 
@@ -163,6 +184,7 @@ function senderView(body: HTMLElement, room: SecureRoom, { text, files, passphra
     wakeLock = null;
     away.hidden = true;
     awakeNote.hidden = true;
+    awakeOption.hidden = true;
   };
   document.addEventListener('visibilitychange', onVisibility);
   void keepAwake();
@@ -179,7 +201,7 @@ function senderView(body: HTMLElement, room: SecureRoom, { text, files, passphra
     copyRow('Passphrase', passphrase, true),
     h('p', { class: 'hint warn' }, '⚠ Keep this tab open until the delivery completes. Nothing is stored on a server, so closing it cancels the share.'),
     room.expiresAt ? h('p', { class: 'hint' }, `⏱ If nobody receives it, the link stops working at ${closesAt(room.expiresAt)}.`) : null,
-    awakeNote, away, status, extra,
+    awakeOption, awakeNote, away, status, extra,
     h('div', { class: 'row' }, cancel),
   ));
   setStatus('Waiting for the recipient to open the link…');
