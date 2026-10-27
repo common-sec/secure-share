@@ -25,6 +25,7 @@ import re
 import sys
 import time
 import traceback
+import urllib.parse
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -73,6 +74,9 @@ class Env:
     def person(self, browser="chromium"):
         """A new person: an isolated browser context (own storage, own WebRTC identity)."""
         ctx = self.browser(browser).new_context(accept_downloads=True)
+        if browser == "chromium":
+            # Lets the test read what the app copied; the app itself only writes.
+            ctx.grant_permissions(["clipboard-read", "clipboard-write"])
         if self.init_script:
             # Guards first: WebSocket routing patches the page, and must be in place before any script.
             ctx.route(lambda url: not self.local(url), self.block_http)
@@ -114,35 +118,64 @@ def file_payload(name, size):
     return {"name": name, "mimeType": "application/octet-stream", "buffer": data}
 
 
-def share_send(env, page, text, files=(), approve=False, keep_awake=False):
+def share_send(env, page, text, files=(), approve=False, keep_awake=False, own_words=None):
     page.goto(env.app + "#/share")
-    page.locator("form textarea").fill(text)
+    page.get_by_label("What do you want to send?").fill(text)
     if files:
         page.locator("form input[type=file]").set_input_files(list(files))
-    passphrase = page.locator("form input[aria-label=Passphrase]").input_value()
+    # One question, one button: the passphrase isn't on the creation page (G2).
+    expect(page.locator("form input[aria-label=Passphrase]")).to_be_hidden()
+    if approve or own_words:
+        page.get_by_text("More options").click()
     if approve:
         page.get_by_text("Let me check who’s receiving before sending").click()
+    if own_words:
+        page.locator("form input[aria-label=Passphrase]").fill(own_words)
+        no_password_fields(page)
+        expect(page.get_by_text("estimate for a typed passphrase")).to_be_visible()
+    page.get_by_role("button", name="Create link").click()
+    # The invitation is copied straight away, or the sender is told to copy it (G3).
+    expect(page.get_by_text(re.compile("^Link copied$|Copy the invitation with the link"))).to_be_visible()
+    # There's no "copy the link alone": read it from a Send with button (icons, named by aria-label).
+    telegram = page.locator(".share-to").first.get_by_role("link", name="Telegram", exact=True).get_attribute("href")
+    link = urllib.parse.parse_qs(urllib.parse.urlparse(telegram).query)["url"][0]
+    # The generated words are shown on the waiting screen, where they're used.
+    # Step 2 shows them masked, word by word, with Show (G4).
+    words = page.locator(".words")
+    expect(words.locator(".words-text:not([hidden])")).not_to_contain_text(re.compile("[A-Za-z]"))
+    words.get_by_role("button", name="Show").click()
+    passphrase = " ".join(words.locator(".words-text:not([hidden]) .word").all_inner_texts())
+    if own_words:
+        assert passphrase == own_words, passphrase
+    else:
+        assert re.fullmatch(r"[a-z]+( [a-z]+){5}", passphrase), passphrase
     warning = page.get_by_text("Don’t leave your phone or computer unattended")
     expect(warning).to_be_hidden()          # off by default
     if keep_awake:
-        page.get_by_text("Keep the screen on while waiting").click()
+        page.get_by_text("Keep my screen on").click()
         expect(warning).to_be_visible()
-    page.get_by_role("button", name="Create one-time link").click()
-    link = page.locator('input[aria-label="One-time link"]')
-    expect(link).to_be_attached()
-    return link.input_value(), passphrase
+    return link, passphrase
+
+
+def no_password_fields(page):
+    """Secrets are masked without type=password, so the browser doesn't offer to save them."""
+    if page.evaluate("CSS.supports('-webkit-text-security', 'disc')"):
+        assert page.locator("input[type=password]").count() == 0
+        expect(page.locator("input[aria-label=Passphrase]").first).to_have_attribute("autocomplete", "off")
 
 
 def share_open(page, link, passphrase):
     page.goto(link)
     page.locator("form input[aria-label=Passphrase]").fill(passphrase)
-    page.get_by_role("button", name="Receive").click()
+    no_password_fields(page)
+    page.get_by_role("button", name="Open", exact=True).click()
 
 
 def received_text(page):
     """The received text is masked until the recipient clicks Show."""
     expect(page.locator("pre.secret")).to_be_hidden()
-    page.locator(".result").get_by_role("button", name="Show").click()
+    # One large button is the next step, not a small Show among others.
+    page.locator(".result").get_by_role("button", name="Show the secret text").click()
     return page.locator("pre.secret").inner_text()
 
 
@@ -243,14 +276,53 @@ def share_happy_path(env, b):
 
     expect(sender.locator(".page-head .lead").first).to_be_hidden()   # the intro is hidden while waiting
     expect(sender.get_by_role("status")).to_contain_text("Waiting for the recipient")
+    # Steps 1-3 are the sender's; 4 waits on the recipient (orange timer), 5 hasn't started.
+    expect(sender.locator(".guide-steps > li").nth(3)).to_have_class(re.compile("waiting"))
+
+    if b == "chromium":
+        # What was copied is an invitation with the link, never the passphrase.
+        expect(sender.get_by_text("Link copied", exact=True)).to_be_visible()
+        copied = sender.evaluate("navigator.clipboard.readText()")
+        assert link in copied and copied.startswith("I’m sending you something privately"), copied
+        assert passphrase not in copied, copied
+    # One copy button, for the invitation with the link: no copy of the link alone.
+    expect(sender.locator('input[aria-label="One-time link"]')).to_have_count(0)
+    expect(sender.get_by_role("button", name=re.compile("^Copy (again|invitation)$"))).to_be_visible()
+    # Messenger share links and the QR code hold the link, never the words...
+    link_row, words_row = sender.locator(".share-to").nth(0), sender.locator(".share-to").nth(1)
+    for name in ("Email", "Gmail", "Outlook", "WhatsApp", "Telegram", "Teams"):
+        href = link_row.get_by_role("link", name=name, exact=True).get_attribute("href")
+        assert urllib.parse.quote(link, safe="") in href, href
+        assert urllib.parse.quote(passphrase, safe="") not in href and passphrase not in href, href
+    # ...and the "send the words another way" links hold the words, never the link.
+    for name in ("Text message", "WhatsApp", "Telegram", "Email", "Gmail", "Outlook"):
+        href = words_row.get_by_role("link", name=name, exact=True).get_attribute("href")
+        assert urllib.parse.quote(passphrase, safe="") in href, href
+        assert urllib.parse.quote(link, safe="") not in href and link not in href, href
+    # Sending the words the same way as the link is discouraged, not blocked.
+    sender.context.route("https://wa.me/**", lambda route: route.abort())
+    with sender.expect_popup() as popup:
+        link_row.get_by_role("link", name="WhatsApp", exact=True).click()
+    popup.value.close()
+    words_row.get_by_role("link", name="WhatsApp", exact=True).click()
+    warning = sender.get_by_role("alert").filter(has_text="Not recommended")
+    expect(warning).to_contain_text("You sent the link with WhatsApp")
+    expect(warning.get_by_role("link", name="Send anyway")).to_have_attribute("href", re.compile("^https://wa.me/"))
+    warning.get_by_role("button", name="Choose another way").click()
+    expect(warning).to_be_hidden()
+    sender.get_by_role("button", name="QR code").click()
+    expect(sender.get_by_role("img", name="QR code of the one-time link")).to_be_visible()
 
     share_open(recipient, link, passphrase)
     expect(recipient).to_have_title(re.compile("received a secure delivery"))
+    expect(recipient.get_by_role("heading", name="Someone sent you something privately")).to_be_visible()
     expect(recipient.get_by_text("Received ✓")).to_be_visible()
+    expect(recipient.locator(".guide-steps > li.done")).to_have_count(3)   # every step ticked
     assert received_text(recipient) == "db-password: Karrot~Over~Stone42"
     assert download(recipient, ".file-card", "keys.bin") == secret_file["buffer"]
     expect(sender.get_by_text("Delivered ✓")).to_be_visible()
     expect(sender).to_have_title(re.compile("^✓ Delivered"))
+    expect(sender.locator(".guide-steps > li.done")).to_have_count(5)   # every step ticked
     audit(recipient, "share-received")
     recipient.get_by_role("button", name="Clear from screen").click()
     expect(recipient.locator("pre.secret")).to_have_count(0)
@@ -275,13 +347,26 @@ def share_wrong_passphrase(env, b):
 def share_with_approval(env, b):
     sender, recipient = env.person(b), env.person(b)
     link, passphrase = share_send(env, sender, "approved secret", approve=True, keep_awake=True)
-    expect(sender.get_by_text("Don’t leave this device unattended")).to_be_visible()
     share_open(recipient, link, passphrase)
     expect(sender.get_by_role("button", name="Deliver")).to_be_visible()
     stays_quiet(lambda: recipient.get_by_text("Received ✓").is_visible())
     sender.get_by_role("button", name="Deliver").click()
     expect(recipient.get_by_text("Received ✓")).to_be_visible()
     assert received_text(recipient) == "approved secret"
+    # Done clears everything from the page (G5).
+    recipient.get_by_role("button", name="Done").click()
+    expect(recipient.get_by_text("All done ✓")).to_be_visible()
+    expect(recipient.locator("pre.secret")).to_have_count(0)
+    expect(recipient.get_by_role("link", name="Send something back")).to_be_visible()
+
+
+@scenario("share: the sender can choose their own words under More options")
+def share_own_words(env, b):
+    sender, recipient = env.person(b), env.person(b)
+    link, passphrase = share_send(env, sender, "my own words", own_words="Purple Kettle 7 sings!")
+    share_open(recipient, link, passphrase)
+    expect(recipient.get_by_text("Received ✓")).to_be_visible()
+    assert received_text(recipient) == "my own words"
 
 
 @scenario("chat: approve guests, messages and files relay through the host, remove a member",

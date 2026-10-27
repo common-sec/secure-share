@@ -1,9 +1,9 @@
 import { test, assert } from './harness.js';
 import {
   generatePhrase, phraseEntropy, PHRASE_DEFAULTS, LINKING_WORDS, inflect, respellings, syllableStarts,
-  roomPassphrase, ROOM_PHRASE,
+  roomPassphrase, ROOM_WORDS, ROOM_PHRASE_BITS,
 } from '../../build/modules/lib/passphrase.js';
-import { WORD_SET } from '../../build/modules/lib/words.js';
+import { WORDS, WORD_SET } from '../../build/modules/lib/words.js';
 import { estimateBits } from '../../build/modules/lib/strength.js';
 
 const isLinking = (t) => LINKING_WORDS.includes(t.toLowerCase());
@@ -118,20 +118,24 @@ test('invented style', () => {
   assert.match(inv, /^[a-z]+(-[a-z]+){3}$/);
 });
 
-test('room passphrases: capitals, a number, one random separator, at least 50 bits', () => {
-  const separators = new Set();
-  for (let i = 0; i < 100; i++) {
+test('room passphrases: six lowercase words from the full list, single spaces, about 59 bits', () => {
+  const seen = new Set();
+  for (let i = 0; i < 200; i++) {
     const phrase = roomPassphrase();
-    const seps = separatorOf(phrase);
-    assert.equal(seps.length, 1, phrase);
-    separators.add(seps[0]);
-    const tokens = phrase.split(seps[0]);
-    assert.equal(tokens.length, 4, `3 words + 1 linking word: ${phrase}`);
-    assert.ok(tokens.every((t) => /^[A-Z]/.test(t)), `capitalised: ${phrase}`);
-    assert.equal((phrase.match(/\d+/g) ?? []).length, 1, `one number: ${phrase}`);
+    assert.match(phrase, /^[a-z]+( [a-z]+){5}$/, phrase);
+    const tokens = phrase.split(' ');
+    assert.equal(tokens.length, ROOM_WORDS, phrase);
+    assert.ok(tokens.every((t) => WORD_SET.has(t)), `listed words only: ${phrase}`);
+    tokens.forEach((t) => seen.add(t));
   }
-  assert.atLeast(separators.size, 4, 'separator is not always the same');
-  assert.atLeast(phraseEntropy(ROOM_PHRASE), 50);
+  assert.atLeast(seen.size, 300, 'words come from the whole list');
+  assert.ok(Math.abs(ROOM_PHRASE_BITS - 6 * Math.log2(WORDS.length)) < 1e-9);
+  assert.atLeast(ROOM_PHRASE_BITS, 58);
+});
+
+test('room passphrases: the typed-passphrase estimate matches the exact strength', () => {
+  // Someone who retypes the generated words gets the same strength, not a lower guess.
+  for (let i = 0; i < 50; i++) assert.ok(Math.abs(estimateBits(roomPassphrase()) - ROOM_PHRASE_BITS) < 0.01);
 });
 
 test('strength estimate for typed passphrases is conservative', () => {

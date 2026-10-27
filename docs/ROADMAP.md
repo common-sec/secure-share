@@ -60,8 +60,8 @@ people testing the site will see. Then the one breaking protocol change, because
 before 1.0 and a major version after it. Then the relay fallback, so
 people on restrictive networks can connect at launch, and the static pages and SEO. The site is
 already public, so the security basics in [TODO.md](TODO.md#before-launch) (repository hardening,
-staging, tagged production) come before the standard secure channel (0.9.0), and the external security review
-comes **just before launch**, so it reviews what actually ships. The logo needs iterations with
+staging, tagged production) come before the standard secure channel (0.9.0), and the external
+security review comes **just before launch**, so it reviews what actually ships. The logo needs iterations with
 people and doesn't affect usability, so it isn't on the critical path. The high-priority
 [fixes](#fixes-and-small-improvements) go in as patches between features, before launch.
 
@@ -101,19 +101,19 @@ recipient are guided step by step, designed first for using the app on a call (l
 passphrase said aloud). Done in this order; the open [fixes](#fixes-and-small-improvements) that
 these cover point here.
 **Done when:**
-- [ ] **G1. Speakable room passphrases.** Six fully random lowercase words from the full word list
+- [x] **G1. Speakable room passphrases.** Six fully random lowercase words from the full word list
       (about 59 bits, so an offline attack on recorded traffic isn't practical), matched exactly as given (no normalisation, key derivation unchanged), plain
       strength wording.
-- [ ] **G2. One-question creation page.** "What do you want to send?" and one button; the
+- [x] **G2. One-question creation page.** "What do you want to send?" and one button; the
       passphrase moves to the next screen; choosing your own words and "check who's receiving"
       go under More options; the Secure Chat pointer is one line; details move to How it works.
-- [ ] **G3. Link copied automatically.** An invitation with the link (never the passphrase) is
+- [x] **G3. Link copied automatically.** An invitation with the link (never the passphrase) is
       copied on creation, with a fallback; "Copy link only", the share sheet and a QR code as
       secondary actions.
-- [ ] **G4. Guided waiting screen.** Numbered steps (paste the link, say the words, keep this
+- [x] **G4. Guided waiting screen.** Numbered steps (paste the link, say the words, keep this
       page open), with "Keep my screen on" as part of the last step, and a line for when you're
       not on a call.
-- [ ] **G5. Guided recipient page.** What this is and that nothing is stored, "type the words they
+- [x] **G5. Guided recipient page.** What this is and that nothing is stored, "type the words they
       tell you", live connection stages, the result, then Done (clears everything) and Send
       something back.
 
