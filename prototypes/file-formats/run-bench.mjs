@@ -3,17 +3,23 @@
 // Run: node run-bench.mjs [MB]   (after building dist/, see README)
 import { createServer } from 'node:http';
 import { readFileSync, readdirSync } from 'node:fs';
-import { extname, join } from 'node:path';
+import { join } from 'node:path';
 import { createRequire } from 'node:module';
 // Playwright comes from the environment (the e2e image, or a global install), not this package.
 const { chromium } = createRequire(import.meta.url)('playwright');
 
 const MB = Number(process.argv[2] || 100);
-const types = { '.html': 'text/html', '.js': 'text/javascript', '.wasm': 'application/wasm' };
+// Serves only the built files listed here; any other path is a 404 (no path from the request reaches the file system).
+const files = {
+  '/': ['bench.html', 'text/html'],
+  '/bench.html': ['bench.html', 'text/html'],
+  '/bench.bundle.js': ['bench.bundle.js', 'text/javascript'],
+  '/7zz.wasm': ['7zz.wasm', 'application/wasm'],
+};
 const server = createServer((req, res) => {
-  const name = req.url.split('?')[0].replace(/^\//, '') || 'bench.html';
-  try { res.writeHead(200, { 'content-type': types[extname(name)] || 'application/octet-stream' }).end(readFileSync(join('dist', name))); }
-  catch { res.writeHead(404).end(); }
+  const entry = Object.hasOwn(files, req.url.split('?')[0]) ? files[req.url.split('?')[0]] : undefined;
+  if (!entry) return void res.writeHead(404).end();
+  res.writeHead(200, { 'content-type': entry[1] }).end(readFileSync(join('dist', entry[0])));
 });
 await new Promise((r) => server.listen(0, '127.0.0.1', r));
 const url = `http://127.0.0.1:${server.address().port}/bench.html`;
