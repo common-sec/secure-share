@@ -33,6 +33,11 @@ export const DEFAULT_LIFETIME_MS = 4 * 60 * 60 * 1000;
 export const MAX_LIFETIME_MS = 24 * 60 * 60 * 1000;
 /** How long before the end members are warned ('expiring'). */
 export const EXPIRY_WARNING_MS = 10 * 60 * 1000;
+/** How long the relays may stay unreachable, while the room needs them, before we say so. */
+export const RELAY_CHECK_MS = 10_000;
+// Trystero's onJoinError when two peers exchanged offers through the relays but WebRTC found no
+// path between them: usually a firewall blocking UDP or WebRTC, or both sides behind strict NATs.
+const DIRECT_FAILED = /after exchanging SDP/;
 
 export const DENY_REASONS = {
   passphrase: 'Wrong passphrase.',
@@ -156,6 +161,10 @@ export interface RoomEvents {
   accepted: Record<string, never>;
   denied: { reason: string };
   'host-lost': Record<string, never>;
+  /** a peer found the room through the relays, but no direct connection could be opened to it */
+  'direct-blocked': { peerId: string };
+  /** whether any discovery relay is reachable; sent when that changes while the room needs them */
+  relays: { reachable: boolean };
   /** the room closes in EXPIRY_WARNING_MS or less */
   expiring: { expiresAt: number };
   persist: Record<string, never>;
@@ -266,6 +275,9 @@ export class SecureRoom extends EventTarget {
   #failures = 0;
   #expiryTimer: ReturnType<typeof setInterval> | undefined;
   #warned = false;
+  #relayTimer: ReturnType<typeof setInterval> | undefined;
+  #discoverableSince = 0;
+  #relaysReachable = true;
 
   private constructor(o: {
     app: string; roomId: string; secret: string; passphrase: string; nick: string; maxGuests: number;
@@ -346,7 +358,8 @@ export class SecureRoom extends EventTarget {
           ? this.#hostHandshake(peerId, send, receive)
           : this.#guestHandshake(peerId, send, receive)),
         onJoinError: (d) => {
-          if (!/not-host/.test(d.error)) this.#emit('debug', d);
+          if (DIRECT_FAILED.test(d.error)) this.#onDirectFailed(d.peerId);
+          else if (!/not-host/.test(d.error)) this.#emit('debug', d);
         },
         handshakeTimeoutMs: 15000,
       },
@@ -355,6 +368,8 @@ export class SecureRoom extends EventTarget {
 
     // Reconnection pausing is global to the page; a previous room may have paused it.
     trystero.resumeRelayReconnection?.();
+    this.#discoverableSince = Date.now();
+    this.#watchRelays();
 
     const ctl = room.makeAction<string>('ctl');
     const msg = room.makeAction<string>('msg');
@@ -506,12 +521,41 @@ export class SecureRoom extends EventTarget {
     this.#discoverable = wanted;
     if (wanted) {
       T.resumeRelayReconnection();
+      this.#discoverableSince = Date.now();
     } else {
       T.pauseRelayReconnection();
       const sockets = T.getRelaySockets() as Record<string, { close(): void } | undefined>;
       for (const socket of Object.values(sockets)) socket?.close();
     }
     this.#emit('discovery', { on: wanted });
+  }
+
+  // ---- network problems ----
+  // A guest connects to the host only; a failed connection to another guest isn't worth a warning,
+  // and once the host is found the warning no longer applies.
+  #onDirectFailed(peerId: string): void {
+    if (this.closed || (!this.isHost && this.hostPeerId)) return;
+    this.#emit('direct-blocked', { peerId });
+  }
+
+  /**
+   * Notices when no relay can be reached while the room needs them (see #syncDiscovery), e.g. a
+   * network that blocks WebSockets to them. Sockets get RELAY_CHECK_MS to connect each time
+   * discovery starts, so a relay that is still connecting doesn't count as blocked.
+   */
+  #watchRelays(): void {
+    const T = this.transport;
+    if (!T?.getRelaySockets) return;
+    const check = () => {
+      if (this.closed || !this.#discoverable || Date.now() - this.#discoverableSince < RELAY_CHECK_MS) return;
+      const sockets = Object.values(T.getRelaySockets() as Record<string, { readyState: number } | undefined>);
+      const reachable = sockets.some((s) => s?.readyState === 1);
+      if (reachable === this.#relaysReachable) return;
+      this.#relaysReachable = reachable;
+      this.#emit('relays', { reachable });
+    };
+    clearInterval(this.#relayTimer);
+    this.#relayTimer = setInterval(check, RELAY_CHECK_MS / 4);
   }
 
   // ---- host controls ----
@@ -719,6 +763,7 @@ export class SecureRoom extends EventTarget {
     if (this.closed) return;
     this.closed = true;
     clearInterval(this.#expiryTimer);
+    clearInterval(this.#relayTimer);
     void this.room?.leave();
     this.#syncDiscovery();
     this.#emit('closed', { reason });

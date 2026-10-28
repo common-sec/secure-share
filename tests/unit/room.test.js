@@ -331,6 +331,37 @@ test('guests wait for a reloading host and are re-admitted automatically', async
   cleanup(resumed, bob);
 });
 
+// ---- restrictive networks ----
+test('when a network blocks the direct connection, both sides are told', async () => {
+  const net = new FakeNetwork();
+  const host = await hostRoom(net);
+  const atHost = once(host, 'direct-blocked');
+  const bob = await SecureRoom.join({ app: 'test', ...invite(host), passphrase: PASS, nick: 'Bob', transport: net.transport({ directBlocked: true }) });
+  const atBob = await once(bob, 'direct-blocked');
+  assert.ok(atBob.peerId, 'the guest learns which peer it could not reach');
+  assert.ok((await atHost).peerId, 'the host learns someone tried to join');
+  assert.equal(bob.accepted, false);
+  assert.equal(host.guests.size, 0);
+  cleanup(host, bob);
+});
+
+test('relays that cannot be reached are reported, and only while the room needs them', async () => {
+  const net = new FakeNetwork();
+  const host = await hostRoom(net);
+  const hostReports = collect(host, 'relays');
+  const bob = await SecureRoom.join({ app: 'test', ...invite(host), passphrase: PASS, nick: 'Bob', transport: net.transport({ relaysBlocked: true }) });
+  const t0 = Date.now();
+  const report = await once(bob, 'relays', 20000);
+  assert.equal(report.reachable, false);
+  assert.ok(Date.now() - t0 >= 9000, 'relays get time to connect before they count as blocked');
+  assert.equal(hostReports.length, 0, 'reachable relays are not reported');
+
+  host.setLocked(true); // the host stops needing the relays: closing them is not a problem
+  await sleep(6000);
+  assert.equal(hostReports.length, 0);
+  cleanup(host, bob);
+}, { timeout: 45000 });
+
 // ---- time limit ----
 test('the room closes for everyone at its time limit, and guests learn when on joining', async () => {
   const net = new FakeNetwork();

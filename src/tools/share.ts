@@ -360,6 +360,9 @@ function senderView(body: HTMLElement, room: SecureRoom, { text, files, passphra
         h('button', { type: 'button', class: 'btn btn-small', onclick: () => { sameChannel.hidden = true; } }, 'Choose another way')));
     sameChannel.hidden = false;
   });
+  // Why the recipient can't connect, when the network says so (see SecureRoom's network events).
+  const netNote = h('p', { class: 'hint warn', role: 'status', hidden: true });
+  const netProblem = (text: string | null) => { netNote.textContent = text ?? ''; netNote.hidden = !text; };
   const waitingConnect = h('div', { 'aria-live': 'polite' });
   const waitingReceive = h('div');
   const steps = h('ol', { class: 'guide-steps' },
@@ -377,7 +380,7 @@ function senderView(body: HTMLElement, room: SecureRoom, { text, files, passphra
       sameChannel),
     h('li', null,
       h('div', { class: 'step-title' }, 'They open the link and type the words'),
-      waitingConnect, request),
+      waitingConnect, netNote, request),
     h('li', null,
       h('div', { class: 'step-title' }, 'They receive it, encrypted end to end'),
       waitingReceive));
@@ -422,7 +425,10 @@ function senderView(body: HTMLElement, room: SecureRoom, { text, files, passphra
           h('button', { class: 'btn btn-small', onclick: () => { request.replaceChildren(); void room.reject(peerId); setStatus('Declined. Still waiting…'); } }, 'Decline')),
       ));
     })
+    .on('direct-blocked', () => netProblem(`⚠ ${SENDER_DIRECT_BLOCKED}`))
+    .on('relays', ({ reachable }) => netProblem(reachable ? null : `⚠ ${SENDER_RELAYS_BLOCKED}`))
     .on('joined', ({ member }) => {
+      netProblem(null);
       [COPIED, SHARED, TOLD, CONNECTED].forEach((n) => done.add(n));
       render();
       room.setLocked(true);
@@ -535,6 +541,17 @@ function receivedText(text: string): HTMLElement {
   return box;
 }
 
+// Restrictive networks: what failed, and what to try. We don't try to get past a network that
+// blocks this on purpose; another network, or the network's administrators, can help.
+const TRY_ANOTHER = 'Try another network, such as mobile data, or ask your IT team whether browser-to-browser (WebRTC) connections are allowed.';
+const SENDER_DIRECT_BLOCKED = 'Someone opened the link, but your two networks couldn’t connect directly: a firewall or a strict network on one side is probably blocking it. '
+  + 'Ask them to try another network, such as mobile data. Still waiting…';
+const SENDER_RELAYS_BLOCKED = 'This device can’t reach the discovery relays, so the recipient can’t find this share. '
+  + `This network may block them (secure WebSockets on port 443), or you may be offline. ${TRY_ANOTHER}`;
+const RECEIVER_DIRECT_BLOCKED = `Found the sender, but couldn’t connect directly: a firewall or a strict network on your side or theirs is probably blocking it. ${TRY_ANOTHER}`;
+const RECEIVER_RELAYS_BLOCKED = 'Can’t reach the discovery relays used to find the sender. '
+  + `This network may block them (secure WebSockets on port 443), or you may be offline. ${TRY_ANOTHER}`;
+
 function receiverView(body: HTMLElement, room: SecureRoom, retry: () => void): Session {
   const status = h('p', { class: 'status-big', role: 'status' }, 'Looking for the sender…');
   const result = h('div', { class: 'result' });
@@ -588,6 +605,11 @@ function receiverView(body: HTMLElement, room: SecureRoom, retry: () => void): S
   };
 
   room
+    .on('direct-blocked', () => { clearTimeout(slow); status.textContent = RECEIVER_DIRECT_BLOCKED; })
+    .on('relays', ({ reachable }) => {
+      clearTimeout(slow);
+      status.textContent = reachable ? 'Looking for the sender…' : RECEIVER_RELAYS_BLOCKED;
+    })
     .on('connected', ({ code: c }) => {
       clearTimeout(slow);
       connecting.textContent = 'Connected to the sender';

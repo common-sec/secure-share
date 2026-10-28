@@ -85,7 +85,8 @@ Everything the app connects to, and when:
 | Local network | mDNS, UDP 5353 | WebRTC on the same LAN | `.local` host-candidate resolution (the browser hides local IPs behind random mDNS names) | Devices on your LAN |
 
 There are **no TURN relays**, so data never transits a third party. The trade-off is that two peers
-behind strict symmetric NATs or UDP-blocking firewalls cannot connect.
+behind strict symmetric NATs or UDP-blocking firewalls cannot connect; the app tells them so
+(`direct-blocked`), and also when no relay can be reached (`relays`), instead of waiting silently.
 
 ### When are relay connections open?
 

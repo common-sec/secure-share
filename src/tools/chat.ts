@@ -16,6 +16,8 @@ const tabStore = {
 
 const LINK_RE = { r: /^[A-Za-z0-9_-]{22}$/, k: /^[A-Za-z0-9_-]{43}$/, h: /^[A-Za-z0-9_-]{43}$/ };
 
+const TRY_ANOTHER = 'Try another network, such as mobile data, or ask your IT team whether browser-to-browser (WebRTC) connections are allowed.';
+
 export interface Invite { roomId: string; secret: string; hostFp: string }
 export interface Session { leave(): void }
 
@@ -300,6 +302,8 @@ async function startChat(root: HTMLElement, { invite, nick = '', passphrase = nu
   }
 
   // ---- room events ----
+  // Network problems already explained, so a flaky network doesn't flood the chat.
+  const netWarned = new Set<'direct' | 'relays'>();
   room
     .on('message', ({ inner, member }) => { if (inner.t === 'text') textBubble(member, inner); })
     .on('file-progress', ({ key, progress, inner, member }) => {
@@ -314,7 +318,7 @@ async function startChat(root: HTMLElement, { invite, nick = '', passphrase = nu
       card.actions.append(h('a', { class: 'btn btn-small', href: url, download: safeFileName(inner.name) }, 'Download'));
     })
     .on('roster', renderMembers)
-    .on('joined', ({ member }) => { system(`${member.nick} joined.`); renderMembers(); })
+    .on('joined', ({ member }) => { netWarned.delete('direct'); system(`${member.nick} joined.`); renderMembers(); })
     .on('left', ({ member, kicked }) => { system(`${member.nick} ${kicked ? 'was removed' : 'left'}.`); renderMembers(); })
     .on('auth-failed', ({ failures }) => system(`Someone tried to join with a wrong passphrase (${failures}).`, 'error'))
     .on('lock', ({ locked, auto }) => {
@@ -335,7 +339,21 @@ async function startChat(root: HTMLElement, { invite, nick = '', passphrase = nu
       requests.append(el);
     })
     .on('request-cancelled', ({ peerId }) => { requests.querySelector(`[data-peer="${CSS.escape(peerId)}"]`)?.remove(); })
+    .on('direct-blocked', () => {
+      if (netWarned.has('direct')) return;
+      netWarned.add('direct');
+      system(room.isHost
+        ? 'Someone with the link tried to join, but couldn’t connect directly: a firewall or a strict network on their side or yours is probably blocking it. They can try another network, such as mobile data.'
+        : `Found the room, but couldn’t connect directly to the host: a firewall or a strict network on your side or theirs is probably blocking it. ${TRY_ANOTHER}`, 'error');
+    })
+    .on('relays', ({ reachable }) => {
+      if (reachable) { if (netWarned.delete('relays')) system('Reconnected to the discovery relays.'); return; }
+      netWarned.add('relays');
+      system(`Can’t reach the discovery relays, so ${room.isHost ? 'nobody can find this room' : 'the host can’t be found'}. `
+        + `This network may block them (secure WebSockets on port 443), or you may be offline. ${TRY_ANOTHER}`, 'error');
+    })
     .on('connected', ({ code }) => {
+      netWarned.clear();
       clearTimeout(slowTimer);
       badge.textContent = '✓ Host verified · waiting for approval';
       system(`Connected to the host. Your safety code is ${code}. Waiting for the host to accept you…`);

@@ -4,6 +4,14 @@ All notable changes, one section per version. See [docs/ROADMAP.md](docs/ROADMAP
 
 ## [Unreleased]
 
+### Added
+- **The app says when a network blocks the connection** (roadmap fix N1). When the other side is
+  found but no direct connection can be opened (a firewall blocking UDP or WebRTC, or strict NATs
+  on both sides), or when no discovery relay can be reached for 10 seconds (WebSockets blocked, or
+  offline), Share and Chat now say so, with what to try, instead of "Still looking…" forever.
+  `SecureRoom` has two new events, `direct-blocked` and `relays`; the fake transport in the unit
+  tests can simulate both networks.
+
 ### Changed
 - **Browsers no longer offer to save passphrases.** Passphrase fields are masked without
   `type=password` (with `-webkit-text-security`, in Chrome, Edge and Safari), so browsers and
