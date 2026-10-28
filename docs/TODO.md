@@ -116,8 +116,8 @@ HSTS, CSP and `nosniff` as headers where the host allows it, or the documented c
 nothing known is left open.
 **Done when:**
 - docs/PROTOCOL.md, the threat model and the code that implements them have been reviewed by
-  someone outside the project, after roadmap 0.9.0 (`age` format) and 0.10.0 (relay fallback), so
-  the review covers the final format and the relay fallback;
+  someone outside the project, after roadmap 0.9.0 (standard secure channel) and 0.10.0 (relay
+  fallback), so the review covers the final format and the relay fallback;
 - a full internal pass over the threat model checks each mitigation against the code and tests;
 - every finding is fixed, or accepted with a documented reason; each fix comes with a regression
   test;

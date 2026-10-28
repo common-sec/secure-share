@@ -164,7 +164,9 @@ does, why the protocol is shaped this way, and what the alternatives (PAKE, Nois
 Argon2) would change. Its outcome could become `docs/HOW_IT_WORKS.md` for users and contributors.
 
 ## Encrypt Share payloads in the `age` format
-**Status:** ✅ Accepted → 0.9.0 (before 1.0, while a breaking protocol change is still a minor version)
+**Status:** ❌ Dropped on 2026-10-25 ([D23](DECISIONS.md)): a file format next to our own channel
+added a second construction instead of replacing ours. Roadmap 0.9.0 is now a standard secure
+channel (Noise); age or HPKE may come back for data that leaves the channel.
 **Proposal:** use the audited, standard `age` format (`typage`) for Share payloads instead of our
 AES-GCM framing. One more dependency, but a standard and interoperable format.
 

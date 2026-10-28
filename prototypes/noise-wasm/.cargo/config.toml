@@ -1,0 +1,6 @@
+[build]
+target = "wasm32-unknown-unknown"
+
+[target.wasm32-unknown-unknown]
+# getrandom 0.3 takes randomness from crypto.getRandomValues only when told to.
+rustflags = ['--cfg', 'getrandom_backend="wasm_js"']

@@ -38,7 +38,7 @@ CI/CD, testing infrastructure and security process work is tracked separately, i
 | 0.4.0 | **First real-world test feedback**: Secure Share as the home page, clearer naming, stronger and masked room passphrases with a strength meter | ✅ Done |
 | 0.7.0 | **Names, organisation and domain**: CommonSec organisation, CommonSec Share app, served at `share.common-sec.org` | ✅ Done |
 | 0.8.0 | **Guided sharing**: sender and recipient guided step by step, designed first for use on a call: speakable passphrases, a one-question creation page, the link copied automatically, guided waiting and recipient screens | In progress |
-| 0.9.0 | **Standard encryption format**: Share payloads in the audited `age` format instead of our own framing (breaking) | Planned |
+| 0.9.0 | **Standard secure channel**: our own handshake and message encryption replaced by a published protocol (Noise `IKpsk1` on the snow library, under study), with forward secrecy (breaking) | Planned (study) |
 | 0.10.0 | **Connectivity on restrictive networks**: users behind symmetric NAT or UDP-blocking firewalls can still connect, through an end-to-end encrypted relay fallback | Planned |
 | 0.11.0 | **Static pages and SEO**: pre-rendered static pages, metadata and social previews, How it works and FAQ, sitemap, Search Console | Planned |
 | 0.12.0 | **Encrypted files**: package files, encrypt them with a password in a standard format and download the encrypted file; upload one, decrypt it and download the contents | Planned |
@@ -65,8 +65,8 @@ before 1.0 and a major version after it. Then the relay fallback, so
 people on restrictive networks can connect at launch, and the static pages and SEO. Encrypted files
 come after the static pages (decided 2026-10-26), so the tool is built as a static page from the start. The site is
 already public, so the security basics in [TODO.md](TODO.md#before-launch) (repository hardening,
-staging, tagged production) come before the `age` format (0.9.0), and the external security review
-comes **just before launch**, so it reviews what actually ships. The logo needs iterations with
+staging, tagged production) come before the standard secure channel (0.9.0), and the external
+security review comes **just before launch**, so it reviews what actually ships. The logo needs iterations with
 people and doesn't affect usability, so it isn't on the critical path. The high-priority
 [fixes](#fixes-and-small-improvements) go in as patches between features, before launch.
 
@@ -122,23 +122,28 @@ these cover point here.
       tell you", live connection stages, the result, then Done (clears everything) and Send
       something back.
 
-### 0.9.0: Standard encryption format
-**Goal:** encrypt with a standard, audited format instead of our own framing, so reviewers check
-a known construction rather than ours. See
-[IDEAS.md](IDEAS.md#encrypt-share-payloads-in-the-age-format).
-**Why before launch:** it changes the wire format, so old links and peers stop working. Before
-1.0 that's a minor version; after it, a major one.
+### 0.9.0: Standard secure channel
+**Goal:** the whole channel (handshake, chat messages, Share payloads, files and control messages)
+runs on one published, reviewed protocol instead of our own construction, so reviewers check a
+known design against its specification. **Changed 2026-10-25:** this item used to be the `age`
+file format for Share payloads only; that was dropped because it would have added a second
+construction next to ours ([D23](DECISIONS.md)).
+**Why before launch:** it changes the protocol, so old links and peers stop working. Before 1.0
+that's a minor version; after it, a major one.
+**Now:** a study of the options (Noise, binding to WebRTC's DTLS, PAKE, MLS, HPKE) and their
+browser libraries. The current recommendation is `Noise_IKpsk1_25519_ChaChaPoly_SHA256` with the
+snow library compiled to WebAssembly, and a pre-shared key from the link secret and the
+passphrase. A prototype in [prototypes/noise-wasm](../prototypes/noise-wasm/README.md) passes the
+published test vectors and runs in Chromium; it showed that `IKpsk2` (WireGuard's position) would
+let anyone with the link test passphrase guesses offline, which D9 rules out.
 **Done when:**
-- Share payloads use the **`age` format** (the `typage` library, pinned and bundled like
-  Trystero); the key schedule is reviewed at the same time (e.g. scrypt as in `age`'s passphrase
-  recipient, or our PBKDF2-derived key as an X25519 or symmetric recipient), and the choice is
-  recorded as a decision;
-- Chat's message framing is assessed for the same change; it either moves too or the reason it
-  stays is documented;
+- the protocol and its library (or our implementation of a published pattern, checked against
+  its test vectors) are chosen and recorded as a decision;
+- every message type uses it, with forward secrecy, no offline passphrase guessing (D9), host
+  authentication against the link, and recorded traffic still safe from a future quantum computer;
 - docs/PROTOCOL.md and the threat model are updated, the protocol version is bumped, and the
   release notes mark the change as breaking;
-- unit and end-to-end tests cover the new format, including interoperability with the reference
-  `age` tool for Share payloads.
+- unit and end-to-end tests cover the new protocol, including its published test vectors.
 
 ### 0.10.0: Connectivity on restrictive networks
 **Context:** direct connections work for most networks, but fail when both sides are behind

@@ -63,8 +63,11 @@ All notable changes, one section per version. See [docs/ROADMAP.md](docs/ROADMAP
   "for this room"); the strength meter appears only once the passphrase is edited. Passphrase
   fields turn autocorrect off, and the typed-passphrase estimate no longer counts spaces.
 - **Guided sharing is the next release, 0.8.0.** Items G1–G5 from the guided sharing UX review
-  moved from the fixes list to a roadmap feature of their own, ahead of the rest; the `age`
-  format is now 0.9.0, the relay fallback 0.10.0 and static pages 0.11.0.
+  moved from the fixes list to a roadmap feature of their own, ahead of the rest; the relay
+  fallback is now 0.10.0 and static pages 0.11.0.
+- **Roadmap 0.9.0 is now a standard secure channel** instead of the `age` format, which was
+  considered and dropped (decision D23): the whole channel is to move to one published protocol,
+  Noise, with forward secrecy. A standalone prototype is in `prototypes/noise-wasm`.
 - **Pages deploys from `main`**, the renamed default branch; nothing had deployed since #21.
 
 ## [0.7.0] - 2026-10-24

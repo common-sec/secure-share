@@ -72,7 +72,25 @@ kept under "History".
 - **What:** AES-256-GCM, ECDSA P-256, HKDF, PBKDF2 (600k), HMAC, SHA-256 and the CSPRNG, all from
   the browser. Our own code is the protocol that combines them, specified in PROTOCOL.md and
   covered by attack tests.
-- **Alternatives considered for later:** PAKE, Noise, the `age` format for Share, MLS for group chat ([IDEAS](IDEAS.md)).
+- **Alternatives considered for later:** PAKE, Noise, MLS for group chat ([IDEAS](IDEAS.md)). The
+  `age` format was considered and dropped (D23).
+
+### D23. The `age` format: considered and dropped, for now ❌ (2026-10-25)
+- **What was proposed:** the roadmap (0.8.0, then 0.9.0 once guided sharing moved ahead)
+  planned to encrypt Share payloads (files and text) in the [age](https://age-encryption.org)
+  format, with the `age-encryption` library. It was built and
+  tested (closed PR #26): a post-quantum hybrid age identity derived from the room keys,
+  interoperable with the reference `age` tool, all tests green.
+- **Why it was dropped:** age is a file format, not a channel protocol. Chat messages, control
+  messages, the handshake, the passphrase proof and key derivation stayed our own design, and age
+  sat next to them inside the same channel, so there was more to review, not less. It also has no
+  sender authentication or forward secrecy, and costs about 1.6 KB per message, so it doesn't fit
+  chat. The goal is that the **whole channel** uses a reviewed construction.
+- **Next:** roadmap 0.9.0 is now a standard secure channel; the study compares Noise (`IK` with a
+  pre-shared key, on the snow library), binding our handshake to WebRTC's DTLS, PAKE (CPace), MLS
+  and HPKE.
+- **Revisit:** age (or HPKE) for data that leaves the live channel: a saved encrypted file, or
+  payloads through the 0.9.0 relay fallback.
 
 ### D11. Safety codes from both DTLS certificates ✅
 - **Why:** a man-in-the-middle would hold different certificates on each side, so the codes
