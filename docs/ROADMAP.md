@@ -184,9 +184,10 @@ and shared links show a trustworthy preview. See
 **Goal:** create and open encrypted files easily, locally in the browser, and pass them through
 Secure Share so the recipient keeps a file that stays encrypted at rest. See
 [IDEAS.md](IDEAS.md#encrypted-files-in-the-browser).
-**Format:** not chosen yet. A short spike compares `age` (`typage`), OpenPGP (`openpgp.js`) and
-7z AES-256 (7-Zip as WebAssembly) on audits, crypto quality, bundle size, speed and memory on large
-files, and which common tools open the result offline; the choice is recorded as a decision.
+**Format:** the [file format spike](reviews/2026-10-28-file-format-spike.md) (2026-10-28) compared
+`age`, OpenPGP and 7z on audits, crypto, speed, memory, bundle size and which tools open the result
+offline. It recommends **OpenPGP (`openpgp.js`) in the profile GnuPG reads**; the choice is recorded
+as a decision when 0.12.0 starts.
 **Why after static pages:** the tool gets its own static page (`/files/`) and mounts into it,
 "static first, JS enhances".
 **Done when:**

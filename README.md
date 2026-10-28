@@ -55,7 +55,7 @@ your data.
 | [docs/IDEAS.md](docs/IDEAS.md) | Ideas waiting to be chosen for the roadmap |
 | [docs/TODO.md](docs/TODO.md) | Internal work: platform, build, CI/CD and security process |
 | [CHANGELOG.md](CHANGELOG.md) | What changed in each version |
-| [docs/reviews/](docs/reviews/) | Reviews: [UX, product and SEO (2026-10-12)](docs/reviews/2026-10-12-ux-product-seo.md) |
+| [docs/reviews/](docs/reviews/) | Reviews: [UX, product and SEO (2026-10-12)](docs/reviews/2026-10-12-ux-product-seo.md), [file format spike (2026-10-28)](docs/reviews/2026-10-28-file-format-spike.md) |
 
 ## Run it
 
