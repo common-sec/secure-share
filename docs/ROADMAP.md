@@ -41,10 +41,14 @@ CI/CD, testing infrastructure and security process work is tracked separately, i
 | 0.9.0 | **Standard encryption format**: Share payloads in the audited `age` format instead of our own framing (breaking) | Planned |
 | 0.10.0 | **Connectivity on restrictive networks**: users behind symmetric NAT or UDP-blocking firewalls can still connect, through an end-to-end encrypted relay fallback | Planned |
 | 0.11.0 | **Static pages and SEO**: pre-rendered static pages, metadata and social previews, How it works and FAQ, sitemap, Search Console | Planned |
+| 0.12.0 | **Encrypted files**: package files, encrypt them with a password in a standard format and download the encrypted file; upload one, decrypt it and download the contents | Planned |
 | 1.0.0 | **Public launch**: release checklist and announcement, once the [pre-launch internal work](TODO.md#before-launch) is done | Planned |
 | 1.1.0 | **Share a generated password**: a button on the password generator opens a one-way Secure Share with it, passphrase and link ready | Planned |
 | 1.2.0 | **Local version of the app** (architecture to define: PWA, Electron, Docker image, single file) | Planned |
 | 1.3.0 | **AI-assisted memorable passphrases** (on-device model, entropy kept by the CSPRNG) | Planned |
+| 1.4.0 | **Encrypted files for a public key**: load someone's public key, encrypt for it; only their private key opens the file | Planned |
+| 1.5.0 | **Key pair wizard**: generate a key pair, send the public key over a secure channel, instructions to decrypt on another computer | Planned |
+| 1.6.0 | **Encrypted file viewer and Secure Share hand-off**: view decrypted files without saving them, send encrypted files with Secure Share | Planned |
 | — | **Logo and visual identity**: no version and no deadline (see below) | Unscheduled |
 
 The versions skipped above (0.2.0, 0.3.0, 0.3.1, 0.5.0, 0.6.0) were internal work, released
@@ -58,7 +62,8 @@ has what each contained. Features planned at that point were renumbered: the `ag
 because the main flows should be right before more is built on them, and it's the next thing
 people testing the site will see. Then the one breaking protocol change, because it's cheap
 before 1.0 and a major version after it. Then the relay fallback, so
-people on restrictive networks can connect at launch, and the static pages and SEO. The site is
+people on restrictive networks can connect at launch, and the static pages and SEO. Encrypted files
+come after the static pages (decided 2026-10-26), so the tool is built as a static page from the start. The site is
 already public, so the security basics in [TODO.md](TODO.md#before-launch) (repository hardening,
 staging, tagged production) come before the `age` format (0.9.0), and the external security review
 comes **just before launch**, so it reviews what actually ships. The logo needs iterations with
@@ -178,6 +183,38 @@ and shared links show a trustworthy preview. See
   without any tracking script);
 - the Lighthouse budgets in [TODO.md I4](TODO.md#i4-lighthouse-ci) pass.
 
+### 0.12.0: Encrypted files
+**Goal:** encrypt and decrypt files easily and locally in the browser, with a password, in a
+standard format that other tools also open. Nothing is uploaded and it works offline. See
+[IDEAS.md](IDEAS.md#encrypted-files-in-the-browser). This is the first step; public keys, a key
+wizard, the viewer and the Secure Share hand-off follow in [1.4.0](#140-encrypted-files-for-a-public-key)
+to [1.6.0](#160-encrypted-file-viewer-and-secure-share-hand-off).
+**Format:** the [file format spike](reviews/2026-10-28-file-format-spike.md) (2026-10-28) compared
+`age`, OpenPGP and 7z on audits, crypto, speed, memory, bundle size and which tools open the result
+offline. It recommends **OpenPGP (`openpgp.js`) in the profile GnuPG reads**; the choice is recorded
+as a decision when 0.12.0 starts. Password encryption is symmetric (AES-256), so it is already safe
+against quantum computers in either format.
+**Why after static pages:** the tool gets its own static page (`/files/`) and mounts into it,
+"static first, JS enhances".
+**Stories:**
+- **F1. Encrypt.** *As someone with files to protect, I add one or more files or a folder, choose
+  a password (a speakable one is suggested), and download one encrypted file.* Several files or a
+  folder are packaged first as a ZIP inside the encrypted file; a single file is encrypted as is.
+- **F2. Decrypt.** *As someone who received an encrypted file, I add it, type the password, and
+  download what's inside.* A single file comes back as itself; a package comes back as a plain ZIP
+  that the operating system opens, since browsers can't write folders.
+- **F3. Open it elsewhere.** *As a recipient without this site, I can open the file with a common
+  tool.* The page says which tools (for OpenPGP: GnuPG, Kleopatra, GPG Suite) and how.
+
+**Done when:**
+- F1 and F2 work in Chromium, Firefox and WebKit, with the library pinned and bundled like
+  Trystero; nothing is uploaded, nothing is stored, and the page works offline;
+- large files stream instead of being held whole in memory, and the page states its size limits;
+- the UI says before encrypting that a lost password means a lost file;
+- a decision records the format and why; ARCHITECTURE and THREAT_MODEL are updated;
+- unit and end-to-end tests cover F1 and F2, including interoperability with the format's
+  reference tool (`gpg` for OpenPGP) in both directions and for packaged folders.
+
 ### 1.0.0: Public launch
 **Goal:** announce the app, once the features above and the
 [pre-launch internal work](TODO.md#before-launch) (security basics, staging, testing, hosting and
@@ -217,6 +254,50 @@ words and a number into a memorable phrase, before the usual random variation ru
 **Done when:** the design in [IDEAS.md](IDEAS.md#ai-assisted-memorable-passphrases) is
 implemented, the output is validated to contain every chosen word, the shown strength counts only
 CSPRNG choices, and it falls back cleanly when no on-device model is available.
+
+### 1.4.0: Encrypted files for a public key
+**Goal:** encrypt a file so that only one person, the holder of a private key, can open it, with
+no shared password.
+**Stories:**
+- **F4.** *As a sender, I load the recipient's public key (pasted, or from a file), and the file I
+  encrypt can only be opened with their private key.*
+- **F5.** *As the recipient, I load my private key (protected by its own passphrase) to decrypt the
+  file in the page, or I use GnuPG or Kleopatra.*
+
+**Post-quantum:** classical keys (X25519) aren't safe against a future quantum computer. `age` has
+hybrid post-quantum keys today; OpenPGP has a standard for them
+([RFC 9980](https://www.rfc-editor.org/rfc/rfc9980)), but `openpgp.js` 6.3.2 doesn't implement it
+and GnuPG has it only in its 2.5 development series. Check both again when this starts, and record
+whether post-quantum keys are required.
+**Done when:** F4 and F5 work, the app stores no keys, and interoperability with the reference tool
+is tested both ways.
+
+### 1.5.0: Key pair wizard
+**Goal:** someone with no key can get one and receive encrypted files, guided step by step.
+**Stories:**
+- **F6.** *As a recipient, a wizard generates my key pair in the browser and has me protect the
+  private key with a passphrase and save it.*
+- **F7.** *As that recipient, I send my public key to the sender through Secure Share (or Chat), so
+  it arrives unaltered.*
+- **F8.** *As that recipient, I get clear instructions to decrypt on another computer with GnuPG,
+  Kleopatra or GPG Suite.*
+
+**Done when:** F6 to F8 are covered by end-to-end tests, including the public key arriving through
+Secure Share and a file encrypted for it opening with the reference tool.
+
+### 1.6.0: Encrypted file viewer and Secure Share hand-off
+**Goal:** look at a decrypted file without ever saving the plaintext, and send encrypted files in
+one click.
+**Stories:**
+- **F9.** *As a recipient, I view a decrypted file (text, images, audio, video, PDF) in the page,
+  from memory, and nothing is written to disk unless I choose to save it.* HTML and SVG never run
+  scripts; the threat model says what this doesn't cover (swap, the browser's viewer caches).
+- **F10.** *As a sender, "Send with Secure Share" opens Share with the encrypted file attached, in
+  memory.* The recipient keeps a file that stays encrypted at rest.
+- **F11.** *As a Secure Share recipient, an encrypted file I receive opens straight in the viewer.*
+
+**Done when:** F9 to F11 work and are covered by end-to-end tests, and the CSP changes the viewer
+needs (`media-src blob:`, possibly `frame-src blob:` for PDFs) are documented.
 
 ### Unscheduled: Logo and visual identity
 **Why no version:** it needs several iterations and feedback from people, and it doesn't affect

@@ -1,0 +1,12 @@
+{
+  "name": "file-formats-spike",
+  "private": true,
+  "type": "module",
+  "description": "Spike: compare age, OpenPGP and 7z for the 0.12.0 encrypted files tool. Not part of the app.",
+  "dependencies": {
+    "7z-wasm": "1.2.0",
+    "age-encryption": "0.3.1",
+    "esbuild": "0.28.2",
+    "openpgp": "6.3.2"
+  }
+}
