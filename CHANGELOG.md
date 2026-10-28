@@ -5,9 +5,34 @@ All notable changes, one section per version. See [docs/ROADMAP.md](docs/ROADMAP
 ## [Unreleased]
 
 ### Changed
+- **Browsers no longer offer to save passphrases.** Passphrase fields are masked without
+  `type=password` (with `-webkit-text-security`, in Chrome, Edge and Safari), so browsers and
+  password managers don't treat them as logins to save. Where that masking isn't available
+  (Firefox), the field falls back to a password field with autocomplete off and the password
+  managers' "ignore" attributes.
+- **The recipient's next step is one clear button.** The received text stays hidden behind a
+  large **Show the secret text** button (then Copy, Hide, Clear from screen), and each file has
+  a large **Download** button. The steps tick as they happen, including "Here's what they
+  sent" once everything has arrived.
+- **Five clear steps on the sender's screen:** 1. Link copied, 2. Paste it in your chat or email
+  (Copy again, Share…, QR code, Send with icons), 3. Tell them these words, 4. They open the link
+  and type the words, 5. They receive it. Your steps tick as you do them; the recipient's show an
+  orange timer while they're pending, with the live status inside, and tick when they happen.
+  Keeping the page open and the screen on moved below the steps.
+- **Send the words another way:** under the words, Text message, WhatsApp, Telegram, Email,
+  Gmail and Outlook links carry the words only, never the link. Picking the same app the link
+  went through shows a "Not recommended" warning (anyone who reads that conversation gets both),
+  with Send anyway or Choose another way.
+- **The recipient is guided step by step** (roadmap G5). The page says what this is ("Someone
+  sent you something privately… can be opened only once, and isn’t stored anywhere"), with How
+  it works and a link to the source code. Then: 1. type the words they tell you ("usually six
+  words, exactly as they say them") and Open; 2. connecting to the sender, with live stages and
+  the safety code shown small; 3. what they sent, with **Done**, which clears everything from the
+  page, and **Send something back**. The slow-connection message no longer talks about tabs.
 - **The waiting screen is the instructions** (roadmap G4), as three numbered steps that tick as
-  they happen: 1. the link is copied, paste it in your chat (Copy again, Share…, Send with, QR code, and the link
-  itself under "Show the link"); 2. tell them these words, shown large and word by word, masked
+  they happen: 1. the link is copied, paste it in your chat, with what's happening right under it
+  ("Waiting for the recipient to open the link…"), then Copy again, Share…, QR code and the Send
+  with buttons as icons; 2. tell them these words, shown large and word by word, masked
   until you click Show, with a line for when you're not on a call; 3. keep this page open, with
   **Keep my screen on** where the browser supports it. With "Check who's receiving" on, step 2
   asks you to read your code to them, with Deliver and Decline.
@@ -15,8 +40,8 @@ All notable changes, one section per version. See [docs/ROADMAP.md](docs/ROADMAP
   short invitation straight away: "I’m sending you something privately with CommonSec Share.
   Open this link, and I’ll tell you the words: https://…". It never contains the passphrase. The
   screen says "Link copied ✓ Paste it in your chat with them", or asks you to copy the link if
-  the browser refused. "Copy link only", "Copy invitation" and the system share sheet (where
-  available) are next to it, plus **Send with** Email, Gmail, Outlook, WhatsApp, Telegram or
+  the browser refused. One copy button (the invitation with the link, never the link alone) and the
+  system share sheet (where available) are next to it, plus **Send with** Email, Gmail, Outlook, WhatsApp, Telegram or
   Teams (plain links: the mail app or the service's official compose/share page, nothing loaded
   from them until clicked) and a **QR code** of the link
   for a recipient in the same room. Slack and Google Chat have no share link; Copy and the share
