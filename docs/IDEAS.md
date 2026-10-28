@@ -169,15 +169,17 @@ Argon2) would change. Its outcome could become `docs/HOW_IT_WORKS.md` for users 
 AES-GCM framing. One more dependency, but a standard and interoperable format.
 
 ## Encrypted files in the browser
-**Status:** ✅ Accepted → 0.12.0 (after static pages)
-**Problem:** encrypting a file to keep or send usually means installing a tool; and opening one
+**Status:** ✅ Accepted → 0.12.0 (password encryption), 1.4.0 (public keys), 1.5.0 (key pair
+wizard), 1.6.0 (viewer and Secure Share hand-off)
+**Problem:** encrypting a file to keep or send usually means installing a tool, and opening one
 means saving a decrypted copy to disk.
-**Proposal:** a Files page that encrypts and decrypts files locally in a standard format, a viewer
-that shows the decrypted file from memory, and a one-click hand-off to and from Secure Share. The
-format (`age`, OpenPGP or 7z) is chosen by a comparison spike, so files also open with common tools.
-**Trade-offs / risks:** one more pinned dependency (size depends on the format: 7z needs WebAssembly);
-the CSP gains `media-src blob:` and possibly `frame-src blob:` for PDFs; memory limits file size;
-the OS or the browser's viewers may still leave traces.
+**Proposal:** a Files page that packages, encrypts and decrypts files locally in a standard format,
+first with a password, later with public keys and a wizard that creates them; then a viewer that
+shows decrypted files from memory and a one-click hand-off to and from Secure Share. The format
+(OpenPGP recommended by the [spike](reviews/2026-10-28-file-format-spike.md)) also opens with
+common tools.
+**Trade-offs / risks:** one more pinned dependency (and a ZIP library for packaging); memory limits
+unless large files stream; the OS or the browser's viewers may still leave traces.
 
 ## Group chat on MLS (RFC 9420)
 **Status:** 🅿️ Parked: heavy (WASM). Only worth it if Chat becomes the primary product. It would

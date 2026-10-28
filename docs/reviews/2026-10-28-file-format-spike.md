@@ -106,8 +106,14 @@ starts.
 
 Trade-offs to accept, or to settle when building:
 
-- **No post-quantum public keys** in the GnuPG profile. Passphrase mode is symmetric, so it's already
-  safe against quantum attacks. If post-quantum keys become a requirement, `age` is the fallback.
+- **Post-quantum:** password encryption is symmetric in both formats (AES-256 or ChaCha20 with
+  256-bit keys), which quantum computers don't break, so the first release (password only) is
+  already safe. Public keys are where they differ. `age` has hybrid ML-KEM-768 + X25519 keys
+  (`age1pq…`) today. OpenPGP standardised the same idea in
+  [RFC 9980](https://www.rfc-editor.org/rfc/rfc9980), but `openpgp.js` 6.3.2 doesn't implement it
+  (checked in the bundle), and GnuPG has post-quantum keys only in its 2.5 development series. So
+  GnuPG-compatible public keys are classical for now. Revisit this when public keys are built
+  (roadmap 1.4.0); `age` is the fallback if post-quantum keys are required then.
 - **The S2K is fast** (0.08 s), which makes guessing cheaper than with scrypt. Speakable passphrases
   carry about 59 bits (G1), which keeps guessing impractical. Raising the iteration count to the
   maximum GnuPG accepts is still worth testing.
