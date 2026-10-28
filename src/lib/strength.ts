@@ -22,6 +22,7 @@ const WORD_BITS = Math.log2(WORDS.length);
  *   - a listed word (or its plural): log2(list size); a linking word: log2(42)
  *   - any other run of letters: 2 bits per letter (typical for English-like text)
  *   - digits: log2(10) each; the first symbol log2(32), symbols repeating the previous one: 0
+ *   - spaces: nothing (words separated by spaces are what people type, and what we generate)
  *   - capitals: nothing (people capitalise predictably)
  * Never more than length × log2(95), the bound for printable ASCII.
  */
@@ -36,7 +37,7 @@ export function estimateBits(text: string): number {
       else bits += 2 * w.length;
     } else if (/^[0-9]/.test(run)) {
       bits += run.length * Math.log2(10);
-    } else {
+    } else if (run !== ' ') {
       bits += run === lastSymbol ? 0 : Math.log2(32);
       lastSymbol = run;
     }

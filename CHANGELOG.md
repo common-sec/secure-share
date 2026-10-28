@@ -4,6 +4,82 @@ All notable changes, one section per version. See [docs/ROADMAP.md](docs/ROADMAP
 
 ## [Unreleased]
 
+### Added
+- **The app says when a network blocks the connection** (roadmap fix N1). When the other side is
+  found but no direct connection can be opened (a firewall blocking UDP or WebRTC, or strict NATs
+  on both sides), or when no discovery relay can be reached for 10 seconds (WebSockets blocked, or
+  offline), Share and Chat now say so, with what to try, instead of "Still looking…" forever.
+  `SecureRoom` has two new events, `direct-blocked` and `relays`; the fake transport in the unit
+  tests can simulate both networks.
+
+### Changed
+- **Browsers no longer offer to save passphrases.** Passphrase fields are masked without
+  `type=password` (with `-webkit-text-security`, in Chrome, Edge and Safari), so browsers and
+  password managers don't treat them as logins to save. Where that masking isn't available
+  (Firefox), the field falls back to a password field with autocomplete off and the password
+  managers' "ignore" attributes.
+- **The recipient's next step is one clear button.** The received text stays hidden behind a
+  large **Show the secret text** button (then Copy, Hide, Clear from screen), and each file has
+  a large **Download** button. The steps tick as they happen, including "Here's what they
+  sent" once everything has arrived.
+- **Five clear steps on the sender's screen:** 1. Link copied, 2. Paste it in your chat or email
+  (Copy again, Share…, QR code, Send with icons), 3. Tell them these words, 4. They open the link
+  and type the words, 5. They receive it. Your steps tick as you do them; the recipient's show an
+  orange timer while they're pending, with the live status inside, and tick when they happen.
+  Keeping the page open and the screen on moved below the steps.
+- **Send the words another way:** under the words, Text message, WhatsApp, Telegram, Email,
+  Gmail and Outlook links carry the words only, never the link. Picking the same app the link
+  went through shows a "Not recommended" warning (anyone who reads that conversation gets both),
+  with Send anyway or Choose another way.
+- **The recipient is guided step by step** (roadmap G5). The page says what this is ("Someone
+  sent you something privately… can be opened only once, and isn’t stored anywhere"), with How
+  it works and a link to the source code. Then: 1. type the words they tell you ("usually six
+  words, exactly as they say them") and Open; 2. connecting to the sender, with live stages and
+  the safety code shown small; 3. what they sent, with **Done**, which clears everything from the
+  page, and **Send something back**. The slow-connection message no longer talks about tabs.
+- **The waiting screen is the instructions** (roadmap G4), as three numbered steps that tick as
+  they happen: 1. the link is copied, paste it in your chat, with what's happening right under it
+  ("Waiting for the recipient to open the link…"), then Copy again, Share…, QR code and the Send
+  with buttons as icons; 2. tell them these words, shown large and word by word, masked
+  until you click Show, with a line for when you're not on a call; 3. keep this page open, with
+  **Keep my screen on** where the browser supports it. With "Check who's receiving" on, step 2
+  asks you to read your code to them, with Deliver and Decline.
+- **The link is copied for you** (roadmap G3). Creating a Share copies a
+  short invitation straight away: "I’m sending you something privately with CommonSec Share.
+  Open this link, and I’ll tell you the words: https://…". It never contains the passphrase. The
+  screen says "Link copied ✓ Paste it in your chat with them", or asks you to copy the link if
+  the browser refused. One copy button (the invitation with the link, never the link alone) and the
+  system share sheet (where available) are next to it, plus **Send with** Email, Gmail, Outlook, WhatsApp, Telegram or
+  Teams (plain links: the mail app or the service's official compose/share page, nothing loaded
+  from them until clicked) and a **QR code** of the link
+  for a recipient in the same room. Slack and Google Chat have no share link; Copy and the share
+  sheet cover them.
+- **A second runtime dependency:** `qrcode-generator@2.0.4` (MIT, no dependencies) computes the
+  QR code; it's locked, bundled and loaded only when the QR code is shown (decision D13).
+- **One question, one button** to create a Share (roadmap G2). The page asks "What do you want
+  to send?", with "+ Add files" (or drop files anywhere on the card) and **Create link**. The
+  passphrase is generated when the link is created and shown on the next screen. Choosing your
+  own words and checking who's receiving are under **More options**. "Keep the screen on" moved
+  to the waiting screen, and the longer explanations and "Which one should I use?" moved to a
+  **How it works** box under the form, leaving one line that points to Secure Chat.
+- **Room passphrases you can say aloud** (roadmap G1). Chat and Share now generate six random
+  lowercase words separated by spaces, e.g. `ginger mule honey hen wizard lotus`, picked
+  independently from the full list of 877 words: about 59 bits, at least as strong as the
+  previous three bent words with a symbol, capitals and a number (about 57). They're matched
+  exactly as typed (only leading and trailing spaces are ignored); key derivation is unchanged.
+  Instead of "Fair · ≈57 bits", the sender sees "Strong enough for this one-time link ✓" (Chat:
+  "for this room"); the strength meter appears only once the passphrase is edited. Passphrase
+  fields turn autocorrect off, and the typed-passphrase estimate no longer counts spaces.
+- **Guided sharing is the next release, 0.8.0.** Items G1–G5 from the guided sharing UX review
+  moved from the fixes list to a roadmap feature of their own, ahead of the rest; the relay
+  fallback is now 0.10.0 and static pages 0.11.0.
+- **Roadmap 0.9.0 is now a standard secure channel** instead of the `age` format, which was
+  considered and dropped (decision D23): the whole channel is to move to one published protocol,
+  Noise, with forward secrecy. A standalone prototype is in `prototypes/noise-wasm`.
+- **Pages deploys from `main`**, the renamed default branch; nothing had deployed since #21.
+
+## [0.7.0] - 2026-10-24
+
 ### Security
 - **The chat passphrase is no longer stored in the browser** (code scanning alert #1). It used to
   be kept in clear in sessionStorage so the host could see it after a reload; now it stays in
@@ -18,12 +94,6 @@ All notable changes, one section per version. See [docs/ROADMAP.md](docs/ROADMAP
   carries the time left and `bye` has a new `expired` reason; older peers ignore both (roadmap fix K3).
 
 ### Added
-- **The app says when a network blocks the connection** (roadmap fix N1). When the other side is
-  found but no direct connection can be opened (a firewall blocking UDP or WebRTC, or strict NATs
-  on both sides), or when no discovery relay can be reached for 10 seconds (WebSockets blocked, or
-  offline), Share and Chat now say so, with what to try, instead of "Still looking…" forever.
-  `SecureRoom` has two new events, `direct-blocked` and `relays`; the fake transport in the unit
-  tests can simulate both networks.
 - **Safari's engine is tested.** The unit and end-to-end suites also run on **WebKit** (Safari, and
   every browser on iPhone and iPad), and every pair of different engines is tested in both
   directions, for Share (sender → recipient) and Chat (host → guest). All 50 unit tests and every end-to-end

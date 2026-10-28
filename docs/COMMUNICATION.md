@@ -58,7 +58,7 @@ https://share.common-sec.org/#/share?r=Q7nmLtvgH6OIiTJ387mbqQ&k=G4laNCs8p9dVdjEw
 
 | Not in the link | Example | What it is |
 |---|---|---|
-| **Passphrase** | `Stone~Behind~Karrotish42` (an example: never use a published passphrase) | Shared separately (e.g. read out on a call). Proven inside the direct channel; never sent anywhere |
+| **Passphrase** | `ginger mule honey hen wizard lotus` (an example: never use a published passphrase) | Shared separately (e.g. read out on a call). Proven inside the direct channel; never sent anywhere |
 | Host public key | `BME6VIGq4d4D2PcV…0PhwAAE` (87 chars) | The host's ECDSA P-256 public key, sent in the handshake (step 4). Its SHA-256 must equal `h` |
 
 What's derived from them ([PROTOCOL.md §2](PROTOCOL.md)):
@@ -274,7 +274,7 @@ four stages:
 |---|---|---|---|
 | `host` | The device's own network interface (hidden behind a random `.local` name) | `4f1c…3c.local:54321` | Both devices are on the same local network |
 | `srflx` (server reflexive) | The public address a STUN server saw (below) | `198.51.100.23:51234` | The NATs allow hole punching: most networks |
-| `relay` | A TURN relay server | `203.0.113.7:3478` | Always, but traffic goes through the relay. **We don't use TURN today** (roadmap 0.9.0) |
+| `relay` | A TURN relay server | `203.0.113.7:3478` | Always, but traffic goes through the relay. **We don't use TURN today** (roadmap 0.10.0) |
 
 ### The ICE credentials
 
@@ -385,7 +385,7 @@ the port the other peer would reach, so the checks miss.
   The app does notice: when offers were exchanged through the relays but no direct path was
   found, both sides are told that a network between them blocks direct connections, and what to
   try. It also says when none of the relays can be reached, as on networks that filter WebSockets.
-  Fixing that, with an end-to-end encrypted relay fallback, is roadmap item **0.9.0**
+  Fixing that, with an end-to-end encrypted relay fallback, is roadmap item **0.10.0**
   ([ROADMAP.md](ROADMAP.md)).
 
 ## Step 4: our own checks, inside the direct channel

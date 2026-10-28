@@ -36,32 +36,39 @@ CI/CD, testing infrastructure and security process work is tracked separately, i
 |---|---|---|
 | 0.1.0 | **Baseline**: password/passphrase generator, Secure Chat, Secure Share, docs, browser test suite | ✅ Done |
 | 0.4.0 | **First real-world test feedback**: Secure Share as the home page, clearer naming, stronger and masked room passphrases with a strength meter | ✅ Done |
-| 0.7.0 | **Names, organisation and domain**: CommonSec organisation, CommonSec Share app, served at `share.common-sec.org` | ✅ Done (to tag) |
-| 0.8.0 | **Standard encryption format**: Share payloads in the audited `age` format instead of our own framing (breaking) | Next |
-| 0.9.0 | **Connectivity on restrictive networks**: users behind symmetric NAT or UDP-blocking firewalls can still connect, through an end-to-end encrypted relay fallback | Planned |
-| 0.10.0 | **Static pages and SEO**: pre-rendered static pages, metadata and social previews, How it works and FAQ, sitemap, Search Console | Planned |
+| 0.7.0 | **Names, organisation and domain**: CommonSec organisation, CommonSec Share app, served at `share.common-sec.org` | ✅ Done |
+| 0.8.0 | **Guided sharing**: sender and recipient guided step by step, designed first for use on a call: speakable passphrases, a one-question creation page, the link copied automatically, guided waiting and recipient screens | In progress |
+| 0.9.0 | **Standard secure channel**: our own handshake and message encryption replaced by a published protocol (Noise `IKpsk1` on the snow library, under study), with forward secrecy (breaking) | Planned (study) |
+| 0.10.0 | **Connectivity on restrictive networks**: users behind symmetric NAT or UDP-blocking firewalls can still connect, through an end-to-end encrypted relay fallback | Planned |
+| 0.11.0 | **Static pages and SEO**: pre-rendered static pages, metadata and social previews, How it works and FAQ, sitemap, Search Console | Planned |
+| 0.12.0 | **Encrypted files**: package files, encrypt them with a password in a standard format and download the encrypted file; upload one, decrypt it and download the contents | Planned |
 | 1.0.0 | **Public launch**: release checklist and announcement, once the [pre-launch internal work](TODO.md#before-launch) is done | Planned |
 | 1.1.0 | **Share a generated password**: a button on the password generator opens a one-way Secure Share with it, passphrase and link ready | Planned |
 | 1.2.0 | **Local version of the app** (architecture to define: PWA, Electron, Docker image, single file) | Planned |
 | 1.3.0 | **AI-assisted memorable passphrases** (on-device model, entropy kept by the CSPRNG) | Planned |
+| 1.4.0 | **Encrypted files for a public key**: load someone's public key, encrypt for it; only their private key opens the file | Planned |
+| 1.5.0 | **Key pair wizard**: generate a key pair, send the public key over a secure channel, instructions to decrypt on another computer | Planned |
+| 1.6.0 | **Encrypted file viewer and Secure Share hand-off**: view decrypted files without saving them, send encrypted files with Secure Share | Planned |
 | — | **Logo and visual identity**: no version and no deadline (see below) | Unscheduled |
 
 The versions skipped above (0.2.0, 0.3.0, 0.3.1, 0.5.0, 0.6.0) were internal work, released
 before internal work moved to [TODO.md](TODO.md) on 2026-10-19; [CHANGELOG.md](../CHANGELOG.md)
 has what each contained. Features planned at that point were renumbered: the `age` format was
 0.11.0, the relay fallback 0.12.0, static pages 0.13.0, and the features after 1.0 were 1.3.0 to
-1.5.0.
+1.5.0. On 2026-10-25 guided sharing became 0.8.0, ahead of them, and they moved up one: the
+`age` format was 0.8.0, the relay fallback 0.9.0 and static pages 0.10.0.
 
-**Why this order (2026-10-15, updated 2026-10-19):** the one breaking protocol change comes
-first, because it's cheap before 1.0 and a major version after it. Then the relay fallback, so
-people on restrictive networks can connect at launch, and the static pages and SEO. The site is
+**Why this order (2026-10-15, updated 2026-10-19 and 2026-10-25):** guided sharing comes first,
+because the main flows should be right before more is built on them, and it's the next thing
+people testing the site will see. Then the one breaking protocol change, because it's cheap
+before 1.0 and a major version after it. Then the relay fallback, so
+people on restrictive networks can connect at launch, and the static pages and SEO. Encrypted files
+come after the static pages (decided 2026-10-26), so the tool is built as a static page from the start. The site is
 already public, so the security basics in [TODO.md](TODO.md#before-launch) (repository hardening,
-staging, tagged production) come before the next feature release, and the external security review
-comes **just before launch**, so it reviews what actually ships. The logo needs iterations with
+staging, tagged production) come before the standard secure channel (0.9.0), and the external
+security review comes **just before launch**, so it reviews what actually ships. The logo needs iterations with
 people and doesn't affect usability, so it isn't on the critical path. The high-priority
-[fixes](#fixes-and-small-improvements) go in as patches between features, before launch; the
-[guided sharing](#before-the-next-release-guided-sharing) items (2026-10-19) come first, before
-0.8.0, because the main flows should be right before more is built on them.
+[fixes](#fixes-and-small-improvements) go in as patches between features, before launch.
 
 ### 0.4.0: First real-world test feedback ✅
 **Context:** first test of the published site, between two devices on different networks (mobile data and wifi), with
@@ -92,25 +99,53 @@ Moved out on 2026-10-15: organisation 2FA, rulesets and owners go to the GitHub 
 (now [TODO.md I1](TODO.md#i1-github-hardening-basics)); the logo has its own
 unscheduled item at the end.
 
-### 0.8.0: Standard encryption format
-**Goal:** encrypt with a standard, audited format instead of our own framing, so reviewers check
-a known construction rather than ours. See
-[IDEAS.md](IDEAS.md#encrypt-share-payloads-in-the-age-format).
-**Why before launch:** it changes the wire format, so old links and peers stop working. Before
-1.0 that's a minor version; after it, a major one.
+### 0.8.0: Guided sharing
+From the [guided sharing UX review](reviews/2026-10-19-ux-guided-sharing.md) (2026-10-19), with
+its [user stories](reviews/2026-10-19-ux-guided-sharing.md#1-user-stories). **Goal:** sender and
+recipient are guided step by step, designed first for using the app on a call (link in the chat,
+passphrase said aloud). Done in this order; the open [fixes](#fixes-and-small-improvements) that
+these cover point here.
 **Done when:**
-- Share payloads use the **`age` format** (the `typage` library, pinned and bundled like
-  Trystero); the key schedule is reviewed at the same time (e.g. scrypt as in `age`'s passphrase
-  recipient, or our PBKDF2-derived key as an X25519 or symmetric recipient), and the choice is
-  recorded as a decision;
-- Chat's message framing is assessed for the same change; it either moves too or the reason it
-  stays is documented;
+- [x] **G1. Speakable room passphrases.** Six fully random lowercase words from the full word list
+      (about 59 bits, so an offline attack on recorded traffic isn't practical), matched exactly as given (no normalisation, key derivation unchanged), plain
+      strength wording.
+- [x] **G2. One-question creation page.** "What do you want to send?" and one button; the
+      passphrase moves to the next screen; choosing your own words and "check who's receiving"
+      go under More options; the Secure Chat pointer is one line; details move to How it works.
+- [x] **G3. Link copied automatically.** An invitation with the link (never the passphrase) is
+      copied on creation, with a fallback; "Copy link only", the share sheet and a QR code as
+      secondary actions.
+- [x] **G4. Guided waiting screen.** Numbered steps (paste the link, say the words, keep this
+      page open), with "Keep my screen on" as part of the last step, and a line for when you're
+      not on a call.
+- [x] **G5. Guided recipient page.** What this is and that nothing is stored, "type the words they
+      tell you", live connection stages, the result, then Done (clears everything) and Send
+      something back.
+
+### 0.9.0: Standard secure channel
+**Goal:** the whole channel (handshake, chat messages, Share payloads, files and control messages)
+runs on one published, reviewed protocol instead of our own construction, so reviewers check a
+known design against its specification. **Changed 2026-10-25:** this item used to be the `age`
+file format for Share payloads only; that was dropped because it would have added a second
+construction next to ours ([D23](DECISIONS.md)).
+**Why before launch:** it changes the protocol, so old links and peers stop working. Before 1.0
+that's a minor version; after it, a major one.
+**Now:** a study of the options (Noise, binding to WebRTC's DTLS, PAKE, MLS, HPKE) and their
+browser libraries. The current recommendation is `Noise_IKpsk1_25519_ChaChaPoly_SHA256` with the
+snow library compiled to WebAssembly, and a pre-shared key from the link secret and the
+passphrase. A prototype in [prototypes/noise-wasm](../prototypes/noise-wasm/README.md) passes the
+published test vectors and runs in Chromium; it showed that `IKpsk2` (WireGuard's position) would
+let anyone with the link test passphrase guesses offline, which D9 rules out.
+**Done when:**
+- the protocol and its library (or our implementation of a published pattern, checked against
+  its test vectors) are chosen and recorded as a decision;
+- every message type uses it, with forward secrecy, no offline passphrase guessing (D9), host
+  authentication against the link, and recorded traffic still safe from a future quantum computer;
 - docs/PROTOCOL.md and the threat model are updated, the protocol version is bumped, and the
   release notes mark the change as breaking;
-- unit and end-to-end tests cover the new format, including interoperability with the reference
-  `age` tool for Share payloads.
+- unit and end-to-end tests cover the new protocol, including its published test vectors.
 
-### 0.9.0: Connectivity on restrictive networks
+### 0.10.0: Connectivity on restrictive networks
 **Context:** direct connections work for most networks, but fail when both sides are behind
 restrictive NATs (symmetric NAT, common on corporate networks and some mobile carriers) or when a
 firewall blocks UDP. Industry estimates put the share of WebRTC sessions that need a relay at
@@ -136,7 +171,7 @@ everyone else keeps direct connections.
   local TURN container;
 - COMMUNICATION.md, DECISIONS.md (D5) and THREAT_MODEL.md updated.
 
-### 0.10.0: Static pages and SEO
+### 0.11.0: Static pages and SEO
 **Goal:** people searching for how to send a password or a sensitive file securely find the app,
 and shared links show a trustworthy preview. See
 [the review](reviews/2026-10-12-ux-product-seo.md#7-seo-and-discoverability) and
@@ -154,6 +189,38 @@ and shared links show a trustworthy preview. See
 - the site is verified in Google Search Console and Bing Webmaster Tools (search impressions
   without any tracking script);
 - the Lighthouse budgets in [TODO.md I4](TODO.md#i4-lighthouse-ci) pass.
+
+### 0.12.0: Encrypted files
+**Goal:** encrypt and decrypt files easily and locally in the browser, with a password, in a
+standard format that other tools also open. Nothing is uploaded and it works offline. See
+[IDEAS.md](IDEAS.md#encrypted-files-in-the-browser). This is the first step; public keys, a key
+wizard, the viewer and the Secure Share hand-off follow in [1.4.0](#140-encrypted-files-for-a-public-key)
+to [1.6.0](#160-encrypted-file-viewer-and-secure-share-hand-off).
+**Format:** the [file format spike](reviews/2026-10-28-file-format-spike.md) (2026-10-28) compared
+`age`, OpenPGP and 7z on audits, crypto, speed, memory, bundle size and which tools open the result
+offline. It recommends **OpenPGP (`openpgp.js`) in the profile GnuPG reads**; the choice is recorded
+as a decision when 0.12.0 starts. Password encryption is symmetric (AES-256), so it is already safe
+against quantum computers in either format.
+**Why after static pages:** the tool gets its own static page (`/files/`) and mounts into it,
+"static first, JS enhances".
+**Stories:**
+- **F1. Encrypt.** *As someone with files to protect, I add one or more files or a folder, choose
+  a password (a speakable one is suggested), and download one encrypted file.* Several files or a
+  folder are packaged first as a ZIP inside the encrypted file; a single file is encrypted as is.
+- **F2. Decrypt.** *As someone who received an encrypted file, I add it, type the password, and
+  download what's inside.* A single file comes back as itself; a package comes back as a plain ZIP
+  that the operating system opens, since browsers can't write folders.
+- **F3. Open it elsewhere.** *As a recipient without this site, I can open the file with a common
+  tool.* The page says which tools (for OpenPGP: GnuPG, Kleopatra, GPG Suite) and how.
+
+**Done when:**
+- F1 and F2 work in Chromium, Firefox and WebKit, with the library pinned and bundled like
+  Trystero; nothing is uploaded, nothing is stored, and the page works offline;
+- large files stream instead of being held whole in memory, and the page states its size limits;
+- the UI says before encrypting that a lost password means a lost file;
+- a decision records the format and why; ARCHITECTURE and THREAT_MODEL are updated;
+- unit and end-to-end tests cover F1 and F2, including interoperability with the format's
+  reference tool (`gpg` for OpenPGP) in both directions and for packaged folders.
 
 ### 1.0.0: Public launch
 **Goal:** announce the app, once the features above and the
@@ -195,6 +262,50 @@ words and a number into a memorable phrase, before the usual random variation ru
 implemented, the output is validated to contain every chosen word, the shown strength counts only
 CSPRNG choices, and it falls back cleanly when no on-device model is available.
 
+### 1.4.0: Encrypted files for a public key
+**Goal:** encrypt a file so that only one person, the holder of a private key, can open it, with
+no shared password.
+**Stories:**
+- **F4.** *As a sender, I load the recipient's public key (pasted, or from a file), and the file I
+  encrypt can only be opened with their private key.*
+- **F5.** *As the recipient, I load my private key (protected by its own passphrase) to decrypt the
+  file in the page, or I use GnuPG or Kleopatra.*
+
+**Post-quantum:** classical keys (X25519) aren't safe against a future quantum computer. `age` has
+hybrid post-quantum keys today; OpenPGP has a standard for them
+([RFC 9980](https://www.rfc-editor.org/rfc/rfc9980)), but `openpgp.js` 6.3.2 doesn't implement it
+and GnuPG has it only in its 2.5 development series. Check both again when this starts, and record
+whether post-quantum keys are required.
+**Done when:** F4 and F5 work, the app stores no keys, and interoperability with the reference tool
+is tested both ways.
+
+### 1.5.0: Key pair wizard
+**Goal:** someone with no key can get one and receive encrypted files, guided step by step.
+**Stories:**
+- **F6.** *As a recipient, a wizard generates my key pair in the browser and has me protect the
+  private key with a passphrase and save it.*
+- **F7.** *As that recipient, I send my public key to the sender through Secure Share (or Chat), so
+  it arrives unaltered.*
+- **F8.** *As that recipient, I get clear instructions to decrypt on another computer with GnuPG,
+  Kleopatra or GPG Suite.*
+
+**Done when:** F6 to F8 are covered by end-to-end tests, including the public key arriving through
+Secure Share and a file encrypted for it opening with the reference tool.
+
+### 1.6.0: Encrypted file viewer and Secure Share hand-off
+**Goal:** look at a decrypted file without ever saving the plaintext, and send encrypted files in
+one click.
+**Stories:**
+- **F9.** *As a recipient, I view a decrypted file (text, images, audio, video, PDF) in the page,
+  from memory, and nothing is written to disk unless I choose to save it.* HTML and SVG never run
+  scripts; the threat model says what this doesn't cover (swap, the browser's viewer caches).
+- **F10.** *As a sender, "Send with Secure Share" opens Share with the encrypted file attached, in
+  memory.* The recipient keeps a file that stays encrypted at rest.
+- **F11.** *As a Secure Share recipient, an encrypted file I receive opens straight in the viewer.*
+
+**Done when:** F9 to F11 work and are covered by end-to-end tests, and the CSP changes the viewer
+needs (`media-src blob:`, possibly `frame-src blob:` for PDFs) are documented.
+
 ### Unscheduled: Logo and visual identity
 **Why no version:** it needs several iterations and feedback from people, and it doesn't affect
 usability, so nothing waits for it. Pages use a placeholder social image until it's ready.
@@ -211,35 +322,11 @@ features above.
 
 Legend: `[ ]` to do · `[x]` done (keep for one release, then remove).
 
-### Before the next release: guided sharing
-
-From the [guided sharing UX review](reviews/2026-10-19-ux-guided-sharing.md) (2026-10-19), with
-its [user stories](reviews/2026-10-19-ux-guided-sharing.md#1-user-stories). **Goal:** sender and
-recipient are guided step by step, designed first for using the app on a call (link in the chat,
-passphrase said aloud). Done in this order, before 0.8.0; the open items below that these cover
-point here.
-
-- [ ] **G1. Speakable room passphrases.** Six fully random lowercase words from the full word list
-      (about 59 bits, so an offline attack on recorded traffic isn't practical), matched exactly as given (no normalisation, key derivation unchanged), plain
-      strength wording.
-- [ ] **G2. One-question creation page.** "What do you want to send?" and one button; the
-      passphrase moves to the next screen; choosing your own words and "check who's receiving"
-      go under More options; the Secure Chat pointer is one line; details move to How it works.
-- [ ] **G3. Link copied automatically.** An invitation with the link (never the passphrase) is
-      copied on creation, with a fallback; "Copy link only", the share sheet and a QR code as
-      secondary actions.
-- [ ] **G4. Guided waiting screen.** Numbered steps (paste the link, say the words, keep this
-      page open), with "Keep my screen on" as part of the last step, and a line for when you're
-      not on a call.
-- [ ] **G5. Guided recipient page.** What this is and that nothing is stored, "type the words they
-      tell you", live connection stages, the result, then Done (clears everything) and Send
-      something back.
-
 ### High priority: restrictive networks
 
 Some networks block what the app needs: firewalls that drop UDP or WebRTC, strict NATs, or
 filters (firewall rules, NIDS/NIPS) that block the WebSocket relays. Until the
-[relay fallback (0.9.0)](#090-connectivity-on-restrictive-networks), users should at least learn
+[relay fallback (0.10.0)](#0100-connectivity-on-restrictive-networks), users should at least learn
 what happened instead of waiting forever.
 - [x] **N1. Say when the network blocks the connection.** Two cases are detected, with no new
       third party and nothing sent anywhere: the other side was found through the relays but no
@@ -321,7 +408,7 @@ already run on every page).
 
 Plain links only: no embedded widget, button script, badge or counter
 loaded from a third party ([IDEAS.md](IDEAS.md#support--feedback-links)). The privacy note it
-included moves into the FAQ (0.10.0).
+included moves into the FAQ (0.11.0).
 
 - [ ] **L1. Star on GitHub.** A plain link to the repository in the footer.
 - [ ] **L2. Donations.** Patreon and/or Buy Me a Coffee links in the footer.

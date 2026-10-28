@@ -61,7 +61,8 @@
 ### 9. Supply chain: the static host, the npm packages, the build
 - **This is the most important residual risk.** Whoever controls the served JavaScript controls the app.
 - **Mitigations:**
-  - one runtime dependency (Trystero, with two small dependencies of its own) and two build tools
+  - two runtime dependencies (Trystero, with two small dependencies of its own, and
+    qrcode-generator, with none) and two build tools
     (TypeScript, esbuild), at exact versions locked with integrity hashes in `package-lock.json`,
     installed with `npm ci`, no install scripts, and only releases at least 7 days old;
   - everything is **bundled at build time**: no CDN, and the CSP lets scripts load only from `'self'`;
@@ -91,6 +92,8 @@
   the stored keys, as it could use the ones in memory. Encrypting the record with another key
   kept in the same origin wouldn't change that, so we keep the record small and short-lived
   instead.
+- Passphrase fields aren't password fields, so browsers don't offer to save them in their
+  password manager (Firefox, which lacks the masking used, may still offer).
 - **Residual:** browser history contains room links (the fragment includes the link secret). The
   clipboard and OS clipboard history may retain copied secrets.
 

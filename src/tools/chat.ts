@@ -42,7 +42,7 @@ export function mount(root: HTMLElement, params: URLSearchParams): () => void {
   const showForm = () => {
     root.replaceChildren();
     const nick = h('input', { type: 'text', maxlength: 32, placeholder: 'e.g. Alice', autocomplete: 'nickname', required: true, value: tabStore.get('uss-nick') ?? '' });
-    const pass = passphraseField({ generate: !invite });
+    const pass = passphraseField({ generate: !invite, enough: 'Strong enough for this room ✓' });
     const error = h('p', { class: 'error', hidden: true });
     const submit = h('button', { class: 'btn btn-primary', type: 'submit' }, invite ? 'Join chat' : 'Create chat room');
     const lifetime = h('select', null, ...LIFETIMES.map(([ms, label]) => h('option', { value: String(ms), selected: ms === DEFAULT_LIFETIME_MS }, label)));
