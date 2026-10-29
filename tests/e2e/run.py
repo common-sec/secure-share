@@ -119,7 +119,7 @@ def file_payload(name, size):
 
 
 def share_send(env, page, text, files=(), approve=False, keep_awake=False, own_words=None):
-    page.goto(env.app + "#/share")
+    page.goto(env.app)
     page.get_by_label("What do you want to send?").fill(text)
     if files:
         page.locator("form input[type=file]").set_input_files(list(files))
@@ -187,7 +187,7 @@ def download(page, scope, name):
 
 # ---------------------------------------------------------------- helpers: Secure Chat
 def chat_create(env, page, nick):
-    page.goto(env.app + "#/chat")
+    page.goto(env.app + "chat/")
     page.get_by_placeholder("e.g. Alice").fill(nick)
     passphrase = page.locator("form input[aria-label=Passphrase]").input_value()
     page.get_by_role("button", name="Create chat room").click()
@@ -269,10 +269,12 @@ def scenario(name, browsers=("chromium",)):
 def share_happy_path(env, b):
     sender, recipient = env.person(b), env.person(b)
     secret_file = file_payload("keys.bin", 300_000)
-    sender.goto(env.app + "#/share")
+    sender.goto(env.app)
     audit(sender, "share-form")
     link, passphrase = share_send(env, sender, "db-password: Karrot~Over~Stone42", [secret_file])
     audit(sender, "share-waiting")
+    # The link is the home page's address, with the room's secrets only in the fragment.
+    assert re.fullmatch(re.escape(env.app) + r"#r=[\w-]{22}&k=[\w-]{43}&h=[\w-]{43}", link), link
 
     expect(sender.locator(".page-head .lead").first).to_be_hidden()   # the intro is hidden while waiting
     expect(sender.get_by_role("status")).to_contain_text("Waiting for the recipient")
@@ -373,10 +375,11 @@ def share_own_words(env, b):
           browsers=("chromium", "firefox", "webkit"))
 def chat_group(env, b):
     host, bob, carol = env.person(b), env.person(b), env.person(b)
-    host.goto(env.app + "#/chat")
+    host.goto(env.app + "chat/")
     audit(host, "chat-form")
     link, passphrase = chat_create(env, host, "Alice")
     audit(host, "chat-room-host")
+    assert re.fullmatch(re.escape(env.app) + r"chat/#r=[\w-]{22}&k=[\w-]{43}&h=[\w-]{43}", link), link
 
     chat_join(bob, link, "Bob", passphrase)
     approve(host, "Bob")
@@ -495,9 +498,75 @@ def chat_cross_browser(env, pair):
 @scenario("passwords page passes the accessibility checks")
 def passwords_a11y(env, b):
     page = env.person(b)
-    page.goto(env.app + "#/password")
+    page.goto(env.app + "passwords/")
     expect(page.locator(".pw").first).to_be_visible()
     audit(page, "passwords")
+
+
+# ---------------------------------------------------------------- static pages
+PAGES = {   # path -> (heading, mounts a tool)
+    "": ("Secure Share", True),
+    "chat/": ("Secure Chat", True),
+    "passwords/": ("Password Generator", True),
+    "how-it-works/": ("How it works", False),
+    "faq/": ("Frequently asked questions", False),
+}
+
+
+@scenario("static pages: content, metadata and links without JavaScript")
+def static_pages(env, b):
+    ctx = env.browser(b).new_context(java_script_enabled=False)
+    env.contexts.append(ctx)
+    page = ctx.new_page()
+    for path, (heading, tool) in PAGES.items():
+        response = page.goto(env.app + path)
+        assert response.ok, f"{path}: HTTP {response.status}"
+        # What crawlers and link previews see: real content, its own title and description.
+        expect(page.get_by_role("heading", level=1)).to_have_text(heading)
+        assert "CommonSec Share" in page.title(), page.title()
+        assert len(page.locator('meta[name="description"]').get_attribute("content")) > 80
+        canonical = page.locator('link[rel="canonical"]').get_attribute("href")
+        assert canonical.startswith("https://") and canonical.endswith("/" + path), canonical
+        assert page.locator('meta[property="og:url"]').get_attribute("content") == canonical
+        assert page.locator('meta[property="og:image"]').get_attribute("content").endswith("/og-image.png")
+        assert page.locator('meta[name="twitter:card"]').get_attribute("content") == "summary_large_image"
+        schemas = [json.loads(s) for s in page.locator('script[type="application/ld+json"]').all_text_contents()]
+        types = {s["@type"] for s in schemas}
+        assert ("WebApplication" in types) == tool, (path, types)
+        if path == "faq/":
+            faq = next(s for s in schemas if s["@type"] == "FAQPage")
+            shown = page.locator(".faq-item h2").all_text_contents()
+            assert [q["name"] for q in faq["mainEntity"]] == shown, faq
+        if tool:   # the tool's page says it needs JavaScript, and still explains itself
+            expect(page.locator("noscript")).to_have_count(1)
+            expect(page.locator("#about h2")).to_be_visible()
+        # Every link and asset of the page resolves, wherever the site is served from.
+        for url in page.locator('a[href]:not([href^="http"]), link[href]:not([href^="http"])').evaluate_all(
+                "els => els.map(e => e.href)"):
+            assert page.request.get(url).ok, f"{path}: broken link {url}"
+    for name in ("robots.txt", "sitemap.xml", "site.webmanifest", "og-image.png", "favicon.svg"):
+        assert page.request.get(env.app + name).ok, name
+    sitemap = page.request.get(env.app + "sitemap.xml").text()
+    assert all(f"/{p}</loc>" in sitemap for p in PAGES), sitemap
+
+
+@scenario("static pages: links in the old format still open the right tool")
+def legacy_links(env, b):
+    page = env.person(b)
+    page.goto(env.app + "#/chat?r=" + "a" * 22 + "&k=" + "b" * 43 + "&h=" + "c" * 43)
+    expect(page).to_have_url(env.app + "chat/#r=" + "a" * 22 + "&k=" + "b" * 43 + "&h=" + "c" * 43)
+    expect(page.get_by_role("button", name="Join chat")).to_be_visible()
+    page.goto(env.app + "#/password")
+    expect(page).to_have_url(re.compile(re.escape(env.app + "passwords/")))
+    expect(page.locator(".pw").first).to_be_visible()
+
+
+@scenario("content pages pass the accessibility checks")
+def content_a11y(env, b):
+    page = env.person(b)
+    for path, state in (("how-it-works/", "how-it-works"), ("faq/", "faq")):
+        page.goto(env.app + path)
+        audit(page, state)
 
 
 # ---------------------------------------------------------------- runner

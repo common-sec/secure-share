@@ -1,0 +1,39 @@
+    <article class="prose">
+      <h1>How it works</h1>
+      <p class="lead">{{app}} sends passwords, notes and files straight from one browser to another, encrypted end to end. Nothing is uploaded, nothing is stored, and no account is needed.</p>
+
+      <h2>Sending something with Secure Share</h2>
+      <ol>
+        <li><strong>You type or add what to send</strong> and click <em>Create link</em>. Your browser creates a private room with a random identifier and a random secret, and suggests a few words (a passphrase).</li>
+        <li><strong>You send the link</strong> in your usual chat or email. The room’s secret is in the part of the link after <code>#</code>, which browsers never send to a server, and link previews never see.</li>
+        <li><strong>You tell them the words</strong>, ideally out loud on a call, or through a different app than the link. The link alone isn’t enough to receive anything.</li>
+        <li><strong>They open the link and type the words.</strong> Their browser finds yours and connects to it directly. Both sides prove they know the secret and the words before anything is sent.</li>
+        <li><strong>It’s delivered once.</strong> After delivery the room closes and the link is dead. If nobody opens it in time, it expires.</li>
+      </ol>
+
+      <h2>How the browsers find each other</h2>
+      <p>To connect directly, two browsers first need to exchange connection details. They do it through public relays, which only pass along those details <strong>encrypted</strong> with a key derived from the link’s secret: the relays can’t read them, and never see the words or what you send. The browsers also ask a public STUN server for their own public address, which is how a direct connection can cross home routers. Then the browsers talk directly, over a WebRTC connection.</p>
+      <p>Your browser disconnects from the relays as soon as it no longer needs to be found. There are no relays in the middle of the transfer: what you send never passes through a third party.</p>
+
+      <h2>How it’s encrypted</h2>
+      <ul>
+        <li>The words are stretched with PBKDF2 (600,000 iterations) and combined with the link’s secret to derive the keys. Neither the link nor the words alone is enough.</li>
+        <li>Everything is encrypted with AES-256-GCM and signed, on top of the encryption WebRTC already adds (DTLS).</li>
+        <li>The relays only see a value derived from the link’s secret, never from the words, so nobody can test guesses of the words offline.</li>
+        <li>All cryptography uses the browser’s built-in Web Crypto. Keys are created fresh for each room and can’t be exported.</li>
+      </ul>
+
+      <h2>Secure Chat</h2>
+      <p>Secure Chat uses the same rooms for a conversation. The person who creates the room hosts it: everyone else connects to the host, who approves each member and can compare a short safety code with them to rule out an impostor. The room lasts until the host closes it, and nothing is kept afterwards.</p>
+
+      <h2>What this doesn’t protect against</h2>
+      <ul>
+        <li>A compromised computer or phone on either side can see what’s on its screen.</li>
+        <li>Anyone who gets both the link and the words before the recipient does could receive it instead. That’s why the words should go another way, and why the sender can ask to check who’s receiving.</li>
+        <li>The other browser learns your IP address, as with any direct connection, and the relays and STUN servers see your IP address but not what you send.</li>
+      </ul>
+
+      <h2>Check it yourself</h2>
+      <p>The source code is public, and every build is reproducible: the version in the footer links to the exact source code it was built from. The full <a href="{{repository}}/blob/main/docs/PROTOCOL.md" rel="noopener">protocol</a> and <a href="{{repository}}/blob/main/docs/THREAT_MODEL.md" rel="noopener">threat model</a> are published.</p>
+      <p>Questions? See the <a href="{{root}}faq/">FAQ</a>, or <a href="{{root}}">send something securely</a> now.</p>
+    </article>

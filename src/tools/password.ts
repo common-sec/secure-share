@@ -5,6 +5,7 @@ import {
   type Caps, type PhraseOptions, type Separator, type Style,
 } from '../lib/passphrase.js';
 import { strengthMeter, field } from './widgets.js';
+import { restart } from '../lib/nav.js';
 
 const SETS = {
   lower: 'abcdefghijklmnopqrstuvwxyz',
@@ -213,12 +214,12 @@ export function mount(root: HTMLElement, params: URLSearchParams): void {
     charsPanel.hidden = s.mode !== 'chars';
     phrasePanel.hidden = s.mode !== 'phrase';
     const q = writeParams(s);
-    history.replaceState(null, '', `#/password${q ? `?${q}` : ''}`);
+    history.replaceState(null, '', q ? `#${q}` : location.pathname + location.search);
     regenerate();
   }
 
   const linkBtn = h('button', { class: 'btn', onclick: () => copyText(location.href, linkBtn) }, 'Copy settings link');
-  const resetBtn = h('button', { class: 'btn btn-ghost', onclick: () => { location.hash = '#/password?'; } }, 'Reset');
+  const resetBtn = h('button', { class: 'btn btn-ghost', onclick: restart }, 'Reset');
 
   root.append(
     h('section', { class: 'page-head' },

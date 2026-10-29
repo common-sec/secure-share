@@ -1,0 +1,51 @@
+    <article class="prose">
+      <h1>Frequently asked questions</h1>
+      <p class="lead">About sending passwords and files with {{app}}, and about your privacy.</p>
+
+      <section class="faq-item" id="is-it-safe">
+        <h2>Is it safe to send passwords this way?</h2>
+        <p>Safer than pasting them in an email or a chat, where they stay in the history of every device and server they pass through. With Secure Share, the password goes straight from your browser to the recipient’s, encrypted end to end, and is never stored. The link works once, and it’s useless without the words you tell the recipient separately.</p>
+      </section>
+
+      <section class="faq-item" id="offline">
+        <h2>What if the recipient is offline?</h2>
+        <p>Both of you need to be online at the same time, because there is no server that keeps a copy. Keep the page open until they receive it. If nobody opens the link before its time limit, it stops working, and you can create a new one when they’re available.</p>
+      </section>
+
+      <section class="faq-item" id="why-words">
+        <h2>Why do I have to tell them words as well as send the link?</h2>
+        <p>So that the link alone isn’t enough. Links get copied into chat histories, email archives and previews. If the words go another way, ideally out loud on a call, someone who sees the link still can’t receive what you sent.</p>
+      </section>
+
+      <section class="faq-item" id="files">
+        <h2>Can I send files, and how large?</h2>
+        <p>Yes, any type of file, up to 512 MB each, with or without a message. They travel directly between the two browsers, so the speed depends on both connections.</p>
+      </section>
+
+      <section class="faq-item" id="share-or-chat">
+        <h2>Should I use Secure Share or Secure Chat?</h2>
+        <p>Use Secure Share to send something once to one person: a password, a key, a document. Use Secure Chat when there are several things to exchange, replies, or more than two people: you host a private room and approve everyone who joins.</p>
+      </section>
+
+      <section class="faq-item" id="no-connection">
+        <h2>Why can’t we connect sometimes?</h2>
+        <p>The browsers connect directly to each other, and some networks block that: strict company or public Wi-Fi firewalls, or two strict routers. The app tells you when this happens. Trying from another network, such as mobile data, usually helps.</p>
+      </section>
+
+      <section class="faq-item" id="privacy">
+        <h2>What does the app send where? (Privacy)</h2>
+        <p>{{app}} has no accounts, uses <strong>no cookies, no analytics and no trackers</strong>, and loads no code or content from other sites. What leaves your browser:</p>
+        <ul>
+          <li><strong>This website’s host</strong> serves the page, like any website, and sees your IP address. The room’s secret is after the <code>#</code> in the link, which is never sent to it.</li>
+          <li><strong>Public relays</strong>, only while a room needs to be found: they pass encrypted connection details between the two browsers and see your IP address, never the words or what you send.</li>
+          <li><strong>Public STUN servers</strong> (Google and Cloudflare) tell your browser its public address. They see your IP address and nothing else.</li>
+          <li><strong>The other person’s browser</strong> receives what you send, encrypted, and sees your IP address.</li>
+        </ul>
+        <p>On your device, the app keeps your chat nickname for the current tab and, while you host a room, what it needs to resume hosting after a reload. The password generator sends nothing at all.</p>
+      </section>
+
+      <section class="faq-item" id="open-source">
+        <h2>Can I check how it works?</h2>
+        <p>Yes. The source code is public and every build is reproducible: the version in the footer links to the exact code it was built from. See <a href="{{root}}how-it-works/">how it works</a> for the details.</p>
+      </section>
+    </article>

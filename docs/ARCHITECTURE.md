@@ -3,7 +3,8 @@
 ## Components
 
 ```
-src/index.html  ── strict CSP, loads app.js (built from src/main.ts, hash router)
+src/pages/      ── one static page per tool and content page (layout.html + content), strict CSP;
+│                  tool pages load app.js (built from src/main.ts), which mounts the page's tool
 │
 ├── src/tools/             UI, one module per tool
 │   ├── share.ts           Secure Share UI (sender + recipient), the home page
@@ -20,6 +21,7 @@ src/index.html  ── strict CSP, loads app.js (built from src/main.ts, hash ro
 │   ├── room.ts            SecureRoom: the protocol (handshake, approvals, relay, files), typed messages
 │   ├── hoststore.ts       resume hosting after a reload (IndexedDB + Web Locks)
 │   ├── encoding.ts        base64url / UTF-8
+│   ├── nav.ts             page addresses, fragment parameters, old-link redirects
 │   └── dom.ts             tiny DOM builder (text nodes only, never innerHTML)
 │
 └── src/vendor/trystero.ts the single third-party import, loaded lazily (bundled from npm)
@@ -27,8 +29,9 @@ src/index.html  ── strict CSP, loads app.js (built from src/main.ts, hash ro
 
 ## Build
 
-`build.mjs` (esbuild) turns `src/` into `dist/`, the files that are served: `index.html`,
-`styles.css`, `app.js`, and chunks loaded on demand (Trystero is only loaded when Chat or Share
+`build.mjs` (esbuild) turns `src/` into `dist/`, the files that are served: one pre-rendered page
+per tool and content page (`pages.mjs`: `index.html`, `chat/`, `passwords/`, `how-it-works/`,
+`faq/`, plus `robots.txt`, `sitemap.xml`, the icons and the web manifest), `styles.css`, `app.js`, and chunks loaded on demand (Trystero is only loaded when Chat or Share
 needs it). Everything is bundled from the locked npm packages, so **no third-party origin serves
 code at runtime**. The build is reproducible (same source → byte-identical `dist/`), and
 `dist/SHA256SUMS` lists every file's checksum; see [RELEASES.md](RELEASES.md). The footer shows
@@ -48,7 +51,7 @@ the build version (`vX.Y.Z · build <commit>`).
  Sender / host browser                                         Recipient / guest browser
  ─────────────────────                                         ─────────────────────────
  creates room: roomId, link secret, host ECDSA key
- link = …#/chat?r=<roomId>&k=<secret>&h=<host key fingerprint>  ── shared by the user ──▶
+ link = …/chat/#r=<roomId>&k=<secret>&h=<host key fingerprint>  ── shared by the user ──▶
  passphrase                                                     ── shared separately ──▶
 
         │  WSS: encrypted WebRTC offer/answer               │

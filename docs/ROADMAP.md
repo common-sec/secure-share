@@ -40,7 +40,7 @@ CI/CD, testing infrastructure and security process work is tracked separately, i
 | 0.8.0 | **Guided sharing**: sender and recipient guided step by step, designed first for use on a call: speakable passphrases, a one-question creation page, the link copied automatically, guided waiting and recipient screens | In progress |
 | 0.9.0 | **Standard secure channel**: our own handshake and message encryption replaced by a published protocol (Noise `IKpsk1` on the snow library, under study), with forward secrecy (breaking) | Planned (study) |
 | 0.10.0 | **Connectivity on restrictive networks**: users behind symmetric NAT or UDP-blocking firewalls can still connect, through an end-to-end encrypted relay fallback | Planned |
-| 0.11.0 | **Static pages and SEO**: pre-rendered static pages, metadata and social previews, How it works and FAQ, sitemap, Search Console | Planned |
+| 0.11.0 | **Static pages and SEO**: pre-rendered static pages, metadata and social previews, How it works and FAQ, sitemap, Search Console | In progress (started early, 2026-10-29) |
 | 0.12.0 | **Encrypted files**: package files, encrypt them with a password in a standard format and download the encrypted file; upload one, decrypt it and download the contents | Planned |
 | 1.0.0 | **Public launch**: release checklist and announcement, once the [pre-launch internal work](TODO.md#before-launch) is done | Planned |
 | 1.1.0 | **Share a generated password**: a button on the password generator opens a one-way Secure Share with it, passphrase and link ready | Planned |
@@ -176,19 +176,23 @@ everyone else keeps direct connections.
 and shared links show a trustworthy preview. See
 [the review](reviews/2026-10-12-ux-product-seo.md#7-seo-and-discoverability) and
 [the static site assessment](reviews/2026-10-13-static-site-generation.md).
+**Started early** (2026-10-29), at the owner's request, ahead of 0.9.0 and 0.10.0, so the
+encrypted files tool (0.12.0) can be built as a static page from the start. Decision
+[D24](DECISIONS.md#d24-one-static-page-per-tool-javascript-enhances-).
 **Done when:**
-- every tool has a real, **pre-rendered static page** (`/`, `/chat/`, `/passwords/`) whose
-  content is in the HTML without JavaScript, plus `/how-it-works/` and `/faq/`; room secrets stay
-  in the URL fragment;
-- each page has a keyword-led title, meta description, canonical URL, Open Graph and Twitter card
-  tags, and a social image (a placeholder until the logo exists); `WebApplication` and `FAQPage`
-  structured data;
-- `robots.txt`, `sitemap.xml`, favicon set, web manifest and `theme-color`;
-- a short **privacy note** (in the FAQ) says what the app sends where and that it uses no cookies
-  or trackers;
-- the site is verified in Google Search Console and Bing Webmaster Tools (search impressions
-  without any tracking script);
-- the Lighthouse budgets in [TODO.md I4](TODO.md#i4-lighthouse-ci) pass.
+- [x] every tool has a real, **pre-rendered static page** (`/`, `/chat/`, `/passwords/`) whose
+      content is in the HTML without JavaScript, plus `/how-it-works/` and `/faq/`; room secrets
+      stay in the URL fragment (`/#r=…`, `/chat/#r=…`; links in the old `#/chat?r=…` format are
+      redirected);
+- [x] each page has a keyword-led title, meta description, canonical URL, Open Graph and Twitter
+      card tags, and a social image (a placeholder until the logo exists); `WebApplication` and
+      `FAQPage` structured data;
+- [x] `robots.txt`, `sitemap.xml`, favicon set, web manifest and `theme-color`;
+- [x] a short **privacy note** (in the FAQ) says what the app sends where and that it uses no
+      cookies or trackers;
+- [ ] the site is verified in Google Search Console and Bing Webmaster Tools (search impressions
+      without any tracking script): the owner's accounts, by DNS record, so no page changes;
+- [ ] the Lighthouse budgets in [TODO.md I4](TODO.md#i4-lighthouse-ci) pass.
 
 ### 0.12.0: Encrypted files
 **Goal:** encrypt and decrypt files easily and locally in the browser, with a password, in a

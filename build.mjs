@@ -4,17 +4,21 @@
 //   npm run build:check    the same, then build again into a temporary folder and fail unless
 //                          every file is byte-identical (the reproducibility check CI runs)
 //
-// dist/ contains index.html, app.js, chunks/ (Trystero and its dependencies, from the lockfile:
-// nothing is fetched from a CDN at run time), styles.css, and SHA256SUMS. The build is deterministic: same commit, same
-// lockfile -> same bytes. The version shown in the app is package.json's version plus the short
+// dist/ contains one pre-rendered page per tool and content page (index.html, chat/, passwords/,
+// how-it-works/, faq/: see pages.mjs), app.js, chunks/ (Trystero and its dependencies, from the
+// lockfile: nothing is fetched from a CDN at run time), styles.css, the icons and social image,
+// site.webmanifest, robots.txt, sitemap.xml, and SHA256SUMS. The build is deterministic: same commit, same
+// lockfile -> same bytes. The version shown in the footer is package.json's version plus the short
 // commit, read straight from .git (no git binary needed) or from $BUILD_COMMIT. The footer links it
 // to that commit in $BUILD_REPOSITORY (default: this project's GitHub repository), so a fork or a
-// self-hosted copy points at its own source.
+// self-hosted copy points at its own source. $BUILD_SITE_URL (default: https://share.common-sec.org/)
+// is the public address used by canonical URLs, social previews, robots.txt and sitemap.xml.
 import { build } from 'esbuild';
 import { createHash } from 'node:crypto';
 import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, relative } from 'node:path';
+import { writeSite } from './pages.mjs';
 
 const pkg = JSON.parse(readFileSync('package.json', 'utf8'));
 
@@ -42,7 +46,14 @@ if (!/^https:\/\/[^\s"'<>]+$/.test(repository)) {
   process.exit(1);
 }
 
-const define = { __APP_VERSION__: JSON.stringify(version), __REPOSITORY__: JSON.stringify(repository) };
+// The site's public address, for canonical URLs and previews. Part of the output, like the above.
+const siteUrl = (process.env.BUILD_SITE_URL || 'https://share.common-sec.org/').replace(/\/*$/, '/');
+if (!/^https:\/\/[^\s"'<>#?]+$/.test(siteUrl)) {
+  console.error(`BUILD_SITE_URL must be an https:// URL, got: ${siteUrl}`);
+  process.exit(1);
+}
+
+const define = { __REPOSITORY__: JSON.stringify(repository) };
 
 const listFiles = (dir) => readdirSync(dir).flatMap((name) => {
   const p = join(dir, name);
@@ -72,7 +83,7 @@ async function buildApp(outdir) {
     define,
     logLevel: 'warning',
   });
-  copyFileSync('src/index.html', join(outdir, 'index.html'));
+  writeSite(outdir, { siteUrl, version, repository });
   copyFileSync('assets/styles.css', join(outdir, 'styles.css'));
   const files = listFiles(outdir).filter((f) => !f.endsWith('SHA256SUMS'));
   const sums = files.map((f) => `${sha256(f)}  ${relative(outdir, f).split('\\').join('/')}`).join('\n') + '\n';
@@ -98,7 +109,7 @@ async function buildModules(outdir) {
 
 const sums = await buildApp('dist');
 await buildModules('build/modules');
-console.log(`built dist/ for ${version} (source: ${repository})\n${sums}`);
+console.log(`built dist/ for ${version} (source: ${repository}, site: ${siteUrl})\n${sums}`);
 
 if (process.argv.includes('--check')) {
   const again = mkdtempSync(join(tmpdir(), 'uss-rebuild-'));

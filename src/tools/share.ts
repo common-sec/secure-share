@@ -6,6 +6,7 @@ import { icon } from './icons.js';
 import { roomPassphrase } from '../lib/passphrase.js';
 import { qrSvg } from '../vendor/qrcode.js';
 import { APP_NAME, REPOSITORY } from '../lib/app.js';
+import { pageUrl, restart } from '../lib/nav.js';
 
 type SetSession = (s: Session) => void;
 const errorText = (e: unknown): string => (e instanceof Error ? e.message : String(e));
@@ -14,7 +15,8 @@ export function mount(root: HTMLElement, params: URLSearchParams): () => void {
   let session: Session | null = null;
   const invite = readInvite(params);
   if (invite) {
-    history.replaceState(null, '', '#/share');
+    // The secrets leave the address bar (and the history entry) once read.
+    history.replaceState(null, '', location.pathname + location.search);
     document.title = `You’ve received a secure delivery · ${APP_NAME}`;
   }
 
@@ -23,7 +25,7 @@ export function mount(root: HTMLElement, params: URLSearchParams): () => void {
       invite
         ? 'It comes straight from their browser to yours, can be opened only once, and isn’t stored anywhere. '
         : 'Send a password or a file privately. It goes straight to the other person and works only once. ',
-      // A button, not a link: the hash holds the route, so an in-page anchor would navigate away.
+      // A button, not a link: the fragment holds the room secrets, so an in-page anchor would drop them.
       h('button', { type: 'button', class: 'link-button', onclick: () => openHowItWorks(root) }, 'How it works ›')),
   );
   root.append(h('section', { class: 'page-head' }, h('h1', null, invite ? 'Someone sent you something privately' : 'Secure Share'), intro));
@@ -56,7 +58,7 @@ function howItWorks(recipient: boolean): HTMLElement {
         h('ul', null,
           h('li', null, h('strong', null, 'Secure Share'), ' (this page): send something ', h('em', null, 'once'),
             ' to ', h('em', null, 'one'), ' person: a password, a key, a document. The link stops working after delivery.'),
-          h('li', null, h('strong', null, h('a', { href: '#/chat' }, 'Secure Chat')), ': several things to exchange, replies, or more than two people. You host a private room and approve everyone who joins.'),
+          h('li', null, h('strong', null, h('a', { href: pageUrl('chat') }, 'Secure Chat')), ': several things to exchange, replies, or more than two people. You host a private room and approve everyone who joins.'),
         ),
       ],
   );
@@ -189,7 +191,7 @@ function sendForm(body: HTMLElement, setSession: SetSession): void {
     submit.textContent = 'Creating the link…';
     try {
       const room = await SecureRoom.host({ app: 'share', passphrase, nick: 'Sender', maxGuests: 1, autoAccept: !approve.checked });
-      linkReady(room.link('share'));
+      linkReady(room.link(pageUrl('share')));
       setSession(senderView(body, room, { text: text.value, files, passphrase, copied }));
     } catch (err) {
       linkFailed(err);
@@ -217,7 +219,7 @@ function sendForm(body: HTMLElement, setSession: SetSession): void {
   form.addEventListener('drop', (e) => { e.preventDefault(); form.classList.remove('over'); addFiles(e.dataTransfer?.files); });
 
   body.append(form,
-    h('p', { class: 'narrow hint chat-pointer' }, 'Several things to exchange, or a conversation? ', h('a', { href: '#/chat' }, 'Use Secure Chat ›')),
+    h('p', { class: 'narrow hint chat-pointer' }, 'Several things to exchange, or a conversation? ', h('a', { href: pageUrl('chat') }, 'Use Secure Chat ›')),
     howItWorks(false),
   );
 }
@@ -245,7 +247,7 @@ function wordsView(passphrase: string, onUse: () => void): HTMLElement {
 interface Outgoing { text: string; files: File[]; passphrase: string; copied: Promise<boolean> }
 
 function senderView(body: HTMLElement, room: SecureRoom, { text, files, passphrase, copied }: Outgoing): Session {
-  const link = room.link('share');
+  const link = room.link(pageUrl('share'));
   const invite = invitation(link);
   const copyNote = h('span', { class: 'copy-note', 'aria-live': 'polite' }, 'Copying the invitation…');
   // One copy button: the invitation with the link, never the link alone, so the recipient knows
@@ -301,7 +303,7 @@ function senderView(body: HTMLElement, room: SecureRoom, { text, files, passphra
     ? h('label', { class: 'check' }, awake, h('span', null, 'Keep my screen on',
       h('small', null, 'stops the screen from turning off or locking until the delivery completes')))
     : null;
-  const cancel = h('button', { class: 'btn btn-ghost', onclick: () => { location.hash = '#/share?'; } }, 'Cancel');
+  const cancel = h('button', { class: 'btn btn-ghost', onclick: restart }, 'Cancel');
   let delivered = false;
 
   // The share lives in this tab: if the sender opted in, keep the screen on while waiting (the lock
@@ -567,7 +569,7 @@ function receiverView(body: HTMLElement, room: SecureRoom, retry: () => void): S
     h('div', { class: 'row' },
       h('button', { type: 'button', class: 'btn btn-tap', onclick: () => clearAll() }, 'Done'),
       h('span', { class: 'hint inline' }, 'clears it from this page.')),
-    h('p', { class: 'hint' }, h('a', { href: '#/share?' }, 'Send something back ›')));
+    h('p', { class: 'hint' }, h('a', { href: pageUrl('share') }, 'Send something back ›')));
 
   // Words → connecting (finding the sender, connected, receiving %) → what they sent → Done.
   const steps = h('ol', { class: 'guide-steps' },
@@ -591,7 +593,7 @@ function receiverView(body: HTMLElement, room: SecureRoom, retry: () => void): S
     body.replaceChildren(h('div', { class: 'card narrow' },
       h('p', { class: 'status-big' }, 'All done ✓'),
       h('p', null, 'Nothing from this delivery is left on this page.'),
-      h('div', { class: 'row' }, h('a', { class: 'btn btn-tap', href: '#/share?' }, 'Send something back'))));
+      h('div', { class: 'row' }, h('a', { class: 'btn btn-tap', href: pageUrl('share') }, 'Send something back'))));
   }
 
   const finishIfComplete = async () => {
