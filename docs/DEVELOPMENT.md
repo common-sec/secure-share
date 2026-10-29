@@ -30,11 +30,12 @@ Run from the repository root (in WSL on Windows):
 | `docker compose run --rm test-unit` | Unit tests in Chromium, Firefox and WebKit, **no network** (see [TESTING.md](TESTING.md)) |
 | `docker compose run --rm test-e2e` | End-to-end tests of `dist/` through the real UI, local relay, **third-party requests blocked** |
 | `docker compose run --rm test-e2e-public` | End-to-end tests over the real public relays and STUN |
+| `docker compose run --rm lighthouse` | Lighthouse budgets (performance, accessibility, best practices, SEO) on every page of `dist/`, **no network** (see [TESTING.md](TESTING.md#lighthouse-budgets)) |
 | `docker compose run --rm trufflehog` | Secrets in the working tree and in every commit of git history |
 | `docker compose run --rm semgrep` | Static analysis (TypeScript, JavaScript, Python, Dockerfile, security audit) |
 | `docker compose run --rm trivy` | Vulnerable dependencies, misconfigurations, secrets |
 
-Run `build` first after changing `src/`: the web server and both test suites use its output.
+Run `build` first after changing `src/`: the web server, both test suites and Lighthouse use its output.
 CI (`.github/workflows/ci.yml`) runs exactly these commands.
 
 ## The build

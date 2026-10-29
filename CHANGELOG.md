@@ -16,6 +16,10 @@ All notable changes, one section per version. See [docs/ROADMAP.md](docs/ROADMAP
   (`pages.mjs`) renders the pages from `src/pages/`, with no new dependency, and stays
   reproducible; `$BUILD_SITE_URL` sets the public address used by canonical and preview URLs
   (decision D24).
+- **Lighthouse budgets in CI** (internal, [TODO.md I4](docs/TODO.md#i4-lighthouse-ci)).
+  `docker compose run --rm lighthouse` audits every page of the built site in a pinned, offline
+  container and fails below the budgets: performance 90, accessibility, best practices and SEO
+  100 (the home page's accessibility 96, until fix A4). CI runs it and keeps the reports.
 - **The app says when a network blocks the connection** (roadmap fix N1). When the other side is
   found but no direct connection can be opened (a firewall blocking UDP or WebRTC, or strict NATs
   on both sides), or when no discovery relay can be reached for 10 seconds (WebSockets blocked, or
@@ -24,6 +28,10 @@ All notable changes, one section per version. See [docs/ROADMAP.md](docs/ROADMAP
   tests can simulate both networks.
 
 ### Changed
+- **Nothing jumps when a tool page loads.** The share, chat and password pages kept their
+  introduction on screen until the tool appeared above it and pushed it down (a layout shift that
+  cost about 20 points of Lighthouse performance on a phone). The tool's space is now reserved,
+  so the introduction starts below the fold; pages without JavaScript are unchanged.
 - **New link format:** room links are the tool's page with the secrets in the fragment,
   `https://share.common-sec.org/#r=…&k=…&h=…` (Share) and `…/chat/#r=…` (Chat), instead of
   `/#/share?r=…`. Links in the old format still work: the app redirects them. The version in the

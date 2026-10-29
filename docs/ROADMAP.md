@@ -192,7 +192,8 @@ encrypted files tool (0.12.0) can be built as a static page from the start. Deci
       cookies or trackers;
 - [ ] the site is verified in Google Search Console and Bing Webmaster Tools (search impressions
       without any tracking script): the owner's accounts, by DNS record, so no page changes;
-- [ ] the Lighthouse budgets in [TODO.md I4](TODO.md#i4-lighthouse-ci) pass.
+- [x] the Lighthouse budgets in [TODO.md I4](TODO.md#i4-lighthouse-ci) pass, and CI keeps them
+      passing.
 
 ### 0.12.0: Encrypted files
 **Goal:** encrypt and decrypt files easily and locally in the browser, with a password, in a

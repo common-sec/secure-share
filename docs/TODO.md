@@ -101,9 +101,11 @@ browser runs on WebKit, Safari's engine.
   Windows goes in the release checklist.
 
 ### I4. Lighthouse CI
-`[ ]` Split out of the static pages feature (roadmap 0.11.0) and done with it: the pages are in
-place (2026-10-29), so this is the item that remains on the build side.
-Lighthouse CI (pinned container) runs in CI with budgets for SEO, accessibility and performance.
+`[x]` Split out of the static pages feature (roadmap 0.11.0) and done with it (2026-10-29).
+Lighthouse (pinned container, no network) runs in CI on every page with budgets for performance
+(≥ 90), accessibility, best practices and SEO (100; the home page's accessibility is 96 until
+roadmap fix A4); see [TESTING.md](TESTING.md#lighthouse-budgets). It found the tool pages'
+layout shift when the form appears (performance 77 to 80), fixed in the same change.
 
 ### I5. Production hosting and headers
 `[ ]` Split out of the public launch (roadmap 1.0.0).
