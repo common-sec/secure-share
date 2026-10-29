@@ -621,10 +621,10 @@ def files_round_trip(env, b):
 @scenario("files: what gpg encrypts with a password opens in the page", browsers=ENGINES)
 def files_from_gpg(env, b):
     page = files_page(env, b)
-    secret = "The vault code is 2026-10-29\n".encode() * 500
+    plaintext = "Test data that gpg encrypts\n".encode() * 500
     password = "orbit quiet tundra lantern mosaic ripple"
     with tempfile.TemporaryDirectory() as tmp:
-        (Path(tmp) / "vault.txt").write_bytes(secret)
+        (Path(tmp) / "vault.txt").write_bytes(plaintext)
         # gpg's defaults: compressed, its own cipher choice; then armored (.asc), as mail clients send it.
         gpg("--passphrase", password, "--symmetric", "vault.txt", cwd=tmp)
         gpg("--passphrase", password, "--symmetric", "--armor", "--cipher-algo", "AES256", "--output", "vault.asc", "vault.txt", cwd=tmp)
@@ -632,9 +632,9 @@ def files_from_gpg(env, b):
         armored = (Path(tmp) / "vault.asc").read_bytes()
     page.get_by_role("button", name="Decrypt a file").click()
     audit(page, "files-decrypt")
-    assert files_decrypt(page, "vault.txt.gpg", binary, password) == ("vault.txt", secret)
+    assert files_decrypt(page, "vault.txt.gpg", binary, password) == ("vault.txt", plaintext)
     page.get_by_role("button", name="Decrypt another file").click()
-    assert files_decrypt(page, "vault.asc", armored, password) == ("vault.txt", secret)
+    assert files_decrypt(page, "vault.asc", armored, password) == ("vault.txt", plaintext)
 
 
 @scenario("files: a wrong password or a damaged file is refused, and nothing is offered")
