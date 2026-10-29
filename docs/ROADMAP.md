@@ -37,11 +37,11 @@ CI/CD, testing infrastructure and security process work is tracked separately, i
 | 0.1.0 | **Baseline**: password/passphrase generator, Secure Chat, Secure Share, docs, browser test suite | ✅ Done |
 | 0.4.0 | **First real-world test feedback**: Secure Share as the home page, clearer naming, stronger and masked room passphrases with a strength meter | ✅ Done |
 | 0.7.0 | **Names, organisation and domain**: CommonSec organisation, CommonSec Share app, served at `share.common-sec.org` | ✅ Done |
-| 0.8.0 | **Guided sharing**: sender and recipient guided step by step, designed first for use on a call: speakable passphrases, a one-question creation page, the link copied automatically, guided waiting and recipient screens | In progress |
+| 0.8.0 | **Guided sharing**: sender and recipient guided step by step, designed first for use on a call: speakable passphrases, a one-question creation page, the link copied automatically, guided waiting and recipient screens | ✅ Done (G1–G5), to be released |
 | 0.9.0 | **Standard secure channel**: our own handshake and message encryption replaced by a published protocol (Noise `IKpsk1` on the snow library, under study), with forward secrecy (breaking) | Planned (study) |
 | 0.10.0 | **Connectivity on restrictive networks**: users behind symmetric NAT or UDP-blocking firewalls can still connect, through an end-to-end encrypted relay fallback | Planned |
-| 0.11.0 | **Static pages and SEO**: pre-rendered static pages, metadata and social previews, How it works and FAQ, sitemap, Search Console | In progress (started early, 2026-10-29) |
-| 0.12.0 | **Encrypted files**: package files, encrypt them with a password in a standard format and download the encrypted file; upload one, decrypt it and download the contents | Planned |
+| 0.11.0 | **Static pages and SEO**: pre-rendered static pages, metadata and social previews, How it works and FAQ, sitemap, Search Console | ✅ Done, except the Search Console and Bing verification: waiting on the owner's accounts |
+| 0.12.0 | **Encrypted files**: package files, encrypt them with a password in a standard format and download the encrypted file; upload one, decrypt it and download the contents | In progress (started early, 2026-10-29) |
 | 1.0.0 | **Public launch**: release checklist and announcement, once the [pre-launch internal work](TODO.md#before-launch) is done | Planned |
 | 1.1.0 | **Share a generated password**: a button on the password generator opens a one-way Secure Share with it, passphrase and link ready | Planned |
 | 1.2.0 | **Local version of the app** (architecture to define: PWA, Electron, Docker image, single file) | Planned |
@@ -191,7 +191,8 @@ encrypted files tool (0.12.0) can be built as a static page from the start. Deci
 - [x] a short **privacy note** (in the FAQ) says what the app sends where and that it uses no
       cookies or trackers;
 - [ ] the site is verified in Google Search Console and Bing Webmaster Tools (search impressions
-      without any tracking script): the owner's accounts, by DNS record, so no page changes;
+      without any tracking script): the owner's accounts, by DNS record, so no page changes.
+      **The only item left, and it needs the owner;** nothing else waits on it, so 0.12.0 started;
 - [x] the Lighthouse budgets in [TODO.md I4](TODO.md#i4-lighthouse-ci) pass, and CI keeps them
       passing.
 
@@ -201,11 +202,14 @@ standard format that other tools also open. Nothing is uploaded and it works off
 [IDEAS.md](IDEAS.md#encrypted-files-in-the-browser). This is the first step; public keys, a key
 wizard, the viewer and the Secure Share hand-off follow in [1.4.0](#140-encrypted-files-for-a-public-key)
 to [1.6.0](#160-encrypted-file-viewer-and-secure-share-hand-off).
+**Started early** (2026-10-29), right after 0.11.0's code, at the owner's request ("take the next
+one"), ahead of 0.9.0 and 0.10.0 as 0.11.0 was.
 **Format:** the [file format spike](reviews/2026-10-28-file-format-spike.md) (2026-10-28) compared
 `age`, OpenPGP and 7z on audits, crypto, speed, memory, bundle size and which tools open the result
-offline. It recommends **OpenPGP (`openpgp.js`) in the profile GnuPG reads**; the choice is recorded
-as a decision when 0.12.0 starts. Password encryption is symmetric (AES-256), so it is already safe
-against quantum computers in either format.
+offline. It recommends **OpenPGP (`openpgp.js`) in the profile GnuPG reads**, now decision
+[D25](DECISIONS.md#d25-encrypted-files-are-openpgp-in-the-profile-gnupg-reads-with-openpgpjs--2026-10-29).
+Password encryption is symmetric (AES-256), so it is already safe against quantum computers in
+either format.
 **Why after static pages:** the tool gets its own static page (`/files/`) and mounts into it,
 "static first, JS enhances".
 **Stories:**
@@ -219,13 +223,17 @@ against quantum computers in either format.
   tool.* The page says which tools (for OpenPGP: GnuPG, Kleopatra, GPG Suite) and how.
 
 **Done when:**
-- F1 and F2 work in Chromium, Firefox and WebKit, with the library pinned and bundled like
-  Trystero; nothing is uploaded, nothing is stored, and the page works offline;
-- large files stream instead of being held whole in memory, and the page states its size limits;
-- the UI says before encrypting that a lost password means a lost file;
-- a decision records the format and why; ARCHITECTURE and THREAT_MODEL are updated;
-- unit and end-to-end tests cover F1 and F2, including interoperability with the format's
-  reference tool (`gpg` for OpenPGP) in both directions and for packaged folders.
+- [x] F1 and F2 work in Chromium, Firefox and WebKit, with the library pinned and bundled like
+      Trystero; nothing is uploaded, nothing is stored, and the page works offline (once its
+      library has loaded, a few seconds after the page);
+- [x] large files stream instead of being held whole in memory, and the page states its size
+      limits (2 GB in all; less on a phone);
+- [x] the UI says before encrypting that a lost password means a lost file;
+- [x] a decision records the format and why ([D25](DECISIONS.md)); ARCHITECTURE and THREAT_MODEL are updated;
+- [x] unit and end-to-end tests cover F1 and F2, including interoperability with the format's
+      reference tool (`gpg` for OpenPGP) in both directions and for packaged folders;
+- [ ] tried on a real phone (Android and iPhone), as the spike asked: a large file, and the
+      size the page can hold there.
 
 ### 1.0.0: Public launch
 **Goal:** announce the app, once the features above and the

@@ -43,8 +43,8 @@ CI (`.github/workflows/ci.yml`) runs exactly these commands.
 Sources are TypeScript in `src/` (strict mode). `build.mjs` uses esbuild to produce:
 
 - `dist/`: the site as served: one pre-rendered page per tool and content page (`index.html`,
-  `chat/`, `passwords/`, `how-it-works/`, `faq/`, from `src/pages/` by `pages.mjs`), `styles.css`,
-  `app.js` and lazily loaded chunks (Trystero and its dependencies are bundled in, so nothing is
+  `chat/`, `files/`, `passwords/`, `how-it-works/`, `faq/`, from `src/pages/` by `pages.mjs`), `styles.css`,
+  `app.js` and lazily loaded chunks (Trystero, openpgp.js and qrcode-generator are bundled in, so nothing is
   fetched from a CDN), the icons and social image (`assets/site/`), `site.webmanifest`,
   `robots.txt`, `sitemap.xml`, plus `SHA256SUMS`. GitHub Pages serves this folder.
 - `build/modules/`: every source module transpiled one-to-one, for the unit tests.
@@ -100,8 +100,9 @@ to itself with no change.
 | Dev base image | Tag + digest in `Dockerfile` | Non-root | Dependabot (`docker`) |
 | Test base image | Tag + digest in `Dockerfile` | Non-root (`pwuser`) | Dependabot (`docker`) |
 | Tool images | Tag + digest in `compose.yaml` | Non-root, no caps, read-only | Dependabot (`docker-compose`) |
+| `gpg-agent` in the test image (for the GnuPG interoperability tests) | Ubuntu archive snapshot date in `Dockerfile` (`apt-get --snapshot`) | apt's archive signatures | By hand, with the test base image |
 | Python test packages | Exact version + SHA-256 of every file, the whole tree (`tests/requirements.txt`), installed when the `test` image is built | `pip.conf`: `require-hashes`, wheels only (no build code runs), uploaded ≥ 7 days ago | Dependabot (`pip`) |
-| npm packages (Trystero, esbuild, TypeScript) | `package.json` exact versions + `package-lock.json` integrity hashes, installed with `npm ci` | `.npmrc`: `ignore-scripts`, `min-release-age=7`, `save-exact`, `engine-strict` | Dependabot (`npm`) |
+| npm packages (Trystero, qrcode-generator, openpgp.js, esbuild, TypeScript) | `package.json` exact versions + `package-lock.json` integrity hashes, installed with `npm ci` | `.npmrc`: `ignore-scripts`, `min-release-age=7`, `save-exact`, `engine-strict` | Dependabot (`npm`) |
 | GitHub Actions | Commit SHA | `persist-credentials: false`, read-only token | Dependabot (`github-actions`) |
 
 All of these use a **7-day minimum age**: npm `min-release-age=7`, pip

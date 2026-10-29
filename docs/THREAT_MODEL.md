@@ -61,8 +61,8 @@
 ### 9. Supply chain: the static host, the npm packages, the build
 - **This is the most important residual risk.** Whoever controls the served JavaScript controls the app.
 - **Mitigations:**
-  - two runtime dependencies (Trystero, with two small dependencies of its own, and
-    qrcode-generator, with none) and two build tools
+  - three runtime dependencies (Trystero, with two small dependencies of its own,
+    qrcode-generator and openpgp.js, with none), each loaded only on the pages that use it, and two build tools
     (TypeScript, esbuild), at exact versions locked with integrity hashes in `package-lock.json`,
     installed with `npm ci`, no install scripts, and only releases at least 7 days old;
   - everything is **bundled at build time**: no CDN, and the CSP lets scripts load only from `'self'`;
@@ -96,6 +96,32 @@
   password manager (Firefox, which lacks the masking used, may still offer).
 - **Residual:** browser history contains room links (the fragment includes the link secret). The
   clipboard and OS clipboard history may retain copied secrets.
+
+## Encrypted files
+
+The files page (`/files/`, decision D25) protects files **at rest and in transit by any means**:
+whoever gets the encrypted file but not the password learns nothing but its size.
+
+- **Offline guessing is possible**, unlike with rooms: anyone with the file can try passwords as
+  fast as their hardware allows. Mitigations: the strongest S2K OpenPGP's iterated format allows
+  (65,011,712 bytes of SHA-256 per guess, about 2^20 SHA-256 blocks), suggested passwords of
+  six random words (about 59 bits, so roughly 2^78 SHA-256 blocks for an even chance), and a warning
+  when a typed password is estimated below 50 bits. The S2K isn't memory-hard (Argon2 is in RFC
+  9580, which GnuPG 2.4 can't read), so a weak password stays weak.
+- **Integrity:** the MDC (SHA-1 over the plaintext, inside the encryption) detects a modified or
+  cut-off file. Decryption streams, so the page releases nothing until the whole file has passed;
+  a failure shows "damaged or was changed" and offers no download.
+- **Crypto:** AES-256-CFB with the MDC is older than AEAD but sound for this use; there's no
+  oracle to query, since nobody decrypts for an attacker. Symmetric encryption with 256-bit keys
+  isn't threatened by quantum computers.
+- **Metadata:** the file name is stored inside the encryption (gpg can restore it); the size is
+  not hidden. A package's paths are inside the encrypted ZIP.
+- **Untrusted files:** decrypted names are reduced to their last part and stripped of
+  characters file systems reject; ZIP paths written by the page can't contain `..` or absolute
+  paths. Decrypted files are offered as downloads, never rendered.
+- **Residual:** while the page is open, decrypted content is in memory or in the browser's Blob
+  storage (possibly temporary files on disk); downloads are plaintext on disk; a lost password
+  can't be recovered.
 
 ## Non-goals
 

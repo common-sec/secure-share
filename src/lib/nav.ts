@@ -1,9 +1,9 @@
-// Page addresses. Each tool has its own static page (/, /chat/, /passwords/); room secrets and
+// Page addresses. Each tool has its own static page (/, /chat/, /files/, /passwords/); room secrets and
 // settings live in the fragment (#r=…&k=…&h=…), which is never sent to a server.
 
-export type Page = 'share' | 'chat' | 'passwords';
+export type Page = 'share' | 'chat' | 'files' | 'passwords';
 
-const PATHS: Record<Page, string> = { share: '', chat: 'chat/', passwords: 'passwords/' };
+const PATHS: Record<Page, string> = { share: '', chat: 'chat/', files: 'files/', passwords: 'passwords/' };
 
 /** The site's root, from the page's data-root ("./" or "../"), so it works from any folder. */
 export function siteRoot(): URL {

@@ -1,6 +1,7 @@
 import * as password from './tools/password.js';
 import * as chat from './tools/chat.js';
 import * as share from './tools/share.js';
+import * as files from './tools/files.js';
 import { APP_NAME } from './lib/app.js';
 import { fragmentParams, legacyRedirect } from './lib/nav.js';
 
@@ -11,7 +12,7 @@ interface Tool { mount(root: HTMLElement, params: URLSearchParams): (() => void)
 // Each tool has its own pre-rendered page (built by pages.mjs), which names the tool to mount in
 // <body data-tool>. The page's static content is what crawlers and link previews see; the tool
 // replaces the static heading in #view, and the fragment holds the room secrets or settings.
-const tools: Record<string, Tool> = { share, chat, password };
+const tools: Record<string, Tool> = { share, chat, files, password };
 
 let cleanup: (() => void) | void;
 const pageTitle = document.title;
