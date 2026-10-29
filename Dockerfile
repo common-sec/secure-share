@@ -1,4 +1,4 @@
-# Two small images; everything else in compose.yaml is an official image used as-is.
+# Three small images; everything else in compose.yaml is an official image used as-is.
 # Base images are pinned by tag (for humans and Dependabot) and digest (what actually runs). The
 # digests are multi-platform indexes, so the same pin works on amd64 and arm64 (e.g. Apple Silicon).
 
@@ -22,3 +22,15 @@ ENV PYTHONPATH=/opt/pydeps \
 WORKDIR /work
 USER pwuser
 CMD ["python", "tests/unit/run.py", "chromium", "firefox", "webkit"]
+
+# ---- lighthouse: Lighthouse budgets on the built site (tools/lighthouse/run.mjs) ---------------
+# Microsoft's Playwright image again (same version as `test`), for its Node and Chromium.
+# Lighthouse is installed from its own lockfile under the root .npmrc rules (no install scripts,
+# >= 7 days old), into /opt/lighthouse; run.mjs finds it through LIGHTHOUSE_MODULES.
+FROM mcr.microsoft.com/playwright:v1.63.0-noble@sha256:eff16c30e6f3f4af0a03fa4b706120d5e9b0891c344a27d64559aff5900a4a27 AS lighthouse
+COPY .npmrc tools/lighthouse/package.json tools/lighthouse/package-lock.json /opt/lighthouse/
+RUN cd /opt/lighthouse && npm ci --no-audit --no-fund && npm cache clean --force
+ENV LIGHTHOUSE_MODULES=/opt/lighthouse
+WORKDIR /work
+USER pwuser
+CMD ["node", "tools/lighthouse/run.mjs"]

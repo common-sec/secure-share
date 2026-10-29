@@ -1,0 +1,17 @@
+{
+  "why": "Minimum Lighthouse category scores (0-100), per page; see run.mjs and docs/TESTING.md. Performance is the median of several runs and keeps some margin for noise; the others are deterministic, so they are held where the pages are. Page names are pages.mjs paths without the slash, 'home' for the root.",
+  "default": {
+    "performance": 90,
+    "accessibility": 100,
+    "best-practices": 100,
+    "seo": 100
+  },
+  "pages": {
+    "home": {
+      "accessibility": 96
+    }
+  },
+  "exceptions": {
+    "home.accessibility": "Colour contrast of the Secure Chat link under the share form: roadmap fix A4 (focus and contrast) raises it to 100."
+  }
+}

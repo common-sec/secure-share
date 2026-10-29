@@ -1,0 +1,14 @@
+{
+  "name": "secure-share-lighthouse",
+  "private": true,
+  "description": "Lighthouse, installed into the lighthouse image (Dockerfile) and run by run.mjs; not part of the app.",
+  "license": "UNLICENSED",
+  "engines": {
+    "node": ">=24 <25",
+    "npm": ">=11.10"
+  },
+  "dependencies": {
+    "chrome-launcher": "1.2.2",
+    "lighthouse": "13.5.0"
+  }
+}

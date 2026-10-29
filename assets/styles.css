@@ -269,6 +269,12 @@ main.container:has(.chat-layout) { max-width: 1100px; }
 }
 
 /* Static pages (src/pages/): the introduction under each tool, and the content pages. */
+/* A tool page's form is added by JavaScript after the first paint. Until then, keep the
+   introduction (#about) and the footer below the fold, so nothing on screen moves when the form
+   appears (Lighthouse's layout shift budget, docs/TODO.md I4). Without JavaScript, no gap. */
+@media (scripting: enabled) {
+  body:not([data-tool=""]) #view { min-height: calc(100svh - 5rem); }
+}
 .about, .prose { max-width: 680px; }
 .about { margin-top: 40px; padding-top: 24px; border-top: 1px solid var(--border); color: var(--muted); }
 .about h2, .prose h2 { color: var(--text); font-size: 1.2rem; margin: 1.75rem 0 .5rem; }

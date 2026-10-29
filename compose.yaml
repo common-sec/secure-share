@@ -8,6 +8,7 @@
 #   docker compose run --rm test-unit         unit tests in Chromium, Firefox and WebKit (no network)
 #   docker compose run --rm test-e2e          end-to-end tests, local relay, no third-party requests
 #   docker compose run --rm test-e2e-public   end-to-end tests over the real public relays and STUN
+#   docker compose run --rm lighthouse        Lighthouse budgets (performance, accessibility, SEO)
 #   docker compose run --rm trufflehog        secrets in the working tree and all of git history
 #   docker compose run --rm semgrep           static analysis
 #   docker compose run --rm trivy             vulnerable dependencies, misconfigurations, secrets
@@ -110,6 +111,23 @@ services:
     volumes: *source-ro
     shm_size: 1gb
     command: ["python", "tests/e2e/run.py", "--public"]
+
+  # Lighthouse on every page of the built site (run `build` first), against the budgets in
+  # tools/lighthouse/budgets.json; fails the run if one isn't met. Reports go to .cache/lighthouse.
+  lighthouse:
+    build: { context: ., target: lighthouse }
+    image: secure-share/lighthouse:local
+    <<: *hardening
+    working_dir: /work
+    volumes:
+      - ./:/work:ro
+      - ./.cache/lighthouse:/reports    # HTML and JSON reports (git-ignored)
+    environment:
+      HOME: /tmp
+      LIGHTHOUSE_OUT: /reports
+    network_mode: none                 # the site is served on loopback inside the container
+    shm_size: 1gb                      # Chromium uses /dev/shm heavily
+    command: ["node", "tools/lighthouse/run.mjs"]
 
   trufflehog:
     image: trufflesecurity/trufflehog:3.99.2@sha256:47a84bc18a0d04a165498bbbd3bacfd84176661cbc91f8e0f85467f6a771e99a

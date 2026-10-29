@@ -51,6 +51,29 @@ jobs:
       - name: End-to-end tests (real UI, real WebRTC, local relay, third-party requests blocked)
         run: docker compose run --rm test-e2e
 
+  lighthouse:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Build the app
+        run: chmod a+rwX . && docker compose run --rm build
+      - name: Build the Lighthouse image (pinned base, Lighthouse from its lockfile)
+        run: docker compose build lighthouse
+      - name: Prepare the reports folder (the container runs as another uid)
+        run: mkdir -p .cache/lighthouse && chmod a+rwX .cache/lighthouse
+      - name: Lighthouse budgets on every page (performance, accessibility, best practices, SEO)
+        run: docker compose run --rm lighthouse
+      - name: Keep the Lighthouse reports
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: lighthouse-reports
+          path: .cache/lighthouse/
+          retention-days: 14
+
   scan:
     runs-on: ubuntu-latest
     timeout-minutes: 20

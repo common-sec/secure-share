@@ -54,6 +54,16 @@ updates:
     commit-message:
       prefix: "deps(npm)"
 
+  # Lighthouse, for the budgets in CI (tools/lighthouse/package-lock.json; not part of the app).
+  - package-ecosystem: npm
+    directory: /tools/lighthouse
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    commit-message:
+      prefix: "deps(npm)"
+
   # GitHub Actions used by CI (pinned by commit SHA).
   - package-ecosystem: github-actions
     directory: /

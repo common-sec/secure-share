@@ -148,10 +148,38 @@ Locks, WebRTC data channels or downloads; the one difference, mDNS host candidat
 of the test container (see above), not of the app. The clipboard (the Copy buttons) isn't
 exercised by the automated tests in any browser; the manual checks cover it.
 
+## Lighthouse budgets
+
+`docker compose run --rm lighthouse` (after `build`) runs [Lighthouse](https://github.com/GoogleChrome/lighthouse)
+on every page listed in `pages.mjs`, so a new page is audited without touching the setup, and
+fails if a category scores below its budget in `tools/lighthouse/budgets.json`:
+
+| Category | Budget | Why |
+|---|---|---|
+| Performance | ≥ 90 | The median of 3 runs; the margin absorbs run-to-run noise |
+| Accessibility | 100 (home page: 96) | Deterministic. The home page's exception is the contrast of one link, fixed by roadmap fix A4 |
+| Best practices | 100 | Deterministic |
+| SEO | 100 | Deterministic: titles, descriptions, canonical URLs, crawlable links |
+
+It uses Lighthouse's default mobile profile (a mid-range phone on slow 4G, simulated), so the
+scores don't depend on how fast the machine is. The container is the pinned Playwright image (its
+Chromium), with Lighthouse installed from `tools/lighthouse/package-lock.json` under the same
+`.npmrc` rules as the app; it has **no network**: `tools/serve.py` serves `dist/` on loopback, as
+`docker compose up web` does. HTML and JSON reports land in `.cache/lighthouse/` (CI keeps them
+as an artifact for 14 days). Lighthouse's accessibility checks are axe-core too, but on the
+initial page only; the end-to-end tests above cover the other states.
+
+**Lighthouse, not `@lhci/cli`:** Lighthouse CI's command line (last released June 2025) pins
+Lighthouse 12 and a dependency tree with open high-severity advisories that Trivy would fail on.
+`tools/lighthouse/run.mjs`, about a hundred lines, does the part we need (run, take the median,
+compare to budgets, write reports) on current Lighthouse, whose tree has none.
+
 ## CI
 
 `.github/workflows/ci.yml` runs on every push and pull request:
 1. `build`: `docker compose run --rm build`: type-check, build, check that a second build is
    byte-identical, and print `dist/SHA256SUMS`.
 2. `test-unit` and `test-e2e`: on Chromium, Firefox and WebKit; build the app, build the test image and run the same commands as locally.
-3. `scan`: one job each for `trufflehog`, `semgrep` and `trivy` (see [DEVELOPMENT.md](DEVELOPMENT.md)).
+3. `lighthouse`: build the app and the Lighthouse image, then check the budgets above; the
+   reports are uploaded whether it passes or not.
+4. `scan`: one job each for `trufflehog`, `semgrep` and `trivy` (see [DEVELOPMENT.md](DEVELOPMENT.md)).
