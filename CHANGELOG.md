@@ -5,6 +5,17 @@ All notable changes, one section per version. See [docs/ROADMAP.md](docs/ROADMAP
 ## [Unreleased]
 
 ### Added
+- **Static pages and SEO** (roadmap 0.11.0, in progress). Every tool has its own pre-rendered
+  page, `/`, `/chat/` and `/passwords/`, with its heading, an introduction and its metadata in
+  the HTML, so search engines and link previews see real content without JavaScript; the tool
+  mounts into it. New **How it works** (`/how-it-works/`) and **FAQ** (`/faq/`) pages, the FAQ
+  with a privacy note on what the app sends where. Each page has a keyword-led title, a
+  description, a canonical URL, Open Graph and Twitter card tags with a social image (a
+  placeholder until the logo exists), and `WebApplication` or `FAQPage` structured data. The site
+  has `robots.txt`, `sitemap.xml`, a favicon set, a web manifest and `theme-color`. The build
+  (`pages.mjs`) renders the pages from `src/pages/`, with no new dependency, and stays
+  reproducible; `$BUILD_SITE_URL` sets the public address used by canonical and preview URLs
+  (decision D24).
 - **The app says when a network blocks the connection** (roadmap fix N1). When the other side is
   found but no direct connection can be opened (a firewall blocking UDP or WebRTC, or strict NATs
   on both sides), or when no discovery relay can be reached for 10 seconds (WebSockets blocked, or
@@ -13,6 +24,10 @@ All notable changes, one section per version. See [docs/ROADMAP.md](docs/ROADMAP
   tests can simulate both networks.
 
 ### Changed
+- **New link format:** room links are the tool's page with the secrets in the fragment,
+  `https://share.common-sec.org/#r=…&k=…&h=…` (Share) and `…/chat/#r=…` (Chat), instead of
+  `/#/share?r=…`. Links in the old format still work: the app redirects them. The version in the
+  footer is now in the HTML, not added by JavaScript.
 - **Browsers no longer offer to save passphrases.** Passphrase fields are masked without
   `type=password` (with `-webkit-text-security`, in Chrome, Edge and Safari), so browsers and
   password managers don't treat them as logins to save. Where that masking isn't available

@@ -16,8 +16,9 @@ UTF-8 for strings, `‖` = byte concatenation, `|` = the literal character `|` i
 | `memberId` | first 16 characters of `fp` |
 | `h` | the host's `fp` |
 
-Link: `https://<origin>/#/<chat|share>?r=<roomId>&k=<secret>&h=<h>`. Everything after `#` stays in
-the browser. The **passphrase** is shared out of band and is never part of the link.
+Link: `https://<origin>/#r=<roomId>&k=<secret>&h=<h>` (Share) or
+`https://<origin>/chat/#r=…` (Chat); before 0.11.0 it was `https://<origin>/#/<chat|share>?r=…`,
+which the app still redirects. Everything after `#` stays in the browser. The **passphrase** is shared out of band and is never part of the link.
 
 ## 2. Key derivation
 

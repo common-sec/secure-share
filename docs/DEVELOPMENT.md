@@ -41,9 +41,11 @@ CI (`.github/workflows/ci.yml`) runs exactly these commands.
 
 Sources are TypeScript in `src/` (strict mode). `build.mjs` uses esbuild to produce:
 
-- `dist/`: the app as served: `index.html`, `styles.css`, `app.js` and lazily loaded chunks
-  (Trystero and its dependencies are bundled in, so nothing is fetched from a CDN), plus
-  `SHA256SUMS`. GitHub Pages serves this folder.
+- `dist/`: the site as served: one pre-rendered page per tool and content page (`index.html`,
+  `chat/`, `passwords/`, `how-it-works/`, `faq/`, from `src/pages/` by `pages.mjs`), `styles.css`,
+  `app.js` and lazily loaded chunks (Trystero and its dependencies are bundled in, so nothing is
+  fetched from a CDN), the icons and social image (`assets/site/`), `site.webmanifest`,
+  `robots.txt`, `sitemap.xml`, plus `SHA256SUMS`. GitHub Pages serves this folder.
 - `build/modules/`: every source module transpiled one-to-one, for the unit tests.
 
 The build stamps the version (`package.json` version + short commit, read from `.git` or
@@ -60,6 +62,10 @@ link is `<repository>/commit/<hash>`):
 ```bash
 BUILD_REPOSITORY=https://github.com/you/secure-share docker compose run --rm build
 ```
+
+Set `$BUILD_SITE_URL` to your copy's public address too (default `https://share.common-sec.org/`):
+canonical URLs, link previews, `robots.txt` and `sitemap.xml` use it. Every other link in the
+pages is relative, so the site works at a domain root or in a subfolder.
 
 The Pages and Release workflows set it to the repository they run in, so a fork on GitHub links
 to itself with no change.

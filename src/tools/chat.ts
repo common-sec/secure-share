@@ -1,6 +1,7 @@
 import { h, formatBytes, safeFileName, clockTime, closesAt, type Child } from '../lib/dom.js';
 import { passphraseField, copyRow, field } from './widgets.js';
 import { SecureRoom, DENY_REASONS, MAX_TEXT, MAX_FILE_BYTES, DEFAULT_LIFETIME_MS, cleanNick, type Inner, type Member } from '../lib/room.js';
+import { pageUrl, restart } from '../lib/nav.js';
 import { saveHost, loadHost, forgetHost, claimHost, sweepHosts, HEARTBEAT_MS, type HostRecord } from '../lib/hoststore.js';
 
 const HOUR = 60 * 60 * 1000;
@@ -120,7 +121,7 @@ export function mount(root: HTMLElement, params: URLSearchParams): () => void {
       h('h2', null, 'This room has ended'),
       h('p', null, 'A room survives a reload, but not a closed or long-suspended tab, and it closes at its time limit. '
         + 'The link no longer works.'),
-      h('div', { class: 'row' }, h('button', { class: 'btn btn-primary', onclick: () => { location.hash = '#/chat?'; } }, 'Start a new chat')),
+      h('div', { class: 'row' }, h('button', { class: 'btn btn-primary', onclick: restart }, 'Start a new chat')),
     ));
   }
   return () => { disposed = true; session?.leave(); };
@@ -144,7 +145,7 @@ async function startChat(root: HTMLElement, { invite, nick = '', passphrase = nu
   else if (invite) room = await SecureRoom.join({ app: 'chat', ...invite, passphrase: passphrase ?? '', nick });
   else room = await SecureRoom.host({ app: 'chat', passphrase: passphrase ?? '', nick, maxGuests: 7, lifetimeMs });
 
-  const link = room.link('chat');
+  const link = room.link(pageUrl('chat'));
   let heartbeat: ReturnType<typeof setInterval> | undefined;
   const persist = () => { if (!room.closed) void saveHost('chat', room.snapshot()); };
   if (room.isHost) {
@@ -207,7 +208,7 @@ async function startChat(root: HTMLElement, { invite, nick = '', passphrase = nu
   root.replaceChildren(
     h('div', { class: 'chat-head' },
       h('div', null, h('h1', null, 'Secure Chat'), badge),
-      h('button', { class: 'btn btn-ghost btn-small', onclick: () => { location.hash = '#/chat?'; } }, room.isHost ? 'Close room' : 'Leave'),
+      h('button', { class: 'btn btn-ghost btn-small', onclick: restart }, room.isHost ? 'Close room' : 'Leave'),
     ),
     h('div', { class: 'chat-layout' }, chatPane, side),
   );

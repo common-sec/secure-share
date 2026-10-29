@@ -301,8 +301,9 @@ export class SecureRoom extends EventTarget {
     return this.members.get(this.identity.id) ?? { id: this.identity.id, nick: this.nick, pub: this.identity.pub, host: this.isHost };
   }
 
-  link(route: string): string {
-    return `${location.origin}${location.pathname}#/${route}?r=${this.roomId}&k=${this.secret}&h=${this.hostFp}`;
+  /** The room link: the tool's page address, then the secrets in the fragment (PROTOCOL.md §1). */
+  link(page: string): string {
+    return `${page}#r=${this.roomId}&k=${this.secret}&h=${this.hostFp}`;
   }
 
   on<K extends keyof RoomEvents>(type: K, fn: (detail: RoomEvents[K]) => void): this {

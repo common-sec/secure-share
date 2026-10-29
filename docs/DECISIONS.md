@@ -51,6 +51,23 @@ kept under "History".
 - **Cost:** the room ends when the host leaves; the host is trusted for membership (see PROTOCOL §11).
 - **Alternatives:** a full mesh, where everyone connects to everyone.
 
+### D24. One static page per tool, JavaScript enhances ✅ (2026-10-29)
+- **What:** the build (`pages.mjs`, called by `build.mjs`) pre-renders one HTML page per tool
+  (`/`, `/chat/`, `/passwords/`) and per content page (`/how-it-works/`, `/faq/`), from a shared
+  layout and per-page content in `src/pages/`. Each tool's page has its heading, introduction and
+  metadata in the HTML; `app.js` mounts the tool into it. Room secrets and settings stay in the
+  fragment: `/#r=…&k=…&h=…` for Share, `/chat/#r=…` for Chat. Old `/#/chat?r=…` links are
+  redirected in JavaScript.
+- **Why:** crawlers and link previews saw an empty page and a single URL. Static content gives
+  each tool its own indexable address and a trustworthy preview that never contains the secret
+  (previews don't receive the fragment).
+- **How:** option A of the [static site assessment](reviews/2026-10-13-static-site-generation.md):
+  no new dependency, the same reproducible build and `SHA256SUMS`, plain `{{placeholder}}`
+  templating. Relative links throughout, so the site works from a subfolder; only canonical and
+  preview URLs use the public address (`$BUILD_SITE_URL`).
+- **Revisit:** if content grows a lot (translations, many pages), move the pages to Hugo from a
+  pinned container (option C).
+
 ### D7. Share and Chat stay one app; Share is the home page ✅
 - **Why:** both are the same story, sharing data securely and easily. Most people need to send one
   thing once. Libraries get extracted only if they're useful elsewhere.

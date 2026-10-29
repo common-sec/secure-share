@@ -50,7 +50,8 @@ The commit is read from `.git`, so build from a git checkout of the tag (or set 
 to the full commit hash); otherwise `app.js`, which embeds the version, will differ. It also
 embeds the source repository linked from the footer: leave `BUILD_REPOSITORY` unset for an
 official release, or set it to the fork's URL (`https://github.com/<owner>/<repo>`) to rebuild a
-fork's release.
+fork's release. The same goes for `BUILD_SITE_URL`, which the pages embed in their canonical and
+preview URLs.
 
 ## Check what the site serves
 

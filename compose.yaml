@@ -40,7 +40,7 @@ services:
 
   # Installs the locked dependencies (no install scripts, >= 7 days old: .npmrc), type-checks,
   # builds dist/ and build/modules/, then builds again and fails unless the output is identical.
-  # BUILD_REPOSITORY and BUILD_COMMIT are passed through when set (see build.mjs).
+  # BUILD_REPOSITORY, BUILD_COMMIT and BUILD_SITE_URL are passed through when set (see build.mjs).
   build:
     build: { context: ., target: dev }
     image: secure-share/dev:local
@@ -49,6 +49,7 @@ services:
       HOME: /tmp
       BUILD_REPOSITORY:
       BUILD_COMMIT:
+      BUILD_SITE_URL:
     volumes:
       - ./:/work
     command: ["sh", "-c", "npm ci --no-audit --no-fund && npm run build:check"]

@@ -1,6 +1,6 @@
 // All cryptography for chat/share rooms, using only the native Web Crypto API.
 //
-// Room link:  #/<tool>?r=<room id>&k=<link secret>&h=<host key fingerprint>
+// Room link:  <tool page>#r=<room id>&k=<link secret>&h=<host key fingerprint>
 //   link secret  --HKDF-->  Trystero signaling password (encrypts offers on public relays)
 //   link secret + PBKDF2(passphrase)  --HKDF-->  group key (AES-256-GCM, all payloads)
 //                                     --HKDF-->  auth key  (HMAC, proves the passphrase to the host)
