@@ -34,26 +34,15 @@
   <link rel="stylesheet" href="{{root}}styles.css">
 {{head}}
 </head>
-<body{{bodyAttrs}}>
+<body data-tool="{{tool}}">
   <header class="topbar">
-    <a class="brand" href="{{root}}">
-      <span class="brand-mark" aria-hidden="true">◈</span> {{app}}
-    </a>
-    <nav class="nav" aria-label="Tools">
-{{nav}}
-    </nav>
+{{header}}
   </header>
   <main id="main" class="container">
 {{body}}
   </main>
   <footer class="footer container">
-    <nav class="footer-links" aria-label="About">
-      <a href="{{root}}how-it-works/">How it works</a>
-      <a href="{{root}}faq/">FAQ and privacy</a>
-      <a href="{{repository}}" rel="noopener">Source code</a>
-    </nav>
-    Everything runs locally in your browser. No accounts, no tracking, no backend.
-    <span class="version"><a href="{{commitUrl}}" rel="noopener">{{versionText}}</a></span>
+{{footer}}
   </footer>
 </body>
 </html>

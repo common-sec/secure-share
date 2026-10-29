@@ -3,11 +3,13 @@
 // docs/DECISIONS.md D24). build.mjs calls writeSite() after bundling the app.
 //
 // src/pages/layout.html is the shared shell (head, header, footer); src/pages/<page>.html is each
-// page's content. Placeholders are {{name}}: values are HTML-escaped here, except the page's
-// content and the generated blocks (nav, head), which are built from this file only.
-// Paths inside pages are relative ({{root}} is "./" or "../"), so the site also works from a
-// subfolder (a fork's github.io/<repo>/, or the tests' /dist/). Only canonical URLs, social
-// previews, robots.txt and sitemap.xml need the public address: $BUILD_SITE_URL.
+// page's content, with plain relative links (share.html is at the site root, the others one level
+// down). Placeholders are {{name}}: values are HTML-escaped here, except the page's content and
+// the blocks generated below (head, header, footer, links), whose links are built and escaped in
+// this file, never written as template variables in an href.
+// Paths are relative ({{root}} is "./" or "../"), so the site also works from a subfolder (a
+// fork's github.io/<repo>/, or the tests' /dist/). Only canonical URLs, social previews,
+// robots.txt and sitemap.xml need the public address: $BUILD_SITE_URL.
 import { copyFileSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -59,6 +61,8 @@ const fill = (template, values) => template.replace(/\{\{(\w+)\}\}/g, (m, k) => 
 });
 /** JSON for a <script type="application/ld+json"> block: "<" escaped so it can't close the tag. */
 const jsonLd = (data) => `  <script type="application/ld+json">${JSON.stringify(data).replace(/</g, '\\u003c')}</script>`;
+const link = (href, text, external = false) =>
+  `<a href="${escapeHtml(href)}"${external ? ' rel="noopener"' : ''}>${escapeHtml(text)}</a>`;
 const plainText = (html) => html.replace(/<[^>]+>/g, '').replace(/&amp;/g, '&').replace(/\s+/g, ' ').trim();
 
 /** FAQPage structured data, read from the FAQ page itself so it can't drift from what's shown. */
@@ -89,23 +93,37 @@ const appSchema = (page, url) => ({
 export function writeSite(outdir, { siteUrl, version, repository }) {
   const layout = readFileSync('src/pages/layout.html', 'utf8');
   const [release, commit] = version.split('+');
-  const footer = {
-    repository: escapeHtml(repository),
-    commitUrl: escapeHtml(commit && commit !== 'unknown' ? `${repository}/commit/${commit}` : repository),
-    versionText: escapeHtml(`v${release}${commit ? ` · build ${commit}` : ''}`),
-  };
+  const commitUrl = commit && commit !== 'unknown' ? `${repository}/commit/${commit}` : repository;
+  const docLink = (file, text) => link(`${repository}/blob/main/docs/${file}`, text, true);
 
   for (const page of PAGES) {
     const depth = page.path.split('/').filter(Boolean).length;
     const root = depth ? '../'.repeat(depth) : './';
     const url = siteUrl + page.path;
     const content = fill(readFileSync(join('src/pages', page.source), 'utf8'), {
-      root, app: escapeHtml(APP_NAME), repository: footer.repository,
+      app: escapeHtml(APP_NAME),
+      protocolLink: docLink('PROTOCOL.md', 'protocol'), threatModelLink: docLink('THREAT_MODEL.md', 'threat model'),
     });
-    const nav = NAV.map(([path, route, label]) => {
-      const here = path === page.path;
-      return `      <a href="${root}${path}" data-route="${route}"${here ? ' class="active" aria-current="page"' : ''}>${label}</a>`;
-    }).join('\n');
+    const header = [
+      `    <a class="brand" href="${root}">`,
+      `      <span class="brand-mark" aria-hidden="true">◈</span> ${escapeHtml(APP_NAME)}`,
+      '    </a>',
+      '    <nav class="nav" aria-label="Tools">',
+      ...NAV.map(([path, route, label]) => {
+        const here = path === page.path;
+        return `      <a href="${root}${path}" data-route="${route}"${here ? ' class="active" aria-current="page"' : ''}>${label}</a>`;
+      }),
+      '    </nav>',
+    ].join('\n');
+    const footer = [
+      '    <nav class="footer-links" aria-label="About">',
+      `      ${link(`${root}how-it-works/`, 'How it works')}`,
+      `      ${link(`${root}faq/`, 'FAQ and privacy')}`,
+      `      ${link(repository, 'Source code', true)}`,
+      '    </nav>',
+      '    Everything runs locally in your browser. No accounts, no tracking, no backend.',
+      `    <span class="version">${link(commitUrl, `v${release}${commit ? ` · build ${commit}` : ''}`, true)}</span>`,
+    ].join('\n');
     const head = [
       page.tool ? `  <script type="module" src="${root}app.js"></script>` : null,
       page.tool ? jsonLd(appSchema(page, url)) : null,
@@ -116,8 +134,7 @@ export function writeSite(outdir, { siteUrl, version, repository }) {
       root, app: escapeHtml(APP_NAME), title: escapeHtml(page.title), ogTitle: escapeHtml(page.ogTitle),
       description: escapeHtml(page.description), url: escapeHtml(url),
       image: escapeHtml(`${siteUrl}og-image.png`), imageAlt: escapeHtml(`${APP_NAME}: send passwords and files securely, browser to browser`),
-      head, nav, body: content.trimEnd(), bodyAttrs: page.tool ? ` data-tool="${page.tool}"` : '',
-      ...footer,
+      head, header, footer, body: content.trimEnd(), tool: page.tool ?? '',
     });
     mkdirSync(join(outdir, page.path), { recursive: true });
     writeFileSync(join(outdir, page.path, 'index.html'), html);
