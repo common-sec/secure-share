@@ -63,8 +63,15 @@ const fill = (template, values) => template.replace(/\{\{(\w+)\}\}/g, (m, k) => 
 const jsonLd = (data) => `  <script type="application/ld+json">${JSON.stringify(data).replace(/</g, '\\u003c')}</script>`;
 const link = (href, text, external = false) =>
   `<a href="${escapeHtml(href)}"${external ? ' rel="noopener"' : ''}>${escapeHtml(text)}</a>`;
-/** Text of our own HTML, for JSON-LD: tags dropped, then any stray "<" or ">" too. */
-const plainText = (html) => html.replace(/<[^>]*>/g, '').replace(/[<>]/g, '').replace(/&amp;/g, '&').replace(/\s+/g, ' ').trim();
+/** Text of our own HTML, for JSON-LD: tags removed until none are left, so none can re-form. */
+function plainText(html) {
+  let text = html;
+  for (let before = ''; before !== text;) {
+    before = text;
+    text = text.replace(/<[^<>]*>/g, '');
+  }
+  return text.replace(/[<>]/g, '').replace(/&amp;/g, '&').replace(/\s+/g, ' ').trim();
+}
 
 /** FAQPage structured data, read from the FAQ page itself so it can't drift from what's shown. */
 function faqSchema(content) {
