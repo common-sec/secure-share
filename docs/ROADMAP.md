@@ -44,7 +44,7 @@ CI/CD, testing infrastructure and security process work is tracked separately, i
 | 0.12.0 | **Encrypted files**: package files, encrypt them with a password in a standard format and download the encrypted file; upload one, decrypt it and download the contents | Planned |
 | 1.0.0 | **Public launch**: release checklist and announcement, once the [pre-launch internal work](TODO.md#before-launch) is done | Planned |
 | 1.1.0 | **Share a generated password**: a button on the password generator opens a one-way Secure Share with it, passphrase and link ready | Planned |
-| 1.2.0 | **Local version of the app** (architecture to define: PWA, Electron, Docker image, single file) | Planned |
+| 1.2.0 | **Local version of the app**, including a **portable desktop executable** that runs without installing (architecture to define: Tauri or Electron, PWA, Docker image, single file) | Planned |
 | 1.3.0 | **AI-assisted memorable passphrases** (on-device model, entropy kept by the CSPRNG) | Planned |
 | 1.4.0 | **Encrypted files for a public key**: load someone's public key, encrypt for it; only their private key opens the file | Planned |
 | 1.5.0 | **Key pair wizard**: generate a key pair, send the public key over a secure channel, instructions to decrypt on another computer | Planned |
@@ -248,17 +248,27 @@ headers, the external security review) are done.
 
 ### 1.2.0: Local version of the app
 **Goal:** the same app usable without trusting a website at run time: installed or run locally.
+**Portable desktop executable (added 2026-10-30):** one of the deliverables is a standalone
+desktop build that runs **without installing**: a single executable (Windows `.exe`, Linux
+AppImage, macOS `.app`) that can be downloaded, verified and run from any folder or a USB stick,
+with no admin rights and nothing left behind. **Why:** browser extensions with access to a page
+can read what's typed and shown in it, passphrases and received secrets included, and the threat
+model leaves malicious extensions out of scope. A desktop build runs in its own window with no
+extensions, so that risk goes away. It doesn't protect against a compromised operating system.
 **Architecture to define**, comparing:
 - **PWA**: installable from the site, works offline after the first visit. Still delivered by the
   website the first time and on updates.
 - **Electron** (or a lighter shell such as Tauri): desktop app with signed releases. A bigger
-  dependency and attack surface.
+  dependency and attack surface. The candidate for the portable executable: check which shell
+  gives a single portable file per platform, keeps WebRTC working, and loads no extensions or
+  remote content.
 - **Docker image**: serve the app locally from a pinned, reproducible image.
 - **Single self-contained HTML file**: download once, verify its checksum or signature, open
   from disk. Needs a check that Web Crypto, WebRTC and storage work from a local file.
 
-**Done when:** the options are compared in docs, one or more are chosen and shipped, and releases
-are reproducible and verifiable (checksums or signatures).
+**Done when:** the options are compared in docs, one or more are chosen and shipped, including the
+portable desktop executable for Windows, macOS and Linux, and releases are reproducible and
+verifiable (checksums or signatures).
 
 ### 1.3.0: AI-assisted memorable passphrases
 **Goal:** an optional "make it a sentence" mode in which an on-device model turns CSPRNG-chosen
