@@ -1,0 +1,32 @@
+    <div id="view">
+      <section class="page-head">
+        <h1>Encrypted files</h1>
+        <p class="lead">Encrypt files with a password, in your browser, into one file that only the password opens. Nothing is uploaded.</p>
+      </section>
+      <noscript><p class="card narrow notice">Encrypting and decrypting happen in your browser, so this page needs JavaScript. Turn JavaScript on for this site to encrypt or decrypt a file. Without it, you can still open an encrypted file with GnuPG, as explained below.</p></noscript>
+    </div>
+    <section id="about" class="about">
+      <h2>Encrypt files with a password, keep them safe, open them on any system</h2>
+      <p>Add one or more files, or a whole folder, choose a password, and download a single encrypted file. Keep it in your cloud storage, on a USB stick or in a backup: without the password, nobody can read it. To open it, add it here, type the password and download what’s inside, or open it with GnuPG on any computer, as explained below.</p>
+      <ul>
+        <li><strong>Nothing leaves your device.</strong> The files are encrypted in your browser, nothing is uploaded or stored, and once the page has loaded it works offline.</li>
+        <li><strong>Opens on any system.</strong> The encrypted file is OpenPGP (AES-256), the standard format GnuPG uses, so it also opens without this site, on Windows, macOS, Linux and Android.</li>
+        <li><strong>Folders and several files</strong> are packaged as a ZIP inside the encrypted file. When it’s decrypted, your computer opens the ZIP as usual.</li>
+        <li><strong>Up to 2 GB in all</strong> on a computer. Phones have less memory: keep to a few hundred MB there.</li>
+        <li><strong>Keep the password safe.</strong> If it’s lost, the file can’t be opened, by anyone, us included.</li>
+      </ul>
+
+      <h2 id="open-elsewhere">Open the file without this site</h2>
+      <p>The encrypted file (<code>.gpg</code>) opens with free tools, offline, on every system. Each one asks for the password, then saves what’s inside.</p>
+      <ul>
+        <li><strong>Windows:</strong> <a href="https://gpg4win.org/" rel="noopener">Gpg4win</a> includes Kleopatra. Open Kleopatra, choose <em>Decrypt/Verify</em>, pick the file and type the password.</li>
+        <li><strong>macOS:</strong> with <a href="https://gpgtools.org/" rel="noopener">GPG Suite</a> installed, right-click the file in Finder and choose <em>Services › OpenPGP: Decrypt File</em>.</li>
+        <li><strong>Linux, or a terminal anywhere:</strong> <a href="https://gnupg.org/" rel="noopener">GnuPG</a>, often already installed: <code>gpg --output report.pdf --decrypt report.pdf.gpg</code></li>
+        <li><strong>Android:</strong> OpenKeychain can decrypt it too.</li>
+      </ul>
+      <p>The other way works as well: a file encrypted with a password by GnuPG (<code>gpg --symmetric report.pdf</code>), Kleopatra or GPG Suite opens here. Files encrypted for a key rather than a password aren’t supported yet.</p>
+
+      <h2 id="sending">Sending files to someone</h2>
+      <p>To give files to someone else, use <a href="../">Secure Share</a> (once, to one person) or <a href="../chat/">Secure Chat</a> (several people, or back and forth). The files go straight from your browser to theirs, encrypted end to end, and no copy is kept anywhere.</p>
+      <p>Avoid sending an encrypted file by email or in a chat app. Copies stay on servers and devices you don’t control, and anyone who keeps one can try to open it later: by guessing the password, or with a weakness found in the future. If the encrypted file itself has to travel, send it with Secure Share, and the password another way. More in the <a href="../faq/">FAQ</a>.</p>
+    </section>

@@ -18,6 +18,7 @@ The aim is to make secure sharing easy for anyone: **privacy by default, not ano
 |---|---|
 | **Secure Share** (`/`, the home page) | Encrypted transfer from computer to computer, browser to browser: ideal for passwords and sensitive files, between any kind of user, with no special software. Send text and/or files once to one person. They need the link **and** a passphrase. Once delivered, the link is dead. |
 | **Secure Chat** (`/chat/`) | For several things to exchange, replies, or more than two people: group chat with file sharing. The host approves every member, messages are signed and encrypted, and the room disappears when the host closes it. |
+| **Encrypted files** (`/files/`) | Encrypt files or a whole folder with a password into one OpenPGP file, to keep in the cloud or on a USB stick and open on any system, and decrypt it again. To give files to someone, Secure Share is the way. In the browser and offline: nothing is uploaded. GnuPG, Kleopatra and GPG Suite open the file too. |
 | **Password Generator** (`/passwords/`) | Memorable passphrases that are not just dictionary words (`Stone~Behind~Karrotish~Pencils42~Over~Quail`), or random-character passwords. |
 
 ## How it works, in short
@@ -78,10 +79,11 @@ Pages, Netlify). The Web Crypto API needs a secure context (HTTPS or `localhost`
   the host's non-extractable keys while a chat room is open (to survive a reload, not a closed
   tab). Rooms close on their own after a time limit (4 hours by default).
 - **No hand-rolled cryptographic primitives.** All of them come from the browser's Web Crypto
-  API: AES-GCM, ECDSA P-256, HKDF, PBKDF2, HMAC, SHA-256 and the CSPRNG. The protocol that combines
+  API: AES-GCM, ECDSA P-256, HKDF, PBKDF2, HMAC, SHA-256 and the CSPRNG. Encrypted files use the
+  OpenPGP format through the audited openpgp.js library, so GnuPG opens them too. The protocol that combines
   them is documented in [PROTOCOL.md](docs/PROTOCOL.md) and covered by adversarial tests.
-- **Minimal dependencies.** Two runtime dependencies (Trystero, and qrcode-generator for the QR
-  code), locked and bundled at build time, no framework, no CDN. Every line that runs is in this
+- **Minimal dependencies.** Four runtime dependencies (Trystero; qrcode-generator for the QR
+  code; openpgp.js and client-zip for encrypted files, decision D25), locked and bundled at build time, no framework, no CDN. Every line that runs is in this
   repository or in the locked libraries.
 - **Readable and verifiable.** Strict TypeScript, a strict Content Security Policy, and a
   [reproducible build](docs/RELEASES.md): anyone can check the served files match the source.

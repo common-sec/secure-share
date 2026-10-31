@@ -19,13 +19,18 @@ injects nothing: the app behaves exactly as on the live site. Both test the buil
 so run the `build` service first.
 """
 import argparse
+import io
 import json
 import os
 import re
+import shutil
+import subprocess
 import sys
+import tempfile
 import time
 import traceback
 import urllib.parse
+import zipfile
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -157,11 +162,11 @@ def share_send(env, page, text, files=(), approve=False, keep_awake=False, own_w
     return link, passphrase
 
 
-def no_password_fields(page):
+def no_password_fields(page, label="Passphrase"):
     """Secrets are masked without type=password, so the browser doesn't offer to save them."""
     if page.evaluate("CSS.supports('-webkit-text-security', 'disc')"):
         assert page.locator("input[type=password]").count() == 0
-        expect(page.locator("input[aria-label=Passphrase]").first).to_have_attribute("autocomplete", "off")
+        expect(page.locator(f"input[aria-label={label}]").first).to_have_attribute("autocomplete", "off")
 
 
 def share_open(page, link, passphrase):
@@ -503,10 +508,187 @@ def passwords_a11y(env, b):
     audit(page, "passwords")
 
 
+# ---------------------------------------------------------------- encrypted files
+def gpg(*args, cwd=None):
+    """GnuPG 2.4, the reference tool for the files page (in the test image), with its own home."""
+    home = Path(tempfile.mkdtemp(prefix="gnupg-"))
+    home.chmod(0o700)
+    try:
+        run = subprocess.run(["gpg", "--homedir", str(home), "--batch", "--yes", "--pinentry-mode", "loopback", *args],
+                             capture_output=True, cwd=cwd)
+        assert run.returncode == 0, f"gpg {' '.join(args)}: {run.stderr.decode(errors='replace')}"
+        return run.stdout
+    finally:
+        subprocess.run(["gpgconf", "--homedir", str(home), "--kill", "all"], check=False, capture_output=True)
+        shutil.rmtree(home, ignore_errors=True)
+
+
+def files_page(env, b):
+    page = env.person(b)
+    page.goto(env.app + "files/")
+    expect(page.get_by_role("button", name="Encrypt", exact=True)).to_be_visible()
+    # Everything happens in the page: once its library has loaded (a few seconds after the page,
+    # or on the first touch), it works with no network at all.
+    expect(page.locator("#view[data-offline=ready]")).to_be_attached()
+    if b == "webkit":
+        # Playwright's offline mode in WebKit also fails reads of local files (File.stream()),
+        # which Safari itself doesn't do offline: refuse every request instead.
+        page.context.route("**/*", lambda route: route.abort())
+    else:
+        page.context.set_offline(True)
+    return page
+
+
+def files_encrypt(page, files=(), folder=None, password=None):
+    """Encrypts through the page; returns the encrypted file's name and bytes, and the password."""
+    page.get_by_role("button", name="Encrypt files").click()
+    if files:
+        page.get_by_label("Files to encrypt").set_input_files(list(files))
+    if folder:
+        page.get_by_label("Folder to encrypt").set_input_files(str(folder))
+    field = page.locator("form input[aria-label=Password]")
+    if password:
+        field.fill(password)
+    password = field.input_value()
+    no_password_fields(page, "Password")
+    # Said before encrypting, not after: a lost password means a lost file.
+    expect(page.get_by_text("If it’s lost, nobody can open the file")).to_be_visible()
+    page.get_by_role("button", name="Encrypt", exact=True).click()
+    expect(page.get_by_role("heading", name="Your encrypted file is ready")).to_be_visible()
+    with page.expect_download() as info:
+        page.locator(".result").get_by_role("link", name="Download").click()
+    return info.value.suggested_filename, Path(info.value.path()).read_bytes(), password
+
+
+def files_decrypt(page, name, data, password):
+    """Decrypts through the page; returns the decrypted file's name and bytes."""
+    page.get_by_role("button", name="Decrypt a file").click()
+    page.get_by_label("Encrypted file").set_input_files({"name": name, "mimeType": "application/octet-stream", "buffer": data})
+    page.locator("form input[aria-label=Password]").fill(password)
+    page.get_by_role("button", name="Decrypt", exact=True).click()
+    expect(page.get_by_role("heading", name="Here’s what was inside")).to_be_visible()
+    with page.expect_download() as info:
+        page.locator(".result").get_by_role("link", name="Download").click()
+    return info.value.suggested_filename, Path(info.value.path()).read_bytes()
+
+
+# The tools people unpack a package with: 7-Zip, libarchive (bsdtar; also what macOS's Archive
+# Utility and Windows 11's Explorer are built on) and Info-ZIP's unzip (Linux, older macOS tools).
+UNZIP_TOOLS = {
+    "7-Zip": lambda archive, out: ["7z", "x", "-y", f"-o{out}", str(archive)],
+    "libarchive": lambda archive, out: ["bsdtar", "-xf", str(archive), "-C", str(out)],
+    "Info-ZIP": lambda archive, out: ["unzip", "-q", str(archive), "-d", str(out)],
+}
+
+
+def unzip(data):
+    """Unpacks a ZIP package with Python (checking every CRC) and each tool in UNZIP_TOOLS, which
+    must all find the same files with the same names and contents."""
+    with zipfile.ZipFile(io.BytesIO(data)) as z:
+        assert z.testzip() is None, "a CRC doesn't match"
+        files = {i.filename: z.read(i) for i in z.infolist()}
+    with tempfile.TemporaryDirectory() as tmp:
+        archive = Path(tmp) / "package.zip"
+        archive.write_bytes(data)
+        for tool, command in UNZIP_TOOLS.items():
+            out = Path(tmp) / tool
+            out.mkdir()
+            run = subprocess.run(command(archive, out), capture_output=True, text=True,
+                                 env={**os.environ, "LC_ALL": "C.UTF-8"})
+            assert run.returncode == 0, f"{tool} couldn't unpack the package: {run.stdout}{run.stderr}"
+            found = {f.relative_to(out).as_posix(): f.read_bytes() for f in out.rglob("*") if f.is_file()}
+            assert found == files, f"{tool} unpacked {sorted(found)}, not {sorted(files)}"
+    return files
+
+
+@scenario("files: files and a folder are encrypted, open with gpg, and decrypt again, offline", browsers=ENGINES)
+def files_round_trip(env, b):
+    page = files_page(env, b)
+    audit(page, "files-encrypt")
+    # One file: encrypted as is, with its name inside, as gpg does.
+    report = file_payload("report.pdf", 300_000)
+    name, encrypted, password = files_encrypt(page, [report])
+    assert name == "report.pdf.gpg", name
+    assert re.fullmatch(r"[a-z]+( [a-z]+){5}", password), password   # speakable words suggested
+    audit(page, "files-encrypted")
+    with tempfile.TemporaryDirectory() as tmp:
+        (Path(tmp) / name).write_bytes(encrypted)
+        assert gpg("--passphrase", password, "--decrypt", name, cwd=tmp) == report["buffer"]
+        # gpg also restores the name stored inside.
+        gpg("--passphrase", password, "--use-embedded-filename", name, cwd=tmp)
+        assert (Path(tmp) / "report.pdf").read_bytes() == report["buffer"]
+    page.get_by_role("button", name="Encrypt other files").click()
+
+    # Several files and a folder: one ZIP package inside, with the folder's paths.
+    with tempfile.TemporaryDirectory() as tmp:
+        folder = Path(tmp) / "Holiday"
+        (folder / "day 1").mkdir(parents=True)
+        (folder / "day 1" / "beach.jpg").write_bytes(bytes(range(256)) * 400)
+        (folder / "notes.txt").write_text("été 2026", encoding="utf-8")
+        loose = file_payload("keys.bin", 5000)
+        name, encrypted, password = files_encrypt(page, [loose], folder=folder, password="Seven Lanterns over the 9 quiet Hills")
+        assert name == "files.zip.gpg", name
+        (Path(tmp) / name).write_bytes(encrypted)
+        expected = {"keys.bin": loose["buffer"], "Holiday/day 1/beach.jpg": bytes(range(256)) * 400,
+                    "Holiday/notes.txt": "été 2026".encode()}
+        assert unzip(gpg("--passphrase", password, "--decrypt", name, cwd=tmp)) == expected
+
+    # And back through the page.
+    out_name, out = files_decrypt(page, name, encrypted, password)
+    assert out_name == "files.zip", out_name
+    assert unzip(out) == expected
+    expect(page.get_by_text("It’s a ZIP package")).to_be_visible()
+    audit(page, "files-decrypted")
+
+
+@scenario("files: what gpg encrypts with a password opens in the page", browsers=ENGINES)
+def files_from_gpg(env, b):
+    page = files_page(env, b)
+    plaintext = "Test data that gpg encrypts\n".encode() * 500
+    password = "orbit quiet tundra lantern mosaic ripple"
+    with tempfile.TemporaryDirectory() as tmp:
+        (Path(tmp) / "vault.txt").write_bytes(plaintext)
+        # gpg's defaults: compressed, its own cipher choice; then armored (.asc), as mail clients send it.
+        gpg("--passphrase", password, "--symmetric", "vault.txt", cwd=tmp)
+        gpg("--passphrase", password, "--symmetric", "--armor", "--cipher-algo", "AES256", "--output", "vault.asc", "vault.txt", cwd=tmp)
+        binary = (Path(tmp) / "vault.txt.gpg").read_bytes()
+        armored = (Path(tmp) / "vault.asc").read_bytes()
+    page.get_by_role("button", name="Decrypt a file").click()
+    audit(page, "files-decrypt")
+    assert files_decrypt(page, "vault.txt.gpg", binary, password) == ("vault.txt", plaintext)
+    page.get_by_role("button", name="Decrypt another file").click()
+    assert files_decrypt(page, "vault.asc", armored, password) == ("vault.txt", plaintext)
+
+
+@scenario("files: a wrong password or a damaged file is refused, and nothing is offered")
+def files_refused(env, b):
+    page = files_page(env, b)
+    name, encrypted, password = files_encrypt(page, [file_payload("a.bin", 100_000)])
+    page.get_by_role("button", name="Decrypt a file").click()
+    page.get_by_label("Encrypted file").set_input_files({"name": name, "mimeType": "application/octet-stream", "buffer": encrypted})
+    page.locator("form input[aria-label=Password]").fill(password + "x")
+    page.get_by_role("button", name="Decrypt", exact=True).click()
+    # Nearly always "That password doesn’t open this file"; about 1 time in 128 the integrity
+    # check is what fails, and that message names the password first.
+    expect(page.get_by_role("alert")).to_contain_text(re.compile("That password doesn’t open this file|the password isn’t exactly right"))
+    damaged = bytearray(encrypted)
+    damaged[len(damaged) // 2] ^= 1
+    page.get_by_label("Encrypted file").set_input_files({"name": name, "mimeType": "application/octet-stream", "buffer": bytes(damaged)})
+    page.locator("form input[aria-label=Password]").fill(password)
+    page.get_by_role("button", name="Decrypt", exact=True).click()
+    expect(page.get_by_role("alert")).to_contain_text("damaged or changed")
+    expect(page.locator(".result")).to_have_count(0)
+    # The right file and password still work after that.
+    page.get_by_label("Encrypted file").set_input_files({"name": name, "mimeType": "application/octet-stream", "buffer": encrypted})
+    page.get_by_role("button", name="Decrypt", exact=True).click()
+    expect(page.get_by_role("heading", name="Here’s what was inside")).to_be_visible()
+
+
 # ---------------------------------------------------------------- static pages
 PAGES = {   # path -> (heading, mounts a tool)
     "": ("Secure Share", True),
     "chat/": ("Secure Chat", True),
+    "files/": ("Encrypted files", True),
     "passwords/": ("Password Generator", True),
     "how-it-works/": ("How it works", False),
     "faq/": ("Frequently asked questions", False),
@@ -539,7 +721,7 @@ def static_pages(env, b):
             assert [q["name"] for q in faq["mainEntity"]] == shown, faq
         if tool:   # the tool's page says it needs JavaScript, and still explains itself
             expect(page.locator("noscript")).to_have_count(1)
-            expect(page.locator("#about h2")).to_be_visible()
+            expect(page.locator("#about h2").first).to_be_visible()
         # Every link and asset of the page resolves, wherever the site is served from.
         for url in page.locator('a[href]:not([href^="http"]), link[href]:not([href^="http"])').evaluate_all(
                 "els => els.map(e => e.href)"):

@@ -67,6 +67,8 @@ export function revealToggle(input: HTMLInputElement): HTMLButtonElement {
   return btn;
 }
 
+const ROOM_CONTEXT = 'A generated passphrase is plenty for a room: it can only be guessed live, against your browser, and the room locks after 5 wrong tries.';
+
 /**
  * Room passphrase input, masked by default.
  *   generate: true  → pre-filled with generated words and a ↻ button; `enough` says in plain
@@ -75,9 +77,11 @@ export function revealToggle(input: HTMLInputElement): HTMLButtonElement {
  *   generate: false → empty field for the passphrase someone gave you
  * Nothing is normalised: what is typed must match exactly (callers only trim the ends).
  */
-export function passphraseField({ generate, enough = 'Strong enough ✓' }: { generate: boolean; enough?: string }): { input: HTMLInputElement; el: HTMLElement } {
+export function passphraseField({ generate, enough = 'Strong enough ✓', context = ROOM_CONTEXT, label = 'Passphrase' }: {
+  generate: boolean; enough?: string; context?: string | null; label?: string;
+}): { input: HTMLInputElement; el: HTMLElement } {
   const input = secretInput({
-    spellcheck: 'false', autocapitalize: 'off', autocorrect: 'off', class: 'mono', required: true, 'aria-label': 'Passphrase',
+    spellcheck: 'false', autocapitalize: 'off', autocorrect: 'off', class: 'mono', required: true, 'aria-label': label,
   });
   const controls: HTMLElement[] = [input, revealToggle(input)];
   let meter: StrengthMeter | null = null;
@@ -100,9 +104,8 @@ export function passphraseField({ generate, enough = 'Strong enough ✓' }: { ge
     controls.push(h('button', { type: 'button', class: 'btn btn-ghost', title: 'Generate another', onclick: regenerate }, '↻'));
     regenerate();
   }
-  const context = generate ? h('p', { class: 'hint' },
-    'A generated passphrase is plenty for a room: it can only be guessed live, against your browser, and the room locks after 5 wrong tries.') : null;
-  return { input, el: h('div', null, h('div', { class: 'row grow tight' }, ...controls), ok, meter?.el, context) };
+  const hint = generate && context ? h('p', { class: 'hint' }, context) : null;
+  return { input, el: h('div', null, h('div', { class: 'row grow tight' }, ...controls), ok, meter?.el, hint) };
 }
 
 /** Read-only value with a Copy button; secrets are masked, with a Show toggle. */

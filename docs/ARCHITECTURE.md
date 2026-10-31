@@ -9,6 +9,7 @@ src/pages/      ── one static page per tool and content page (layout.html + 
 ├── src/tools/             UI, one module per tool
 │   ├── share.ts           Secure Share UI (sender + recipient), the home page
 │   ├── chat.ts            Secure Chat UI
+│   ├── files.ts           encrypted files UI (encrypt files or a folder, decrypt a file)
 │   ├── password.ts        password / passphrase generator
 │   └── widgets.ts         shared UI: strength meter, masked passphrase field, copy row
 │
@@ -20,19 +21,25 @@ src/pages/      ── one static page per tool and content page (layout.html + 
 │   ├── crypto.ts          key derivation, AES-GCM, ECDSA, HMAC, safety codes (Web Crypto only)
 │   ├── room.ts            SecureRoom: the protocol (handshake, approvals, relay, files), typed messages
 │   ├── hoststore.ts       resume hosting after a reload (IndexedDB + Web Locks)
+│   ├── files.ts           encrypted files: OpenPGP settings, ZIP packages, streaming encrypt/decrypt
 │   ├── encoding.ts        base64url / UTF-8
 │   ├── nav.ts             page addresses, fragment parameters, old-link redirects
 │   └── dom.ts             tiny DOM builder (text nodes only, never innerHTML)
 │
-└── src/vendor/trystero.ts the single third-party import, loaded lazily (bundled from npm)
+└── src/vendor/           third-party imports, each loaded lazily (bundled from npm)
+    ├── trystero.ts        WebRTC matchmaking (Share, Chat)
+    ├── qrcode.ts          QR code of the Share link
+    ├── openpgp.ts         OpenPGP for the encrypted files page (decision D25)
+    └── zip.ts             client-zip, to package several files as one ZIP (same page)
 ```
 
 ## Build
 
 `build.mjs` (esbuild) turns `src/` into `dist/`, the files that are served: one pre-rendered page
-per tool and content page (`pages.mjs`: `index.html`, `chat/`, `passwords/`, `how-it-works/`,
-`faq/`, plus `robots.txt`, `sitemap.xml`, the icons and the web manifest), `styles.css`, `app.js`, and chunks loaded on demand (Trystero is only loaded when Chat or Share
-needs it). Everything is bundled from the locked npm packages, so **no third-party origin serves
+per tool and content page (`pages.mjs`: `index.html`, `chat/`, `files/`, `passwords/`,
+`how-it-works/`, `faq/`, plus `robots.txt`, `sitemap.xml`, the icons and the web manifest),
+`styles.css`, `app.js`, and chunks loaded on demand (Trystero only when Chat or Share needs it,
+openpgp.js only on the encrypted files page). Everything is bundled from the locked npm packages, so **no third-party origin serves
 code at runtime**. The build is reproducible (same source → byte-identical `dist/`), and
 `dist/SHA256SUMS` lists every file's checksum; see [RELEASES.md](RELEASES.md). The footer shows
 the build version (`vX.Y.Z · build <commit>`).
@@ -73,6 +80,27 @@ other's IP addresses.
 
 For a step-by-step explanation of how browsers find each other and connect, with diagrams, see
 [COMMUNICATION.md](COMMUNICATION.md). The reasoning behind these choices is in [DECISIONS.md](DECISIONS.md).
+
+## Encrypted files
+
+The files page (`/files/`) doesn't use rooms or the network at all: everything happens in the
+page, and nothing is uploaded.
+
+```
+ encrypt:  files ──▶ one file as is, or several (and folders) as a ZIP (client-zip, streamed)
+               ──▶ openpgp.js: password → S2K → AES-256 (SEIPD v1 + MDC) ──▶ Blob ──▶ Download name.gpg
+ decrypt:  .gpg / .pgp / .asc ──▶ openpgp.js (streamed) ──▶ Blob, kept until the MDC has passed ──▶ Download
+```
+
+- **Format:** OpenPGP in the profile GnuPG 2.4 reads (decision D25): SKESK v4 with the iterated
+  and salted S2K at its highest count, SEIPD v1, AES-256, no compression, the file name in the
+  literal data packet. It opens with `gpg`, Kleopatra, GPG Suite and OpenKeychain.
+- **Streaming:** input is read from the `File` in chunks, and output is folded into a Blob every
+  16 MB, so the browser can keep it in its Blob storage (on disk for large ones) rather than in
+  JavaScript memory. The limit is 2 GB in all.
+- **Loading:** openpgp.js (about 130 KB compressed) is fetched once the page is usable, on the
+  first touch of the tool or 3 s after the page has loaded, so it doesn't slow the first paint.
+  From then on the page works offline.
 
 ## Network connections and ports
 
@@ -121,6 +149,10 @@ CoreCrypto in Safari):
 | Safety code | SHA-256 over both DTLS certificate fingerprints |
 | Transport | WebRTC DTLS (browser-native) |
 
+The encrypted files page is the exception: its format's cryptography comes from **openpgp.js**
+(audited, D25), which uses Web Crypto where the browser has what it needs. Ours there is only the
+choice of settings and safe paths inside the ZIP package, which involve no cryptography.
+
 What **is** ours is the *protocol*: how these primitives are combined to authenticate the host,
 prove the passphrase, approve members and authenticate messages. That's the part that deserves
 review. It's specified in [PROTOCOL.md](PROTOCOL.md) and exercised by adversarial tests (forgery,
@@ -142,7 +174,9 @@ and user input can't set them.
 | sessionStorage | Chat: your nickname; host: a marker that this tab hosted the room (to say it has ended). Never the passphrase | Until the tab is closed |
 | Web Locks | `uss-host:<app>:<room>` so only one tab acts as host | While the tab is open |
 
-Secure Share stores nothing.
+Secure Share and the encrypted files page store nothing. Encrypted and decrypted files exist
+only as Blobs in the page (the browser may keep large ones in temporary files) until they're
+downloaded, and are released when the page is left.
 
 ## Security headers and policies
 

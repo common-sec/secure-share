@@ -30,6 +30,12 @@ export const PAGES = [
     description: 'A private, end-to-end encrypted chat room with file sharing, browser to browser. You approve who joins, nothing is stored, and no account is needed.',
   },
   {
+    path: 'files/', source: 'files.html', tool: 'files',
+    title: `Encrypt files with a password, in your browser · ${APP_NAME}`,
+    ogTitle: 'Encrypt files with a password, in your browser',
+    description: 'Encrypt files or a folder with a password into one OpenPGP file that GnuPG also opens, and decrypt it again. In your browser, offline: nothing is uploaded.',
+  },
+  {
     path: 'passwords/', source: 'passwords.html', tool: 'password',
     title: `Password and passphrase generator · ${APP_NAME}`,
     ogTitle: 'Strong password and memorable passphrase generator',
@@ -49,7 +55,7 @@ export const PAGES = [
   },
 ];
 
-const NAV = [['', 'share', 'Share'], ['chat/', 'chat', 'Chat'], ['passwords/', 'password', 'Passwords']];
+const NAV = [['', 'share', 'Share'], ['chat/', 'chat', 'Chat'], ['files/', 'files', 'Files'], ['passwords/', 'password', 'Passwords']];
 
 /** Static files copied as they are to the site root (icons and the social image). */
 const SITE_ASSETS = 'assets/site';
@@ -90,7 +96,7 @@ const appSchema = (page, url) => ({
   name: page.tool === 'share' ? APP_NAME : `${page.ogTitle.split(':')[0]} · ${APP_NAME}`,
   url, description: page.description,
   applicationCategory: 'SecurityApplication', operatingSystem: 'Any (runs in a web browser)',
-  browserRequirements: 'Requires JavaScript, Web Crypto and WebRTC',
+  browserRequirements: page.tool === 'files' ? 'Requires JavaScript and Web Crypto' : 'Requires JavaScript, Web Crypto and WebRTC',
   isAccessibleForFree: true, offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
 });
 

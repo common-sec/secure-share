@@ -10,6 +10,7 @@ const FILES = [
   'passphrase.test.js',
   'room.test.js',
   'hoststore.test.js',
+  'files.test.js',
 ];
 
 window.__TEST_RESULTS__ = { done: false };

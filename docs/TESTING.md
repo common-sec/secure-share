@@ -53,6 +53,7 @@ docker compose run --rm test-unit python tests/unit/run.py chromium --filter roo
 | `passphrase.test.js` | Never only dictionary words, structure, minimum strength, entropy monotonicity, syllable capitals, spelling rules |
 | `room.test.js` | The protocol between host and guests, including attacks: wrong passphrase, **auto-lock**, declined and pending guests, unique nicknames, **impostor host with link + passphrase**, star topology, **forged and tampered messages**, **replays**, wrong-key data, **files that don't match their signed hash**, removal, **relay disconnection**, host reload, **room time limit** (host and stranded guests close, cap, not extended by a reload) |
 | `hoststore.test.js` | Host resume only across a reload: closed-tab and expired records are refused, the sweep deletes them |
+| `files.test.js` | Encrypted files, with the lockfile's openpgp.js: **the GnuPG profile** (SKESK v4, AES-256, highest S2K count, SEIPD v1), round trips of one file and of a ZIP package, **wrong password, flipped byte and cut-off file refused**, not-OpenPGP and **public-key files told apart**, armored and compressed messages (as gpg writes them), size limit, safe download names; ZIP packages from the lockfile's client-zip: paths, contents and CRCs read back from the central directory, UTF-8 names, **paths that can't climb out**, duplicate names |
 
 ### How the unit tests work
 
@@ -92,7 +93,10 @@ clicks, types, uploads and downloads files exactly as a user would, and the peer
 | Chat: a locked room can't be joined | Chromium |
 | Share **across browsers**: text and a file delivered, sender on one engine and recipient on another | Every ordered pair of different engines (6) |
 | Chat **across browsers**: a guest is admitted and messages flow both ways, host on one engine and guest on another | Every ordered pair of different engines (6) |
-| Accessibility (axe-core) on the share form, waiting and received states, the chat form and room (host and guest), and the password page | Chromium, Firefox, WebKit (password page: Chromium) |
+| Files: one file and a **folder plus a file** (a ZIP package) encrypted in the page **with no network**, then **decrypted by `gpg`** (contents, the stored name) and by the page | Chromium, Firefox, WebKit |
+| Files: what **`gpg` encrypts** with a password (its defaults: compressed; and armored `.asc`) opens in the page | Chromium, Firefox, WebKit |
+| Files: a wrong password and a damaged file are refused, and nothing is offered | Chromium |
+| Accessibility (axe-core) on the share form, waiting and received states, the chat form and room (host and guest), the files page (encrypt, encrypted, decrypt, decrypted) and the password page | Chromium, Firefox, WebKit (password page: Chromium) |
 
 ### Two modes
 
@@ -115,6 +119,16 @@ clicks, types, uploads and downloads files exactly as a user would, and the peer
   only ICE server: each WebKit peer learns its real container address as a server-reflexive
   candidate, as Safari does from a public STUN server on the internet. Nothing leaves the
   container, and Chromium and Firefox still use host candidates only.
+- **GnuPG** is the reference tool for the encrypted files page. The test image has `gpg` 2.4 and
+  installs its agent (`gpg-agent`, which password encryption needs) from a dated Ubuntu archive
+  snapshot (see the Dockerfile). Each call gets a fresh, temporary GnuPG home.
+- **Unzip tools.** Every ZIP package the page makes is unpacked with Python's `zipfile` (which
+  checks every CRC), **7-Zip**, **libarchive**'s `bsdtar` (what macOS's Archive Utility and
+  Windows 11's Explorer are built on) and **Info-ZIP**'s `unzip`. All must find the same files,
+  with the same UTF-8 names and contents. The three tools come from the same Ubuntu snapshot.
+- **Offline.** The files scenarios cut the network once the page's library has loaded
+  (Playwright's offline mode; in WebKit, every request refused instead, because its offline mode
+  also breaks reading local files, which Safari doesn't).
 - **`test-e2e-public`: real world.** Nothing is injected: the app uses the real public Nostr
   relays and STUN servers, exactly as on the live site. It tests real-world networking, and
   depends on those third parties being up, so it isn't a CI gate.
