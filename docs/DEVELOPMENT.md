@@ -100,7 +100,7 @@ to itself with no change.
 | Dev base image | Tag + digest in `Dockerfile` | Non-root | Dependabot (`docker`) |
 | Test base image | Tag + digest in `Dockerfile` | Non-root (`pwuser`) | Dependabot (`docker`) |
 | Tool images | Tag + digest in `compose.yaml` | Non-root, no caps, read-only | Dependabot (`docker-compose`) |
-| `gpg-agent` in the test image (for the GnuPG interoperability tests) | Ubuntu archive snapshot date in `Dockerfile` (`apt-get --snapshot`) | apt's archive signatures | By hand, with the test base image |
+| `gpg-agent`, `7zip`, `libarchive-tools` and `unzip` in the test image (for the interoperability tests) | Ubuntu archive snapshot date in `Dockerfile` (`apt-get --snapshot`) | apt's archive signatures | By hand, with the test base image |
 | Python test packages | Exact version + SHA-256 of every file, the whole tree (`tests/requirements.txt`), installed when the `test` image is built | `pip.conf`: `require-hashes`, wheels only (no build code runs), uploaded ≥ 7 days ago | Dependabot (`pip`) |
 | npm packages (Trystero, qrcode-generator, openpgp.js, client-zip, esbuild, TypeScript) | `package.json` exact versions + `package-lock.json` integrity hashes, installed with `npm ci` | `.npmrc`: `ignore-scripts`, `min-release-age=7`, `save-exact`, `engine-strict` | Dependabot (`npm`) |
 | GitHub Actions | Commit SHA | `persist-credentials: false`, read-only token | Dependabot (`github-actions`) |

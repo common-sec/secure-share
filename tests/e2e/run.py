@@ -572,10 +572,33 @@ def files_decrypt(page, name, data, password):
     return info.value.suggested_filename, Path(info.value.path()).read_bytes()
 
 
+# The tools people unpack a package with: 7-Zip, libarchive (bsdtar; also what macOS's Archive
+# Utility and Windows 11's Explorer are built on) and Info-ZIP's unzip (Linux, older macOS tools).
+UNZIP_TOOLS = {
+    "7-Zip": lambda archive, out: ["7z", "x", "-y", f"-o{out}", str(archive)],
+    "libarchive": lambda archive, out: ["bsdtar", "-xf", str(archive), "-C", str(out)],
+    "Info-ZIP": lambda archive, out: ["unzip", "-q", str(archive), "-d", str(out)],
+}
+
+
 def unzip(data):
+    """Unpacks a ZIP package with Python (checking every CRC) and each tool in UNZIP_TOOLS, which
+    must all find the same files with the same names and contents."""
     with zipfile.ZipFile(io.BytesIO(data)) as z:
         assert z.testzip() is None, "a CRC doesn't match"
-        return {i.filename: z.read(i) for i in z.infolist()}
+        files = {i.filename: z.read(i) for i in z.infolist()}
+    with tempfile.TemporaryDirectory() as tmp:
+        archive = Path(tmp) / "package.zip"
+        archive.write_bytes(data)
+        for tool, command in UNZIP_TOOLS.items():
+            out = Path(tmp) / tool
+            out.mkdir()
+            run = subprocess.run(command(archive, out), capture_output=True, text=True,
+                                 env={**os.environ, "LC_ALL": "C.UTF-8"})
+            assert run.returncode == 0, f"{tool} couldn't unpack the package: {run.stdout}{run.stderr}"
+            found = {f.relative_to(out).as_posix(): f.read_bytes() for f in out.rglob("*") if f.is_file()}
+            assert found == files, f"{tool} unpacked {sorted(found)}, not {sorted(files)}"
+    return files
 
 
 @scenario("files: files and a folder are encrypted, open with gpg, and decrypt again, offline", browsers=ENGINES)

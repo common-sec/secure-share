@@ -122,6 +122,10 @@ clicks, types, uploads and downloads files exactly as a user would, and the peer
 - **GnuPG** is the reference tool for the encrypted files page. The test image has `gpg` 2.4 and
   installs its agent (`gpg-agent`, which password encryption needs) from a dated Ubuntu archive
   snapshot (see the Dockerfile). Each call gets a fresh, temporary GnuPG home.
+- **Unzip tools.** Every ZIP package the page makes is unpacked with Python's `zipfile` (which
+  checks every CRC), **7-Zip**, **libarchive**'s `bsdtar` (what macOS's Archive Utility and
+  Windows 11's Explorer are built on) and **Info-ZIP**'s `unzip`. All must find the same files,
+  with the same UTF-8 names and contents. The three tools come from the same Ubuntu snapshot.
 - **Offline.** The files scenarios cut the network once the page's library has loaded
   (Playwright's offline mode; in WebKit, every request refused instead, because its offline mode
   also breaks reading local files, which Safari doesn't).

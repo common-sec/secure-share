@@ -14,12 +14,13 @@ CMD ["sh"]
 # time, under pip.conf's rules (hashes required, wheels only, >= 7 days old) bakes the exact
 # pinned versions into the image: test runs need no install step and no network.
 FROM mcr.microsoft.com/playwright/python:v1.63.0-noble@sha256:72bd171a9ffc2b4b59532aaa6210e21014d07093120dc25528870c0b840da1f0 AS test
-# GnuPG's agent, for the encrypted files interoperability tests (tests/e2e/run.py: gpg encrypts
-# and decrypts with a password, which always goes through the agent). The image has gpg but not
-# its agent. Installed from Ubuntu's archive as it was on a fixed date (a snapshot), so a rebuild
+# GnuPG's agent and three unzip tools, for the encrypted files interoperability tests
+# (tests/e2e/run.py): gpg encrypts and decrypts with a password, which always goes through the
+# agent (the image has gpg but not its agent), and every ZIP package the page makes must unpack
+# with 7-Zip, libarchive's bsdtar and Info-ZIP's unzip. Installed from Ubuntu's archive as it was on a fixed date (a snapshot), so a rebuild
 # installs the same versions; apt checks the archive's signatures. Bump the date with the image.
 RUN apt-get update --snapshot 20261020T000000Z \
- && apt-get install -y --no-install-recommends --snapshot 20261020T000000Z gpg-agent \
+ && apt-get install -y --no-install-recommends --snapshot 20261020T000000Z gpg-agent 7zip libarchive-tools unzip \
  && rm -rf /var/lib/apt/lists/*
 COPY pip.conf tests/requirements.txt /tmp/deps/
 RUN PIP_CONFIG_FILE=/tmp/deps/pip.conf pip install --no-cache-dir --target /opt/pydeps -r /tmp/deps/requirements.txt \
