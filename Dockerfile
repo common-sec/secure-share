@@ -13,7 +13,7 @@ CMD ["sh"]
 # Microsoft's image ships the browsers but not the Python package. Installing it here, at build
 # time, under pip.conf's rules (hashes required, wheels only, >= 7 days old) bakes the exact
 # pinned versions into the image: test runs need no install step and no network.
-FROM mcr.microsoft.com/playwright/python:v1.63.0-noble@sha256:72bd171a9ffc2b4b59532aaa6210e21014d07093120dc25528870c0b840da1f0 AS test
+FROM mcr.microsoft.com/playwright/python:v1.64.1-noble@sha256:330d401ae23c905896a0c26c66c36fc971b621519e7b11b435a8328d7bf6e031 AS test
 # GnuPG's agent and three unzip tools, for the encrypted files interoperability tests
 # (tests/e2e/run.py): gpg encrypts and decrypts with a password, which always goes through the
 # agent (the image has gpg but not its agent), and every ZIP package the page makes must unpack
