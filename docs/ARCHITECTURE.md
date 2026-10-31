@@ -21,8 +21,7 @@ src/pages/      ── one static page per tool and content page (layout.html + 
 │   ├── crypto.ts          key derivation, AES-GCM, ECDSA, HMAC, safety codes (Web Crypto only)
 │   ├── room.ts            SecureRoom: the protocol (handshake, approvals, relay, files), typed messages
 │   ├── hoststore.ts       resume hosting after a reload (IndexedDB + Web Locks)
-│   ├── files.ts           encrypted files: OpenPGP settings, streaming encrypt/decrypt, error reasons
-│   ├── zip.ts             streaming ZIP writer (stored, UTF-8 names, safe paths), for packages
+│   ├── files.ts           encrypted files: OpenPGP settings, ZIP packages, streaming encrypt/decrypt
 │   ├── encoding.ts        base64url / UTF-8
 │   ├── nav.ts             page addresses, fragment parameters, old-link redirects
 │   └── dom.ts             tiny DOM builder (text nodes only, never innerHTML)
@@ -30,7 +29,8 @@ src/pages/      ── one static page per tool and content page (layout.html + 
 └── src/vendor/           third-party imports, each loaded lazily (bundled from npm)
     ├── trystero.ts        WebRTC matchmaking (Share, Chat)
     ├── qrcode.ts          QR code of the Share link
-    └── openpgp.ts         OpenPGP for the encrypted files page (decision D25)
+    ├── openpgp.ts         OpenPGP for the encrypted files page (decision D25)
+    └── zip.ts             client-zip, to package several files as one ZIP (same page)
 ```
 
 ## Build
@@ -87,7 +87,7 @@ The files page (`/files/`) doesn't use rooms or the network at all: everything h
 page, and nothing is uploaded.
 
 ```
- encrypt:  files ──▶ one file as is, or several (and folders) as a ZIP (lib/zip.ts, streamed)
+ encrypt:  files ──▶ one file as is, or several (and folders) as a ZIP (client-zip, streamed)
                ──▶ openpgp.js: password → S2K → AES-256 (SEIPD v1 + MDC) ──▶ Blob ──▶ Download name.gpg
  decrypt:  .gpg / .pgp / .asc ──▶ openpgp.js (streamed) ──▶ Blob, kept until the MDC has passed ──▶ Download
 ```
@@ -151,7 +151,7 @@ CoreCrypto in Safari):
 
 The encrypted files page is the exception: its format's cryptography comes from **openpgp.js**
 (audited, D25), which uses Web Crypto where the browser has what it needs. Ours there is only the
-choice of settings and the ZIP packaging, which involves no cryptography.
+choice of settings and safe paths inside the ZIP package, which involve no cryptography.
 
 What **is** ours is the *protocol*: how these primitives are combined to authenticate the host,
 prove the passphrase, approve members and authenticate messages. That's the part that deserves

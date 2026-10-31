@@ -27,6 +27,7 @@ browser extensions.
 - `tests/unit/room.test.js` shows the intended security properties as executable tests. Adversarial
   peers are built with `tests/unit/fake-transport.js`.
 - The runtime dependencies are `trystero@0.26.0` and `qrcode-generator@2.0.4` (both MIT), and
-  `openpgp@6.3.2` (LGPL-3.0-or-later, only on the encrypted files page), locked
+  `openpgp@6.3.2` (LGPL-3.0-or-later) and `client-zip@2.5.1` (MIT), only on the encrypted files
+  page, locked
   in `package-lock.json`, bundled at build time and imported only from `src/vendor/`. Builds are reproducible: see
   [docs/RELEASES.md](docs/RELEASES.md) to check that served files match the source.

@@ -5,7 +5,7 @@
 //                          every file is byte-identical (the reproducibility check CI runs)
 //
 // dist/ contains one pre-rendered page per tool and content page (index.html, chat/, files/, passwords/,
-// how-it-works/, faq/: see pages.mjs), app.js, chunks/ (Trystero, openpgp.js and qrcode-generator, from the
+// how-it-works/, faq/: see pages.mjs), app.js, chunks/ (Trystero, openpgp.js, client-zip and qrcode-generator, from the
 // lockfile: nothing is fetched from a CDN at run time), styles.css, the icons and social image,
 // site.webmanifest, robots.txt, sitemap.xml, and SHA256SUMS. The build is deterministic: same commit, same
 // lockfile -> same bytes. The version shown in the footer is package.json's version plus the short

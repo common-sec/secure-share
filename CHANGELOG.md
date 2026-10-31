@@ -9,15 +9,17 @@ All notable changes, one section per version. See [docs/ROADMAP.md](docs/ROADMAP
   one or more files, or a whole folder, with a password into a single OpenPGP file
   (`name.gpg`), and decrypts one again, all in the browser: nothing is uploaded or stored, and
   once the page's library has loaded it works offline. Several files or a folder are packaged as
-  a ZIP inside, which the computer opens as usual after decrypting. Six speakable words are
+  a ZIP inside (by `client-zip`), which the computer opens as usual after decrypting. The page
+  is for keeping files safe (cloud storage, a USB stick, a backup); to give files to someone, it
+  points to Secure Share and Chat rather than email, where copies of the file stay. Six speakable words are
   suggested as the password (a typed one that's easy to guess gets a warning), and the page says
   before encrypting that a lost password means a lost file. The file is in the profile GnuPG 2.4
   reads (AES-256, the strongest S2K, the MDC), so `gpg`, Kleopatra and GPG Suite open it, and the
-  page opens what they encrypt with a password, binary or armored. A wrong password, a damaged or
-  modified file, and a file encrypted for a key are each told apart, and nothing is offered from
+  page opens what they encrypt with a password, binary or armored. A wrong password (nearly always),
+  a damaged or modified file, and a file encrypted for a key are each told apart, and nothing is offered from
   a file that fails its integrity check. Large files stream, up to 2 GB in all. New runtime
-  dependency: `openpgp@6.3.2` (Proton, LGPL-3.0-or-later), loaded only on that page, once it's
-  usable. The test image adds GnuPG's agent, and the end-to-end tests check both directions with
+  dependencies: `openpgp@6.3.2` (Proton, LGPL-3.0-or-later) and `client-zip@2.5.1` (MIT), loaded
+  only on that page, once it's usable. The test image adds GnuPG's agent, and the end-to-end tests check both directions with
   `gpg`, folders included, in Chromium, Firefox and WebKit.
 - **Static pages and SEO** (roadmap 0.11.0, in progress). Every tool has its own pre-rendered
   page, `/`, `/chat/` and `/passwords/`, with its heading, an introduction and its metadata in

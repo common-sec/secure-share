@@ -645,13 +645,15 @@ def files_refused(env, b):
     page.get_by_label("Encrypted file").set_input_files({"name": name, "mimeType": "application/octet-stream", "buffer": encrypted})
     page.locator("form input[aria-label=Password]").fill(password + "x")
     page.get_by_role("button", name="Decrypt", exact=True).click()
-    expect(page.get_by_role("alert")).to_contain_text("That password doesn’t open this file")
+    # Nearly always "That password doesn’t open this file"; about 1 time in 128 the integrity
+    # check is what fails, and that message names the password first.
+    expect(page.get_by_role("alert")).to_contain_text(re.compile("That password doesn’t open this file|the password isn’t exactly right"))
     damaged = bytearray(encrypted)
     damaged[len(damaged) // 2] ^= 1
     page.get_by_label("Encrypted file").set_input_files({"name": name, "mimeType": "application/octet-stream", "buffer": bytes(damaged)})
     page.locator("form input[aria-label=Password]").fill(password)
     page.get_by_role("button", name="Decrypt", exact=True).click()
-    expect(page.get_by_role("alert")).to_contain_text("damaged or was changed")
+    expect(page.get_by_role("alert")).to_contain_text("damaged or changed")
     expect(page.locator(".result")).to_have_count(0)
     # The right file and password still work after that.
     page.get_by_label("Encrypted file").set_input_files({"name": name, "mimeType": "application/octet-stream", "buffer": encrypted})

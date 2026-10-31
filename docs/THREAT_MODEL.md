@@ -61,8 +61,8 @@
 ### 9. Supply chain: the static host, the npm packages, the build
 - **This is the most important residual risk.** Whoever controls the served JavaScript controls the app.
 - **Mitigations:**
-  - three runtime dependencies (Trystero, with two small dependencies of its own,
-    qrcode-generator and openpgp.js, with none), each loaded only on the pages that use it, and two build tools
+  - four runtime dependencies (Trystero, with two small dependencies of its own,
+    qrcode-generator, openpgp.js and client-zip, with none), each loaded only on the pages that use it, and two build tools
     (TypeScript, esbuild), at exact versions locked with integrity hashes in `package-lock.json`,
     installed with `npm ci`, no install scripts, and only releases at least 7 days old;
   - everything is **bundled at build time**: no CDN, and the CSP lets scripts load only from `'self'`;
@@ -99,8 +99,12 @@
 
 ## Encrypted files
 
-The files page (`/files/`, decision D25) protects files **at rest and in transit by any means**:
-whoever gets the encrypted file but not the password learns nothing but its size.
+The files page (`/files/`, decision D25) protects files **at rest** (cloud storage, a USB stick,
+a backup): whoever gets the encrypted file but not the password learns nothing but its size.
+**Harvest now, open later:** a copy of the file that travels through channels we don't control
+(email, chat apps) can be kept and attacked whenever passwords get cheaper to guess or a weakness
+in the format is found. So the page steers sending towards Secure Share and Chat, which leave no
+copy behind, and doesn't suggest emailing encrypted files.
 
 - **Offline guessing is possible**, unlike with rooms: anyone with the file can try passwords as
   fast as their hardware allows. Mitigations: the strongest S2K OpenPGP's iterated format allows
@@ -110,7 +114,9 @@ whoever gets the encrypted file but not the password learns nothing but its size
   9580, which GnuPG 2.4 can't read), so a weak password stays weak.
 - **Integrity:** the MDC (SHA-1 over the plaintext, inside the encryption) detects a modified or
   cut-off file. Decryption streams, so the page releases nothing until the whole file has passed;
-  a failure shows "damaged or was changed" and offers no download.
+  a failure offers no download and says the file was damaged or changed, or the password isn't
+  exactly right: about 1 time in 128, a wrong password gets past the session key and only fails
+  here.
 - **Crypto:** AES-256-CFB with the MDC is older than AEAD but sound for this use; there's no
   oracle to query, since nobody decrypts for an attacker. Symmetric encryption with 256-bit keys
   isn't threatened by quantum computers.

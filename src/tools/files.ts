@@ -5,11 +5,12 @@
 import { h, formatBytes } from '../lib/dom.js';
 import {
   MAX_PACKAGE_BYTES, MAX_PACKAGE_LABEL, PACKAGE_NAME, packageFiles, counted, encrypt, decrypt, collect, encryptedName, decryptedName,
-  decryptErrorReason, type DecryptError, type OpenPGPModule,
+  decryptErrorReason, type DecryptError, type OpenPGPModule, type MakeZip, type PackageEntry,
 } from '../lib/files.js';
-import type { ZipEntry } from '../lib/zip.js';
 import { estimateBits } from '../lib/strength.js';
 import { loadOpenPGP } from '../vendor/openpgp.js';
+import { loadZip } from '../vendor/zip.js';
+import { pageUrl } from '../lib/nav.js';
 import { passphraseField, copyRow, field } from './widgets.js';
 
 const errorText = (e: unknown): string => (e instanceof Error ? e.message : String(e));
@@ -20,7 +21,8 @@ const WEAK_BITS = 50;
 
 export const DECRYPT_ERRORS: Record<DecryptError, string> = {
   password: 'That password doesn’t open this file. Check that it’s typed exactly as you were given it, with the same spaces and capitals.',
-  damaged: 'This file is damaged or was changed after it was encrypted, so nothing in it can be trusted. Ask for a new copy.',
+  // Also what a wrong password gives, now and then (see DecryptError).
+  damaged: 'This file didn’t open: either the password isn’t exactly right, or the file was damaged or changed after it was encrypted, and then nothing in it can be trusted. Check the password first; if it’s right, ask for a new copy.',
   'not-openpgp': 'This isn’t a file encrypted with a password in the OpenPGP format (.gpg, .pgp or .asc), so it can’t be opened here.',
   'public-key': 'This file was encrypted for someone’s key, not with a password. Open it with GnuPG or Kleopatra and the matching private key: this page only handles passwords for now.',
   'too-large': `This page handles files up to ${MAX_PACKAGE_LABEL}. Open larger ones with GnuPG.`,
@@ -29,13 +31,16 @@ export const DECRYPT_ERRORS: Record<DecryptError, string> = {
 /** How long after the page has loaded the library is fetched anyway, if nobody has touched the tool. */
 const LOAD_AFTER_MS = 3000;
 
+/** The two libraries the page needs, loaded together. */
+interface Libraries { pgp: OpenPGPModule; zip: MakeZip }
+
 /**
- * Loads openpgp.js (about 130 KB compressed) once the page is usable, not while it's loading, so it
+ * Loads openpgp.js (about 130 KB compressed) and client-zip once the page is usable, not while it's loading, so it
  * doesn't hold up the first paint on a phone: on the first touch, key or drop on the tool, or a few
  * seconds after the page has loaded. From then on, the page works offline. root gets
  * data-offline="ready" when it's loaded.
  */
-function loadWhenIdle(root: HTMLElement): Promise<OpenPGPModule> {
+function loadWhenIdle(root: HTMLElement): Promise<Libraries> {
   let start!: () => void;
   const started = new Promise<void>((resolve) => { start = resolve; });
   const events = ['pointerdown', 'keydown', 'focusin', 'dragenter'] as const;
@@ -43,13 +48,16 @@ function loadWhenIdle(root: HTMLElement): Promise<OpenPGPModule> {
   const later = () => setTimeout(start, LOAD_AFTER_MS);
   if (document.readyState === 'complete') later();
   else window.addEventListener('load', later, { once: true });
-  const pgp = started.then(loadOpenPGP);
-  pgp.then(() => { root.dataset.offline = 'ready'; }, () => { /* reported when it's needed */ });
-  return pgp;
+  const libs = started.then(async () => {
+    const [pgp, zip] = await Promise.all([loadOpenPGP(), loadZip()]);
+    return { pgp, zip };
+  });
+  libs.then(() => { root.dataset.offline = 'ready'; }, () => { /* reported when it's needed */ });
+  return libs;
 }
 
 export function mount(root: HTMLElement): () => void {
-  const pgp = loadWhenIdle(root);
+  const libs = loadWhenIdle(root);
   const urls: string[] = [];
   const keep = (blob: Blob): string => { const u = URL.createObjectURL(blob); urls.push(u); return u; };
 
@@ -59,7 +67,7 @@ export function mount(root: HTMLElement): () => void {
   const show = (mode: 'encrypt' | 'decrypt') => {
     encryptTab.setAttribute('aria-pressed', String(mode === 'encrypt'));
     decryptTab.setAttribute('aria-pressed', String(mode === 'decrypt'));
-    body.replaceChildren(mode === 'encrypt' ? encryptForm(pgp, keep, () => show('encrypt')) : decryptForm(pgp, keep, () => show('decrypt')));
+    body.replaceChildren(mode === 'encrypt' ? encryptForm(libs, keep, () => show('encrypt')) : decryptForm(libs, keep, () => show('decrypt')));
   };
   encryptTab.addEventListener('click', () => show('encrypt'));
   decryptTab.addEventListener('click', () => show('decrypt'));
@@ -78,7 +86,7 @@ export function mount(root: HTMLElement): () => void {
 // ---------------------------------------------------------------- adding files
 
 /** Every file under a dropped folder, with its path from the folder. */
-async function entriesOf(entry: FileSystemEntry, prefix = ''): Promise<ZipEntry[]> {
+async function entriesOf(entry: FileSystemEntry, prefix = ''): Promise<PackageEntry[]> {
   const path = prefix + entry.name;
   if (entry.isFile) {
     const file = await new Promise<File>((ok, fail) => (entry as FileSystemFileEntry).file(ok, fail));
@@ -98,7 +106,7 @@ async function entriesOf(entry: FileSystemEntry, prefix = ''): Promise<ZipEntry[
 }
 
 /** What was dropped: files, and folders with everything in them where the browser allows it. */
-async function dropped(data: DataTransfer | null): Promise<ZipEntry[]> {
+async function dropped(data: DataTransfer | null): Promise<PackageEntry[]> {
   if (!data) return [];
   const items = Array.from(data.items ?? []).filter((i) => i.kind === 'file');
   const entries = items.map((i) => i.webkitGetAsEntry?.() ?? null);
@@ -106,7 +114,7 @@ async function dropped(data: DataTransfer | null): Promise<ZipEntry[]> {
   return Array.from(data.files).map((file) => ({ path: file.name, file, modified: file.lastModified }));
 }
 
-const fromInput = (list: FileList | null): ZipEntry[] => Array.from(list ?? []).map((file) => ({
+const fromInput = (list: FileList | null): PackageEntry[] => Array.from(list ?? []).map((file) => ({
   // A folder chosen with webkitdirectory gives each file its path from that folder.
   path: file.webkitRelativePath || file.name, file, modified: file.lastModified,
 }));
@@ -158,8 +166,8 @@ function openElsewhereLink(): HTMLElement {
 
 // ---------------------------------------------------------------- F1: encrypt
 
-function encryptForm(pgp: Promise<OpenPGPModule>, keep: (b: Blob) => string, again: () => void): HTMLElement {
-  let entries: ZipEntry[] = [];
+function encryptForm(libraries: Promise<Libraries>, keep: (b: Blob) => string, again: () => void): HTMLElement {
+  let entries: PackageEntry[] = [];
   const list = h('ul', { class: 'file-list' });
   const summary = h('p', { class: 'hint' });
   const pickFiles = h('input', { type: 'file', multiple: true, hidden: true, 'aria-label': 'Files to encrypt',
@@ -178,7 +186,7 @@ function encryptForm(pgp: Promise<OpenPGPModule>, keep: (b: Blob) => string, aga
   const submit = h('button', { class: 'btn btn-primary btn-tap', type: 'submit' }, 'Encrypt');
 
   const total = () => entries.reduce((n, e) => n + e.file.size, 0);
-  function add(more: ZipEntry[]): void {
+  function add(more: PackageEntry[]): void {
     error.hidden = true;
     entries = [...entries, ...more];
     render();
@@ -208,13 +216,13 @@ function encryptForm(pgp: Promise<OpenPGPModule>, keep: (b: Blob) => string, aga
     if (!password) return fail('Choose a password.');
     if (total() > MAX_PACKAGE_BYTES) return fail(`That’s ${formatBytes(total())}: this page encrypts up to ${MAX_PACKAGE_LABEL} in all.`);
     submit.disabled = true;
-    const lib = await pgp.catch(() => null);
+    const lib = await libraries.catch(() => null);
     if (!lib) return fail(NOT_LOADED);
     try {
-      const pkg = packageFiles(entries);
+      const pkg = packageFiles(entries, lib.zip);
       progress.set('Encrypting…', 0);
       const input = counted(pkg.stream, (n) => progress.set(`Encrypting… ${Math.min(99, Math.floor((n / pkg.size) * 100))}%`, n / pkg.size));
-      const blob = await collect(await encrypt(lib, input, pkg.name, password));
+      const blob = await collect(await encrypt(lib.pgp, input, pkg.name, password));
       showResult(form, encryptedView(encryptedName(pkg.name), blob, keep(blob), password, again));
     } catch (err) {
       fail(`Could not encrypt: ${errorText(err)}`);
@@ -244,7 +252,9 @@ function encryptedView(name: string, blob: Blob, url: string, password: string, 
     h('h2', null, 'Your encrypted file is ready'),
     fileCard(name, blob.size, url, 'Download'),
     copyRow('Password', password, true),
-    h('p', { class: 'hint' }, 'Send or store the file however you like. Give the password another way, never with the file: say it on a call, or send it in a different app.'),
+    h('p', { class: 'hint' }, 'Keep it where you like: your cloud storage, a USB stick, a backup. To give it to someone, ',
+      h('a', { href: pageUrl('share') }, 'send it with Secure Share'),
+      ' rather than by email, where copies stay on servers, and give the password another way.'),
     h('p', { class: 'hint' }, openElsewhereLink()),
     h('div', { class: 'row' }, h('button', { type: 'button', class: 'btn', onclick: again }, 'Encrypt other files')),
   );
@@ -252,7 +262,7 @@ function encryptedView(name: string, blob: Blob, url: string, password: string, 
 
 // ---------------------------------------------------------------- F2: decrypt
 
-function decryptForm(pgp: Promise<OpenPGPModule>, keep: (b: Blob) => string, again: () => void): HTMLElement {
+function decryptForm(libraries: Promise<Libraries>, keep: (b: Blob) => string, again: () => void): HTMLElement {
   let file: File | null = null;
   const chosen = h('ul', { class: 'file-list' });
   const pick = h('input', { type: 'file', hidden: true, accept: '.gpg,.pgp,.asc,application/pgp-encrypted', 'aria-label': 'Encrypted file',
@@ -284,11 +294,11 @@ function decryptForm(pgp: Promise<OpenPGPModule>, keep: (b: Blob) => string, aga
     if (!password) return fail('Type the password.');
     submit.disabled = true;
     const encrypted = file;
-    const lib = await pgp.catch(() => null);
+    const lib = await libraries.catch(() => null);
     if (!lib) return fail(NOT_LOADED);
     try {
       progress.set('Checking the password…');
-      const { data, name } = await decrypt(lib, encrypted, password,
+      const { data, name } = await decrypt(lib.pgp, encrypted, password,
         (n) => progress.set(`Decrypting… ${Math.min(99, Math.floor((n / encrypted.size) * 100))}%`, n / encrypted.size));
       // Nothing is offered until the whole file is decrypted and its integrity check has passed.
       const blob = await collect(data);

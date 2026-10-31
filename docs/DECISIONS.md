@@ -113,7 +113,8 @@ kept under "History".
 - **What:** the encrypted files page (roadmap 0.12.0, `/files/`) writes password-encrypted
   OpenPGP files: SEIPD version 1 (AES-256 with the MDC), the iterated and salted S2K at its
   highest count (65,011,712 bytes of SHA-256), no compression, the file's name in the literal data
-  packet. Several files or a folder are packaged first as a ZIP (stored, not compressed) inside
+  packet. Several files or a folder are packaged first as a ZIP (stored, not compressed, ZIP64 when needed) by `client-zip@2.5.1` (MIT,
+  no dependencies, maintained) inside
   the encrypted file. The library is `openpgp@6.3.2` (Proton, LGPL-3.0-or-later), locked, bundled
   and loaded lazily from `src/vendor/openpgp.ts`, only on that page. It reads what GnuPG,
   Kleopatra and GPG Suite write with a password, binary or armored, compressed or not.
@@ -125,7 +126,7 @@ kept under "History".
   would defeat the point. Revisit when GnuPG supports it.
 - **Relation to D10:** the format's cryptography comes from openpgp.js, which uses Web Crypto
   where the browser has what it needs; still no primitive of ours. Our code is the settings, the
-  ZIP packaging (`src/lib/zip.ts`, no cryptography) and the page.
+  safe paths inside the package (`packagePath` in `src/lib/files.ts`) and the page.
 - **Streaming decryption** releases plaintext before the MDC at the end is checked
   (`allowUnauthenticatedStream`), so the page keeps the output in a Blob and offers it only once
   the whole file has decrypted without an error.
@@ -171,8 +172,8 @@ kept under "History".
 - **Since 0.8.0:** a second one, `qrcode-generator@2.0.4` (MIT, no dependencies), for the QR code
   of the Share link (roadmap G3), under the same rules: locked, bundled, loaded lazily from
   `src/vendor/qrcode.ts`, and only used to compute the grid (the SVG is drawn by our code).
-- **Since 0.12.0:** a third one, `openpgp@6.3.2` (LGPL-3.0-or-later, no dependencies), for the
-  encrypted files page (D25), under the same rules.
+- **Since 0.12.0:** two more, for the encrypted files page only (D25), under the same rules:
+  `openpgp@6.3.2` (LGPL-3.0-or-later) and `client-zip@2.5.1` (MIT), neither with dependencies.
 
 ### D14. All development, tests and scans in containers ✅
 - **What:** pinned images (tag + digest), non-root, no capabilities, read-only filesystems, tests

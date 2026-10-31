@@ -1,13 +1,22 @@
 // Encrypted files (roadmap 0.12.0): password encryption in OpenPGP, in the profile GnuPG 2.4
 // reads, so the file also opens with gpg, Kleopatra or GPG Suite (decision D25). openpgp.js does
-// the format and the cryptography; this module only chooses its settings, packages several files
-// as a ZIP first (lib/zip.ts), and streams everything, so a large file is never held whole in
-// memory. The library is passed in (vendor/openpgp.ts loads it), so the unit tests can give it the
-// copy from node_modules.
+// the format and the cryptography, and client-zip packages several files as one ZIP first; this
+// module chooses their settings and streams everything, so a large file is never held whole in
+// memory. Both libraries are passed in (src/vendor/ loads them), so the unit tests can give them
+// the copies from node_modules.
 import type * as OpenPGP from 'openpgp';
-import { zipStream, type ZipEntry } from './zip.js';
+import type { makeZip } from 'client-zip';
 
 export type OpenPGPModule = typeof OpenPGP;
+export type MakeZip = typeof makeZip;
+
+/** A file to encrypt, with its path from the folder it was added with ("photos/1.jpg"). */
+export interface PackageEntry {
+  path: string;
+  file: Blob;
+  /** Modification time, ms since the epoch (File.lastModified). */
+  modified?: number;
+}
 
 /** The most the page accepts, in and out: Blob storage holds it on a computer (phones less). */
 export const MAX_PACKAGE_BYTES = 2 * 1024 ** 3;
@@ -37,14 +46,47 @@ function config(pgp: OpenPGPModule): OpenPGP.PartialConfig {
   };
 }
 
-/** One file, or several (and folders) as one ZIP package, with the name it will have inside. */
-export function packageFiles(entries: ZipEntry[]): { name: string; stream: ReadableStream<Uint8Array>; size: number } {
+/**
+ * A path inside the package: "/" separators, no empty, "." or ".." parts, no drive letters or
+ * control characters, so unpacking it can't write outside the folder it's unpacked into.
+ */
+export function packagePath(path: string): string {
+  const parts = path.replace(/\\/g, '/').split('/')
+    .map((p) => p.replace(/[\u0000-\u001f:*?"<>|]/g, '_').trim())
+    .filter((p) => p && p !== '.' && p !== '..');
+  return parts.join('/') || 'file';
+}
+
+/** Makes every path unique ("notes.txt", "notes (2).txt"), keeping the order. */
+export function uniquePaths(paths: string[]): string[] {
+  const used = new Set<string>();
+  return paths.map((p) => {
+    let candidate = p;
+    for (let n = 2; used.has(candidate.toLowerCase()); n++) {
+      const dot = p.lastIndexOf('.');
+      const slash = p.lastIndexOf('/');
+      candidate = dot > slash + 1 ? `${p.slice(0, dot)} (${n})${p.slice(dot)}` : `${p} (${n})`;
+    }
+    used.add(candidate.toLowerCase());
+    return candidate;
+  });
+}
+
+/**
+ * One file as is, or several (and folders) as one ZIP package (client-zip: stored, UTF-8 names,
+ * ZIP64 when needed), with the name it will have inside the encrypted file.
+ */
+export function packageFiles(entries: PackageEntry[], zip: MakeZip): { name: string; stream: ReadableStream<Uint8Array>; size: number } {
   if (!entries.length) throw new Error('Add at least one file.');
   if (entries.length === 1) {
-    const [only] = entries as [ZipEntry];
+    const [only] = entries as [PackageEntry];
     return { name: only.path.split('/').pop() || 'file', stream: only.file.stream(), size: only.file.size };
   }
-  return { name: PACKAGE_NAME, stream: zipStream(entries), size: entries.reduce((n, e) => n + e.file.size, 0) };
+  const paths = uniquePaths(entries.map((e) => packagePath(e.path)));
+  const stream = zip(entries.map((e, i) => ({
+    input: e.file, name: paths[i]!, size: e.file.size, lastModified: new Date(e.modified ?? Date.now()),
+  })));
+  return { name: PACKAGE_NAME, stream, size: entries.reduce((n, e) => n + e.file.size, 0) };
 }
 
 /** Counts the bytes going through a stream, for a progress bar. */
@@ -62,7 +104,12 @@ export async function encrypt(pgp: OpenPGPModule, input: ReadableStream<Uint8Arr
   return await pgp.encrypt({ message, passwords: [password], format: 'binary', config: config(pgp) }) as ReadableStream<Uint8Array>;
 }
 
-/** Reasons a file doesn't open, in words for the page. */
+/**
+ * Reasons a file doesn't open, in words for the page. A wrong password is usually caught up front
+ * ('password'), but not always: the session key it decrypts to passes openpgp.js's checks about 1
+ * time in 128 (a valid algorithm byte and key size), and then only the MDC at the end fails. So
+ * 'damaged' can also mean a wrong password, and the page says so.
+ */
 export type DecryptError = 'password' | 'damaged' | 'not-openpgp' | 'public-key' | 'too-large';
 
 export class FileDecryptError extends Error {

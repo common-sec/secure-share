@@ -1,8 +1,8 @@
 import { test, assert } from './harness.js';
 import * as F from '../../build/modules/lib/files.js';
-import * as Z from '../../build/modules/lib/zip.js';
-// The same openpgp.js the build bundles, from the lockfile-pinned package.
+// The same libraries the build bundles, from the lockfile-pinned packages.
 import * as pgp from '../../node_modules/openpgp/dist/openpgp.min.mjs';
+import { makeZip } from '../../node_modules/client-zip/index.js';
 
 const PASSWORD = 'quiet tundra mosaic lantern ripple orbit';
 const enc = new TextEncoder();
@@ -10,6 +10,16 @@ const bytes = (n, seed = 1) => Uint8Array.from({ length: n }, (_, i) => (i * 31 
 const streamOf = (data) => new Blob([data]).stream();
 const blobBytes = async (blob) => new Uint8Array(await blob.arrayBuffer());
 const sameBytes = (a, b) => a.length === b.length && a.every((v, i) => v === b[i]);
+
+/** CRC-32 (the one ZIP uses), to check what client-zip wrote. */
+function crc32(data) {
+  let c = ~0;
+  for (const byte of data) {
+    c ^= byte;
+    for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+  }
+  return ~c >>> 0;
+}
 
 async function encryptToBlob(data, name, password = PASSWORD) {
   return F.collect(await F.encrypt(pgp, streamOf(data), name, password));
@@ -44,8 +54,7 @@ function readZip(zip) {
     assert.equal(v.getUint16(local + 8, true), 0, 'stored, not compressed');
     const start = local + 30 + v.getUint16(local + 26, true) + v.getUint16(local + 28, true);
     const data = zip.subarray(start, start + size);
-    assert.equal(v.getUint32(start + size, true), 0x08074b50, `data descriptor of ${name}`);
-    assert.equal(Z.crc32(data), crc, `CRC of ${name}`);
+    assert.equal(crc32(data), crc, `CRC of ${name}`);
     files.push({ name, data, flags: v.getUint16(p + 8, true) });
     p += 46 + nameLength + v.getUint16(p + 30, true) + v.getUint16(p + 32, true);
   }
@@ -53,38 +62,37 @@ function readZip(zip) {
 }
 
 // ---------------------------------------------------------------- ZIP packages
-test('zip: CRC-32 matches the standard check value, also over several chunks', () => {
-  assert.equal(Z.crc32(enc.encode('123456789')), 0xcbf43926);
-  assert.equal(Z.crc32(enc.encode('6789'), Z.crc32(enc.encode('12345'))), 0xcbf43926);
-  assert.equal(Z.crc32(new Uint8Array(0)), 0);
-});
-
-test('zip: files and folders are packaged with their paths, contents and UTF-8 names', async () => {
+test('package: files and folders are zipped with their paths, contents and UTF-8 names', async () => {
   const entries = [
     { path: 'report.pdf', file: new Blob([bytes(70_000)]), modified: Date.UTC(2026, 9, 29, 12) },
     { path: 'photos/été/1.jpg', file: new Blob([bytes(3, 2)]) },
     { path: 'empty.txt', file: new Blob([]) },
   ];
-  const zip = await blobBytes(await F.collect(Z.zipStream(entries)));
-  const files = readZip(zip);
+  const pkg = F.packageFiles(entries, makeZip);
+  assert.equal(pkg.name, F.PACKAGE_NAME);
+  assert.equal(pkg.size, 70_003);
+  const files = readZip(await blobBytes(await F.collect(pkg.stream)));
   assert.deepEqual(files.map((f) => f.name), ['report.pdf', 'photos/été/1.jpg', 'empty.txt']);
   assert.ok(sameBytes(files[0].data, bytes(70_000)), 'contents of the first file');
   assert.ok(sameBytes(files[1].data, bytes(3, 2)), 'contents of the second file');
   assert.equal(files[2].data.length, 0);
   assert.ok(files.every((f) => f.flags & 0x0800), 'names are flagged as UTF-8');
-  assert.equal(zip.length, Z.zipSize(entries), 'zipSize predicts the size');
 });
 
-test('zip: paths can’t climb out of the folder they’re unpacked into', () => {
-  assert.equal(Z.zipPath('../../etc/passwd'), 'etc/passwd');
-  assert.equal(Z.zipPath('/abs/./file'), 'abs/file');
-  assert.equal(Z.zipPath('C:\\Users\\me\\a.txt'), 'C_/Users/me/a.txt');
-  assert.equal(Z.zipPath('bad\u0000name?.txt'), 'bad_name_.txt');
-  assert.equal(Z.zipPath('..'), 'file');
+test('package: paths can’t climb out of the folder they’re unpacked into', async () => {
+  assert.equal(F.packagePath('../../etc/passwd'), 'etc/passwd');
+  assert.equal(F.packagePath('/abs/./file'), 'abs/file');
+  assert.equal(F.packagePath('C:\\Users\\me\\a.txt'), 'C_/Users/me/a.txt');
+  assert.equal(F.packagePath('bad\u0000name?.txt'), 'bad_name_.txt');
+  assert.equal(F.packagePath('..'), 'file');
+  const pkg = F.packageFiles([
+    { path: '../up.txt', file: new Blob(['a']) }, { path: 'up.txt', file: new Blob(['b']) },
+  ], makeZip);
+  assert.deepEqual(readZip(await blobBytes(await F.collect(pkg.stream))).map((f) => f.name), ['up.txt', 'up (2).txt']);
 });
 
-test('zip: duplicate names get a number, case-insensitively', () => {
-  assert.deepEqual(Z.uniquePaths(['a.txt', 'A.txt', 'a.txt', 'dir/b', 'dir/b', 'x.y/z']),
+test('package: duplicate names get a number, case-insensitively', () => {
+  assert.deepEqual(F.uniquePaths(['a.txt', 'A.txt', 'a.txt', 'dir/b', 'dir/b', 'x.y/z']),
     ['a.txt', 'A (2).txt', 'a (3).txt', 'dir/b', 'dir/b (2)', 'x.y/z']);
 });
 
@@ -117,8 +125,7 @@ test('files: several files decrypt to a ZIP package', async () => {
     { path: 'notes/a.txt', file: new Blob([enc.encode('first')]) },
     { path: 'notes/b.txt', file: new Blob([enc.encode('second')]) },
   ];
-  const pkg = F.packageFiles(entries);
-  assert.equal(pkg.name, F.PACKAGE_NAME);
+  const pkg = F.packageFiles(entries, makeZip);
   const encrypted = await F.collect(await F.encrypt(pgp, pkg.stream, pkg.name, PASSWORD));
   const out = await decryptToBytes(encrypted);
   assert.equal(out.name, 'files.zip');
@@ -127,15 +134,22 @@ test('files: several files decrypt to a ZIP package', async () => {
 }, { timeout: 60000 });
 
 test('files: a single file isn’t packaged', () => {
-  const pkg = F.packageFiles([{ path: 'folder/only.txt', file: new Blob(['x']) }]);
+  const pkg = F.packageFiles([{ path: 'folder/only.txt', file: new Blob(['x']) }], makeZip);
   assert.equal(pkg.name, 'only.txt');
   assert.equal(pkg.size, 1);
-  assert.throws(() => F.packageFiles([]));
+  assert.throws(() => F.packageFiles([], makeZip));
 });
 
-test('files: a wrong password is refused as such', async () => {
+test('files: a wrong password is refused, nearly always as such', async () => {
+  // About 1 time in 128, a wrong password decrypts to a session key openpgp.js accepts, and only
+  // the MDC fails ('damaged', whose message mentions the password too). Never opened.
   const encrypted = await encryptToBlob(bytes(1000), 'a.bin');
-  assert.equal(await reason(decryptToBytes(encrypted, 'quiet tundra mosaic lantern ripple orbiT')), 'password');
+  const seen = [];
+  for (const wrong of ['quiet tundra mosaic lantern ripple orbiT', 'orbit', 'wrong words entirely']) {
+    seen.push(await reason(decryptToBytes(encrypted, wrong)));
+  }
+  assert.ok(seen.every((r) => r === 'password' || r === 'damaged'), `refused: ${seen}`);
+  assert.ok(seen.includes('password'), `told as a wrong password: ${seen}`);
 }, { timeout: 60000 });
 
 test('files: a flipped byte is detected, and nothing is returned', async () => {
