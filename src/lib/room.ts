@@ -355,9 +355,12 @@ export class SecureRoom extends EventTarget {
       },
       this.roomId,
       {
-        onPeerHandshake: (peerId, send, receive) => (this.isHost
-          ? this.#hostHandshake(peerId, send, receive)
-          : this.#guestHandshake(peerId, send, receive)),
+        onPeerHandshake: (peerId, send, receive) => {
+          this.#onReconnect(peerId);
+          return this.isHost
+            ? this.#hostHandshake(peerId, send, receive)
+            : this.#guestHandshake(peerId, send, receive);
+        },
         onJoinError: (d) => {
           if (DIRECT_FAILED.test(d.error)) this.#onDirectFailed(d.peerId);
           else if (!/not-host/.test(d.error)) this.#emit('debug', d);
@@ -490,6 +493,19 @@ export class SecureRoom extends EventTarget {
       this.#syncDiscovery();
       this.#emit('host-lost', {});
     }
+  }
+
+  /**
+   * A peer id is fixed for the life of a page, so a new handshake with a peer we still count as
+   * connected means its old connection died (typically a phone that put the browser in the
+   * background) and the transport replaced it with a new one. Trystero swaps the connection without
+   * an onPeerLeave, so we forget the old one here: otherwise the host would refuse the returning
+   * member ('nick-taken', since it still holds their nickname) and keep a ghost in the roster, and
+   * the guest would keep a host connection that no longer delivers anything.
+   */
+  #onReconnect(peerId: string): void {
+    if (this.closed) return;
+    if (this.isHost ? this.guests.has(peerId) : peerId === this.hostPeerId) this.#onPeerLeave(peerId);
   }
 
   #trusted(peerId: string): boolean {

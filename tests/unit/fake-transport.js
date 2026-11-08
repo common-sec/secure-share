@@ -13,6 +13,9 @@
 //   - actions deliver in order per pair; binary data (ArrayBuffer or any view) arrives as a fresh
 //     Uint8Array, as Trystero delivers it
 //   - closing a peer connection fires onPeerLeave on both ends
+//   - net.replace(a, b) drops a pair's connection WITHOUT onPeerLeave and connects them again
+//     under the same peer ids: what Trystero does when a peer comes back on a new connection
+//     before the old one was noticed as dead (e.g. a phone that backgrounded the browser)
 //
 // Restrictive networks can be simulated per browser: net.transport({ relaysBlocked: true }) never
 // reaches a relay; net.transport({ directBlocked: true }) finds peers but no direct path to them,
@@ -102,6 +105,12 @@ export class FakeNetwork {
     const had = a.peers.delete(b.id) | b.peers.delete(a.id);
     if (!had) return;
     setTimeout(() => { a.api.onPeerLeave?.(b.id); b.api.onPeerLeave?.(a.id); }, 0);
+  }
+
+  replace(a, b) {
+    a.peers.delete(b.id);
+    b.peers.delete(a.id);
+    return this.#handshake(a, b);
   }
 
   deliver(from, to, ns, data, metadata) {

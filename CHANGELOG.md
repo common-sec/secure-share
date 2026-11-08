@@ -43,6 +43,21 @@ All notable changes, one section per version. See [docs/ROADMAP.md](docs/ROADMAP
   `SecureRoom` has two new events, `direct-blocked` and `relays`; the fake transport in the unit
   tests can simulate both networks.
 
+### Fixed
+- **A chat hosted on a phone survives the browser going to the background.** Two problems,
+  reproduced in Chromium with a frozen host tab and a dropped network:
+  - Phones freeze a background tab and often discard it, reloading it when the user comes back.
+    The host's saved room was only accepted for 2 minutes without a refresh, so after a longer
+    absence the host saw "This room has ended" and the guests waited for a host who could never
+    return. A record saved as the page goes to the background is now kept for 30 minutes, and
+    only the tab that hosted the room can resume from it after the usual 2 minutes (a new tab or
+    a closed one can't). Closing the room still deletes it at once.
+  - When a peer came back on a new connection before its old one was noticed as dead, Trystero
+    replaced the connection without a "peer left". The host then refused the returning guest as
+    "That nickname is already taken" and kept a ghost member, and a guest kept talking to a dead
+    host connection. Both sides now treat a new handshake from a peer they still count as
+    connected as a reconnection, so approved guests are re-admitted automatically.
+
 ### Changed
 - **Nothing jumps when a tool page loads.** The share, chat and password pages kept their
   introduction on screen until the tool appeared above it and pushed it down (a layout shift that

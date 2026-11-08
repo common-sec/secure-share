@@ -3,6 +3,12 @@
 // as data. The open page re-saves its record every HEARTBEAT_MS and when it's hidden or unloaded;
 // a record that hasn't been refreshed for RELOAD_GRACE_MS belongs to a closed tab and is useless
 // (and deleted), as is one past the room's time limit. Closing the room deletes it at once.
+//
+// Phones are the exception: they freeze a background tab (no heartbeat) and may later discard it,
+// reloading it when the user comes back. A record saved as the page went to the background is
+// therefore kept for BACKGROUND_GRACE_MS, but only that same tab can resume from it after
+// RELOAD_GRACE_MS: the tab proves it with a sessionStorage marker (`sameTab`), which a closed tab
+// loses and a new tab never has. Anyone else opening the link joins as a guest, as before.
 import { DEFAULT_LIFETIME_MS, type HostSnapshot } from './room.js';
 
 const DB = 'uss-hosts';
@@ -10,8 +16,11 @@ const STORE = 'rooms';
 export const HEARTBEAT_MS = 30 * 1000;
 // Longer than a reload, and than the once-a-minute timers browsers allow background tabs.
 export const RELOAD_GRACE_MS = 2 * 60 * 1000;
+// How long a phone may keep the host's tab in the background and still resume the room.
+export const BACKGROUND_GRACE_MS = 30 * 60 * 1000;
 
-export type HostRecord = HostSnapshot & { savedAt: number };
+/** `background`: saved as the page went to the background (it may be frozen or discarded next). */
+export type HostRecord = HostSnapshot & { savedAt: number; background?: boolean };
 
 function db(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
@@ -32,21 +41,30 @@ async function tx<T>(mode: IDBTransactionMode, fn: (store: IDBObjectStore) => ID
   });
 }
 
-export async function saveHost(app: string, snapshot: HostSnapshot): Promise<void> {
+export async function saveHost(app: string, snapshot: HostSnapshot, { background = false } = {}): Promise<void> {
   try {
-    await tx('readwrite', (s) => s.put({ ...snapshot, savedAt: Date.now() } satisfies HostRecord, `${app}:${snapshot.roomId}`));
+    const rec: HostRecord = { ...snapshot, savedAt: Date.now(), ...(background ? { background } : {}) };
+    await tx('readwrite', (s) => s.put(rec, `${app}:${snapshot.roomId}`));
   } catch { /* private mode etc. */ }
 }
 
-const isStale = (rec: HostRecord, now = Date.now()): boolean =>
-  now - rec.savedAt > RELOAD_GRACE_MS || now >= (rec.expiresAt ?? rec.savedAt + DEFAULT_LIFETIME_MS);
+const expired = (rec: HostRecord, now: number): boolean => now >= (rec.expiresAt ?? rec.savedAt + DEFAULT_LIFETIME_MS);
 
-export async function loadHost(app: string, roomId: string, hostFp: string): Promise<HostRecord | null> {
+/** No tab can ever resume from it again: delete it. */
+const isDead = (rec: HostRecord, now = Date.now()): boolean =>
+  expired(rec, now) || now - rec.savedAt > (rec.background ? BACKGROUND_GRACE_MS : RELOAD_GRACE_MS);
+
+/** Whether this tab may resume from it (`sameTab`: this tab hosted the room before). */
+const isUsable = (rec: HostRecord, sameTab: boolean, now = Date.now()): boolean =>
+  !isDead(rec, now) && (now - rec.savedAt <= RELOAD_GRACE_MS || (sameTab && rec.background === true));
+
+export async function loadHost(app: string, roomId: string, hostFp: string, { sameTab = false } = {}): Promise<HostRecord | null> {
   try {
     const rec = (await tx('readonly', (s) => s.get(`${app}:${roomId}`))) as HostRecord | undefined;
     if (!rec || rec.hostFp !== hostFp) return null;
-    if (isStale(rec)) { await forgetHost(app, roomId); return null; }
-    return rec;
+    if (isDead(rec)) { await forgetHost(app, roomId); return null; }
+    // Not for this tab, but the host's own background tab may still come back to it.
+    return isUsable(rec, sameTab) ? rec : null;
   } catch {
     return null;
   }
@@ -66,7 +84,7 @@ export async function sweepHosts(): Promise<void> {
       req.onsuccess = () => {
         const cursor = req.result;
         if (!cursor) return;
-        if (isStale(cursor.value as HostRecord)) cursor.delete();
+        if (isDead(cursor.value as HostRecord)) cursor.delete();
         cursor.continue();
       };
       t.oncomplete = () => { conn.close(); resolve(); };

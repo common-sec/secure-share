@@ -163,10 +163,15 @@ where the private key and the derived keys are non-extractable `CryptoKey`s. The
 every 30 s and when it's hidden or unloaded. Opening the room link again in the same browser
 resumes hosting if the record exists, `h` matches, it was saved less than 2 minutes ago (so a
 reload, not a tab closed earlier), the room's time limit hasn't passed, and no other tab holds the
-Web Lock `uss-host:chat:<roomId>`. Records failing those checks are deleted, and every visit to
-Chat sweeps them. A resumed room keeps its original `expiresAt`. Closing the room deletes the
+Web Lock `uss-host:chat:<roomId>`. A record saved as the page went to the background is marked
+`background` and also resumes for up to 30 minutes, but only in the tab that hosted the room (a
+sessionStorage marker), since phones discard background tabs and reload them later. Records no
+tab can use any more are deleted, and every visit to Chat sweeps them. A resumed room keeps its original `expiresAt`. Closing the room deletes the
 record. Guests
-treat a vanished host as `host-lost`, search again, and are re-admitted per §5.
+treat a vanished host as `host-lost`, search again, and are re-admitted per §5. A new handshake
+from a peer still counted as connected (the transport replaced a dead connection, which keeps the
+peer id) is treated as that peer leaving first: the host drops the stale member, the guest the
+stale host connection, so the returning member isn't refused as `nick-taken`.
 
 ## 10. Limits and constants
 
