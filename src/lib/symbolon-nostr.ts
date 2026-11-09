@@ -12,6 +12,8 @@
 //            bound to its topic and creation time: a relay can't read it, move it to another topic
 //            or replay it outside a two-minute window. Inside, Trystero's own AES-GCM encryption of
 //            offers and answers is unchanged.
+//   pushback a relay that rate-limits us is paused, with exponential backoff, and one that
+//            blocks us is closed for good, as Trystero's own strategy does (src/lib/relay-health.ts).
 //   events   ephemeral kind 21059 events (relays don't store them; NIP-40 expiration for those
 //            that do), built and BIP-340 signed by Symbolon with a key made for this page only.
 //
@@ -20,9 +22,10 @@
 import {
   createRelayManager, createTopicStrategy, getRelays, makeSocket, pauseRelayReconnection, resumeRelayReconnection,
   type JoinRoomCallbacks, type JoinRoomConfig, type Room, type SocketClient, type StrategyMessage,
-} from '@trystero-p2p/core';
+} from '../vendor/trystero-core.js';
 import { loadSymbolon, type EventSigner, type GroupKeys, type Symbolon } from '../vendor/symbolon.js';
 import { utf8 } from './encoding.js';
+import { parseReply, RelayHealth, STEADY_ANNOUNCE_MS } from './relay-health.js';
 import { openEvent, parseEvent, relayTopic, sealEvent, toHex, unixNow } from './relay-seal.js';
 
 const SEEN_LIMIT = 1024;
@@ -53,7 +56,12 @@ interface Subscription {
   handler: (topic: string, msg: StrategyMessage) => void;
 }
 
-export function createSymbolonStrategy(sym: Symbolon, connect: typeof makeSocket = makeSocket): Trystero {
+type Sub = Subscription & { subId: string };
+/** Trystero's AnnounceResult (not exported by its core): when to announce next on a relay. */
+type AnnounceResult = { stopAnnouncing: true } | { nextAnnounceMs: number };
+type Connect = (url: string, onMessage: (data: string) => void, onReconnect?: () => void) => SocketClient;
+
+export function createSymbolonStrategy(sym: Symbolon, connect: Connect = makeSocket, health = new RelayHealth()): Trystero {
   // One throwaway signing key per page, like Trystero's own Nostr strategy: relays can't link
   // this page's events to any other run.
   const signer: EventSigner = sym.EventSigner.generate();
@@ -61,7 +69,9 @@ export function createSymbolonStrategy(sym: Symbolon, connect: typeof makeSocket
   /** room keys by "<appId>|<roomId>", registered by joinRoom below */
   const roomKeys = new Map<string, { keys: GroupKeys; refs: number }>();
   /** per relay: subscriptions by Symbolon topic (hex), and their subscription ids */
-  const subs = new Map<string, Map<string, Subscription & { subId: string }>>();
+  const subs = new Map<string, Map<string, Sub>>();
+  /** subscriptions waiting to be requested again, as "<relay> <subId>" */
+  const pending = new Set<string>();
   /** per relay: the last announcement on each topic, published again after a reconnect */
   const announcements = new Map<string, Map<string, string>>();
   const seen = new Set<string>();
@@ -70,16 +80,48 @@ export function createSymbolonStrategy(sym: Symbolon, connect: typeof makeSocket
   // was waiting on a relay, and those must do nothing rather than throw.
   const keysFor = (appId: string, roomId: string): GroupKeys | undefined => roomKeys.get(`${appId}|${roomId}`)?.keys;
 
-  const subscribe = (client: SocketClient, sub: Subscription & { subId: string }) => {
+  const subscribe = (client: SocketClient, sub: Sub): void => {
+    if (health.isRetired(client.url) || client.isClosed) return;
+    const wait = health.backoffMs(client.url);
+    if (wait > 0) return resubscribeLater(client, sub.subId, wait);
     client.send(`["REQ",${JSON.stringify(sub.subId)},${sym.signalFilter(sub.bytes, unixNow())}]`);
   };
 
-  const publish = (client: SocketClient, keys: GroupKeys, topic: string, payload: string): void => {
-    if (client.isClosed || client.socket?.readyState !== 1) return;
+  const resubscribeLater = (client: SocketClient, subId: string, inMs: number): void => {
+    const key = `${client.url} ${subId}`;
+    if (pending.has(key)) return;
+    pending.add(key);
+    setTimeout(() => {
+      pending.delete(key);
+      const sub = [...(subs.get(client.url)?.values() ?? [])].find((s) => s.subId === subId);
+      if (sub) subscribe(client, sub);
+    }, inMs);
+  };
+
+  /** Stops using a relay that refused us for good. */
+  const retire = (client: SocketClient): void => {
+    subs.delete(client.url);
+    announcements.delete(client.url);
+    client.close?.();
+  };
+
+  /** What it returns for an announcement sets when Trystero announces next on this relay. */
+  const publish = (client: SocketClient, keys: GroupKeys, topic: string, payload: string): AnnounceResult | undefined => {
+    if (health.isRetired(client.url)) return { stopAnnouncing: true };
+    const wait = health.backoffMs(client.url);
+    if (wait > 0) return { nextAnnounceMs: Math.max(STEADY_ANNOUNCE_MS, wait) };
+    if (client.isClosed || client.socket?.readyState !== 1) return undefined;
     client.send(sealEvent(signer, keys, topic, payload));
+    return undefined;
   };
 
   const receive = (client: SocketClient, data: string): void => {
+    if (!data.startsWith('["EVENT"')) {
+      const verdict = health.onReply(client.url, parseReply(data));
+      if (verdict.retire) retire(client);
+      if (verdict.resubscribe) resubscribeLater(client, verdict.resubscribe.subId, verdict.resubscribe.inMs);
+      return;
+    }
     const event = parseEvent(data);
     const sub = event && subs.get(client.url)?.get(event.topicHex);
     if (!event || !sub || sub.subId !== event.subId) return;
@@ -95,6 +137,7 @@ export function createSymbolonStrategy(sym: Symbolon, connect: typeof makeSocket
   const joinInner = createTopicStrategy<SocketClient, JoinRoomConfig>({
     init: (config) => getRelays(config, DEFAULT_RELAYS, DEFAULT_RELAYS.length).map((url) => {
       const client: SocketClient = relays.register(url, () => connect(url, (data) => receive(client, data), () => {
+        if (health.isRetired(client.url)) return;
         // Back after a drop: subscribe again, and announce again so peers can find us.
         for (const sub of subs.get(client.url)?.values() ?? []) subscribe(client, sub);
         for (const [topic, payload] of announcements.get(client.url) ?? []) {
@@ -123,12 +166,13 @@ export function createSymbolonStrategy(sym: Symbolon, connect: typeof makeSocket
       const keys = keysFor(ctx.appId, ctx.roomId);
       if (!keys) return;
       const payload = typeof msg === 'string' ? msg : JSON.stringify(msg);
-      if (ctx.kind === 'announce') {
+      if (ctx.kind === 'announce' && !health.isRetired(client.url)) {
         let forRelay = announcements.get(client.url);
         if (!forRelay) announcements.set(client.url, forRelay = new Map());
         forRelay.set(topic, payload);
       }
-      publish(client, keys, topic, payload);
+      const result = publish(client, keys, topic, payload);
+      return ctx.kind === 'announce' ? result : undefined;
     },
     unpublishTopic: (client, topic) => {
       announcements.get(client.url)?.delete(topic);

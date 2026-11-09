@@ -5,6 +5,11 @@ All notable changes, one section per version. See [docs/ROADMAP.md](docs/ROADMAP
 ## [Unreleased]
 
 ### Added
+- **Relays that push back are listened to.** A relay that answers `rate-limited:` gets nothing
+  from the page for 60 s, doubling up to 15 minutes. One that answers `blocked:`, `restricted:`,
+  `auth-required:` or `pow:` is closed and not used again on that page. Before, the Symbolon
+  strategy ignored these replies and kept the same cadence (dmotz/trystero#192). Ported from
+  Trystero's own Nostr strategy, in `src/lib/relay-health.ts`, with unit tests over fake relays.
 - **Encrypted files** (roadmap 0.12.0, in progress; decision D25). A new page, `/files/`, encrypts
   one or more files, or a whole folder, with a password into a single OpenPGP file
   (`name.gpg`), and decrypts one again, all in the browser: nothing is uploaded or stored, and
