@@ -20,14 +20,17 @@ src/pages/      ── one static page per tool and content page (layout.html + 
 │   ├── words.ts           word list used by the generator
 │   ├── crypto.ts          key derivation, AES-GCM, ECDSA, HMAC, safety codes (Web Crypto only)
 │   ├── room.ts            SecureRoom: the protocol (handshake, approvals, relay, files), typed messages
+│   ├── symbolon-nostr.ts  Trystero strategy: discovery on Nostr relays through Symbolon
+│   ├── relay-seal.ts      what goes on a relay: Symbolon topic, sealed content, signed event
 │   ├── hoststore.ts       resume hosting after a reload (IndexedDB + Web Locks)
 │   ├── files.ts           encrypted files: OpenPGP settings, ZIP packages, streaming encrypt/decrypt
 │   ├── encoding.ts        base64url / UTF-8
 │   ├── nav.ts             page addresses, fragment parameters, old-link redirects
 │   └── dom.ts             tiny DOM builder (text nodes only, never innerHTML)
 │
-└── src/vendor/           third-party imports, each loaded lazily (bundled from npm)
-    ├── trystero.ts        WebRTC matchmaking (Share, Chat)
+└── src/vendor/           third-party imports, each loaded lazily (bundled at build time)
+    ├── trystero.ts        WebRTC (Trystero's core) with our Symbolon strategy (Share, Chat)
+    ├── symbolon.ts        Symbolon (Rust → WebAssembly), from its release pinned by SHA-256
     ├── qrcode.ts          QR code of the Share link
     ├── openpgp.ts         OpenPGP for the encrypted files page (decision D25)
     └── zip.ts             client-zip, to package several files as one ZIP (same page)
@@ -109,7 +112,7 @@ Everything the app connects to, and when:
 | Destination | Protocol / port | When | What is sent | Who sees what |
 |---|---|---|---|---|
 | The static host serving the page | HTTPS, TCP 443 | Page load | Standard GET requests. The URL fragment (room secrets) is **never** sent. | Host operator: your IP, page requests |
-| 3 public Nostr relays (chosen from Trystero's list of 29) | WSS, TCP 443 | Only while the room needs to be discoverable (see below) | Subscriptions to a topic derived from app + room ID; WebRTC offers/answers **encrypted** with a key derived from the link secret | Relay operators: your IP, timing, an opaque topic, ciphertext |
+| 3 public Nostr relays (`relay.damus.io`, `nos.lol`, `relay.primal.net`) | WSS, TCP 443 | Only while the room needs to be discoverable (see below) | Subscriptions to topics keyed by the link secret (Symbolon); ephemeral events sealed by Symbolon, holding WebRTC offers/answers that Trystero encrypts too | Relay operators: your IP, timing, an opaque topic, ciphertext |
 | `stun.l.google.com`, `stun1.l.google.com`, `stun2.l.google.com` | STUN, UDP 19302 | While a WebRTC connection is being set up | STUN binding requests (no content) | Google: your public IP:port |
 | `stun.cloudflare.com` | STUN, UDP 3478 | While a WebRTC connection is being set up | STUN binding requests (no content) | Cloudflare: your public IP:port |
 | The other peer | WebRTC: DTLS + SCTP over UDP, ephemeral ports chosen by the browser | During the session | Everything, encrypted twice (DTLS + AES-256-GCM) | The peer: your IP address(es) |
@@ -129,8 +132,8 @@ Relays are only needed so that a **new** peer can find the room, so the app disc
 | Host | the room is open to new members | the room is locked, full, or closed |
 | Guest | looking for the host | accepted by the host (reconnects only if the host drops, e.g. reloads) |
 
-Trystero picks 3 of its 29 default relays with a shuffle seeded by the app ID, so all peers of the
-same app pick the same 3. The list is in Trystero's source (`@trystero-p2p/nostr`, `defaultRelayUrls`).
+Every peer uses the same 3 relays, the ones gum0x/bringmeback uses (`DEFAULT_RELAYS` in
+`src/lib/symbolon-nostr.ts`). What is published there, and how, is in [PROTOCOL.md §3](PROTOCOL.md).
 
 ## Cryptography: what is and isn't ours
 
@@ -149,7 +152,12 @@ CoreCrypto in Safari):
 | Safety code | SHA-256 over both DTLS certificate fingerprints |
 | Transport | WebRTC DTLS (browser-native) |
 
-The encrypted files page is the exception: its format's cryptography comes from **openpgp.js**
+Two exceptions. **Discovery** on the relays is sealed and signed by **Symbolon**
+([common-sec/symbolon](https://github.com/common-sec/symbolon), Rust compiled to WebAssembly:
+HKDF-SHA-256, XChaCha20-Poly1305, BIP-340 Schnorr signatures, from RustCrypto), the library
+gum0x/bringmeback uses too (decision D26). It is not yet externally reviewed; what it protects
+(offers and answers) is also encrypted by Trystero with Web Crypto inside, and everything after
+discovery is unchanged. The encrypted files page is the other: its format's cryptography comes from **openpgp.js**
 (audited, D25), which uses Web Crypto where the browser has what it needs. Ours there is only the
 choice of settings and safe paths inside the ZIP package, which involve no cryptography.
 
@@ -161,7 +169,7 @@ replay, impostor host, wrong passphrase, tampered files) in `tests/unit/room.tes
 ## Test-only hooks
 
 `SecureRoom` reads two globals, used only by the end-to-end tests: `__USS_TEST_RELAYS__` (relay
-URLs, replacing Trystero's public list) and `__USS_TEST_ICE_SERVERS__` (ICE servers, replacing the
+URLs, replacing the public relays) and `__USS_TEST_ICE_SERVERS__` (ICE servers, replacing the
 public STUN servers). Only a script running in the page before the app can set them, and such a
 script already controls the page completely, so they grant nothing new. Links, URL parameters
 and user input can't set them.

@@ -26,8 +26,9 @@ The aim is to make secure sharing easy for anyone: **privacy by default, not ano
 1. The sender opens a room. The link carries a random 256-bit secret **after the `#`**, the part of
    a URL that browsers never send to any server. A separate passphrase is shared another way, for
    example read aloud on a call.
-2. Both browsers find each other through a few **public Nostr relays** (via
-   [Trystero](https://github.com/dmotz/trystero)). Only encrypted connection offers pass through
+2. Both browsers find each other through a few **public Nostr relays**, with
+   [Symbolon](https://github.com/common-sec/symbolon) sealing what is published there, then
+   connect with [Trystero](https://github.com/dmotz/trystero)'s WebRTC core. Only encrypted connection offers pass through
    them, and the browsers disconnect from the relays as soon as they're no longer needed.
 3. The browsers connect **directly** with WebRTC, using public STUN servers to get through NATs.
    Data is encrypted twice: by WebRTC (DTLS) and by the app (AES-256-GCM, keyed from the link
@@ -80,10 +81,12 @@ Pages, Netlify). The Web Crypto API needs a secure context (HTTPS or `localhost`
   tab). Rooms close on their own after a time limit (4 hours by default).
 - **No hand-rolled cryptographic primitives.** All of them come from the browser's Web Crypto
   API: AES-GCM, ECDSA P-256, HKDF, PBKDF2, HMAC, SHA-256 and the CSPRNG. Encrypted files use the
-  OpenPGP format through the audited openpgp.js library, so GnuPG opens them too. The protocol that combines
+  OpenPGP format through the audited openpgp.js library, so GnuPG opens them too. What is published on
+  the discovery relays is sealed and signed by the Symbolon library (Rust, WebAssembly). The protocol that combines
   them is documented in [PROTOCOL.md](docs/PROTOCOL.md) and covered by adversarial tests.
-- **Minimal dependencies.** Four runtime dependencies (Trystero; qrcode-generator for the QR
-  code; openpgp.js and client-zip for encrypted files, decision D25), locked and bundled at build time, no framework, no CDN. Every line that runs is in this
+- **Minimal dependencies.** Five runtime dependencies (Trystero's core and Symbolon for
+  connections; qrcode-generator for the QR code; openpgp.js and client-zip for encrypted files,
+  decision D25), locked (Symbolon by the SHA-256 of its release) and bundled at build time, no framework, no CDN. Every line that runs is in this
   repository or in the locked libraries.
 - **Readable and verifiable.** Strict TypeScript, a strict Content Security Policy, and a
   [reproducible build](docs/RELEASES.md): anyone can check the served files match the source.

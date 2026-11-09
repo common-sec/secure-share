@@ -5,7 +5,7 @@ directly, without a server of ours in between. No prior networking knowledge is 
 decisions behind each choice are in [DECISIONS.md](DECISIONS.md), and the exact cryptographic
 messages are in [PROTOCOL.md](PROTOCOL.md).
 
-**About the examples:** every message below has the exact *format* the app and Trystero use:
+**About the examples:** every message below has the exact *format* the app, Trystero and Symbolon use:
 field names, encodings and lengths. The *values* are made up (random), except where marked as
 real (relay host names, STUN servers, the topic computation). Public IP addresses come from the
 ranges reserved for documentation (RFC 5737), so none belongs to a real network.
@@ -51,9 +51,9 @@ https://share.common-sec.org/#/share?r=Q7nmLtvgH6OIiTJ387mbqQ&k=G4laNCs8p9dVdjEw
 
 | Parameter | Example | What it is | Used for |
 |---|---|---|---|
-| `#/share` or `#/chat` | `#/share` | Which tool | Picks the screen, and the Trystero app ID: `user-sec-tools.share.v2` or `user-sec-tools.chat.v2` (the project's original name, kept on purpose: changing it would split peers, see [PROTOCOL.md §3](PROTOCOL.md)) |
+| `#/share` or `#/chat` | `#/share` | Which tool | Picks the screen, and the Trystero app ID: `secure-share.share.v3` or `secure-share.chat.v3` ([PROTOCOL.md §3](PROTOCOL.md)) |
 | `r`: room ID | `Q7nmLtvgH6OIiTJ387mbqQ` | 16 random bytes, base64url (22 chars) | Names the room: the Nostr topics and key-derivation salts come from it |
-| `k`: link secret | `G4laNCs8…KiO1nY` | 32 random bytes, base64url (43 chars) | Encrypts the business cards on the relays, and, with the passphrase, all data |
+| `k`: link secret | `G4laNCs8…KiO1nY` | 32 random bytes, base64url (43 chars) | Keys the relay topics and seals everything on the relays (Symbolon), encrypts the business cards, and, with the passphrase, all data |
 | `h`: host key fingerprint | `0UfLJ2Hf…gJIVdY` | SHA-256 of the host's public key (43 chars) | Lets guests check they reached the real host |
 
 | Not in the link | Example | What it is |
@@ -65,6 +65,7 @@ What's derived from them ([PROTOCOL.md §2](PROTOCOL.md)):
 
 ```
 signaling password = HKDF(k, salt "uss/v2/" + r, info "signaling")   → given to Trystero (step 2)
+relay keys         = Symbolon GroupKeys("secure-share/<tool>/v3/" + r, k) → topics and seals on the relays (step 2)
 group key, auth key = HKDF(k ‖ PBKDF2(passphrase, 600 000 rounds), …) → our own encryption (step 4)
 ```
 
@@ -124,24 +125,41 @@ WebRTC deliberately doesn't say how these cards are delivered. That part is call
 { "id": "27a13171feb2de3a489dba399b8d6a31aa197e7b62633c733f2657ee4d551878",
   "pubkey": "2a83950b22a552e47c4b621c19bc07cc6a26711118be867d5fa7f25b1823e157",
   "created_at": 1791700000,
-  "kind": 22824,
-  "tags": [["x", "ce6b3751177551996a09cc9e67de61f224fa5ffe"]],
-  "content": "{\"peerId\":\"1ZWzQtkzeNWT740wEGd4\",\"nonce\":\"Xq3Lk9Pz\"}",
+  "kind": 21059,
+  "tags": [["t", "9c1e…(64 hex chars: the Symbolon topic)"], ["expiration", "1791700120"]],
+  "content": "Vq3mZ0…(base64url: Symbolon-sealed, unreadable without the link)",
   "sig": "983213f22fd61a4fc79037862650e46bed18deec…(128 hex chars)" }
 ```
 
 - `id` is the SHA-256 of the other fields, and `sig` is a Schnorr signature (secp256k1) by
-  `pubkey`. Trystero makes a **new random Nostr key pair each time the page loads**, so it says
+  `pubkey`. Symbolon makes a **new random Nostr key pair each time the page loads**, so it says
   nothing about you.
 - Three operations over the WebSocket: `["EVENT", {…}]` (publish), `["REQ", "<sub-id>", {filter}]`
   (subscribe) and `["CLOSE", "<sub-id>"]`.
 - **Kinds 20000–29999 are *ephemeral*:** relays forward them to current subscribers and **don't
   store them**. That's the part of Nostr meant for live, throwaway messages like ours.
 
+### Symbolon's envelope: what the relays actually see
+
+Trystero (its core) decides *what* to say: the announcements, offers, answers and candidates
+below. Our Nostr strategy on [Symbolon](https://github.com/common-sec/symbolon) decides how it
+travels ([PROTOCOL.md §3](PROTOCOL.md)). For each Trystero topic name and message:
+
+```
+topic   = Symbolon topic of the name, keyed by the link secret k      → the event's "t" tag
+content = Symbolon seal of the message, bound to that topic and time  → the event's content
+```
+
+So relays see one ephemeral event kind (21059), opaque 64-hex topics they can't compute from the
+room ID, and sealed content: **nothing below is visible to them**, not even the peer IDs.
+Receivers drop events more than 2 minutes from their own clock, so a relay can't replay them
+later, and events moved to another topic don't open.
+
 ### Topics: how only the right browsers meet
 
 Trystero derives every name from the app ID and room ID (formula from its source; values computed
-for the example room):
+for the example room, with the v2 app ID). Symbolon then turns each name into the relay topic
+above, so these names never reach a relay:
 
 ```
 room topic   = SHA-1("Trystero@user-sec-tools.share.v2@Q7nmLtvgH6OIiTJ387mbqQ")
@@ -238,23 +256,16 @@ The messages in full (Trystero's message shapes, from its source):
   `AES-GCM(key = SHA-256("<signaling password>:<appId>:<roomId>"))`. The signaling password comes
   from the link secret `k` **only, never from your passphrase** (step 0). So a relay can't decrypt
   the cards, and nothing on a relay helps anyone guess the passphrase offline.
-- **In the clear:** the random peer IDs, the offer ID, the topics and the event kinds. They're
-  meaningless without the link.
+- **Then sealed again:** every one of these messages, announcements included, travels inside
+  Symbolon's envelope (above). On the relays, only the envelope's topic, time, size and the
+  page's throwaway public key are in the clear.
 
 ### Where the relays come from
 
-The relay list is **built into Trystero** (`@trystero-p2p/nostr`, `defaultRelayUrls`): 29 public
-relays run by independent volunteers. Trystero shuffles that list with a seed computed from the
-app ID and takes the first 3 (we set `redundancy: 3`), so every browser using the same tool picks
-the same 3. With Trystero 0.26.0, observed and computed:
-
-| Tool | App ID | The 3 relays (`wss://…`, TCP 443) |
-|---|---|---|
-| Secure Share | `user-sec-tools.share.v2` | `nostr.chaima.info`, `relay.hackshed.dev`, `testr.nymble.world` |
-| Secure Chat | `user-sec-tools.chat.v2` | `relay.bullishbounty.com`, `nostr.christiansass.de`, `relay.nostr.dev.br` |
-
-Updating Trystero can change its built-in list. The end-to-end tests instead use a tiny local
-Nostr relay inside the test server (see the end of this document).
+Every peer uses the same 3 public relays, the ones gum0x/bringmeback uses: `relay.damus.io`,
+`nos.lol` and `relay.primal.net` (`wss://…`, TCP 443; `DEFAULT_RELAYS` in
+`src/lib/symbolon-nostr.ts`). Any one of them is enough for two peers to meet. The end-to-end
+tests instead use a tiny local Nostr relay inside the test server (see the end of this document).
 
 ## Step 3: punching through the NATs (ICE, STUN)
 
@@ -540,7 +551,7 @@ same TLS connection, which asks to switch protocols:
 
 ```http
 GET / HTTP/1.1
-Host: relay.hackshed.dev
+Host: nos.lol
 Upgrade: websocket
 Connection: Upgrade
 Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==
@@ -563,7 +574,7 @@ plain `ws:`.
 
 | Test | Signaling | NAT traversal | Network |
 |---|---|---|---|
-| Unit (`test-unit`) | In-memory fake of Trystero | None (fake transport) | None |
+| Unit (`test-unit`) | In-memory fake of Trystero; the real Symbolon for `relay-seal.test.js` | None (fake transport) | None |
 | End-to-end (`test-e2e`) | A minimal Nostr relay inside the test server (`tests/e2e/server.py`, same origin) | Host candidates only (no STUN) | Local only |
 | End-to-end, public (`test-e2e-public`) | The real public Nostr relays | Real STUN | Internet |
 
@@ -575,7 +586,7 @@ runs in the page, and so already controls it, can.
 
 | Option | What it is | Status |
 |---|---|---|
-| **Public Nostr relays** (via Trystero) | Many independent, free relays; ephemeral events | **Current** |
+| **Public Nostr relays** (Symbolon strategy, Trystero's core) | Many independent, free relays; ephemeral events | **Current** |
 | BitTorrent WebSocket trackers | Built for WebTorrent peer discovery | Fewer public trackers survive; fragile |
 | Public MQTT brokers | IoT pub/sub, mostly test brokers | A few companies, meant for testing |
 | Firebase / Supabase | Hosted database | Needs an account; one company |

@@ -1,11 +1,11 @@
 """Test web server: serves the app (same handler as tools/serve.py) plus a minimal Nostr relay.
 
 The relay lives at ws://<same origin>/relay so the app's Content Security Policy
-(connect-src 'self' wss:) applies unchanged. It speaks the subset of NIP-01 that Trystero uses:
+(connect-src 'self' wss:) applies unchanged. It speaks the subset of NIP-01 that our Symbolon strategy uses:
 EVENT (stored, acknowledged with OK, broadcast to matching subscriptions), REQ (stored matches,
 then EOSE, then live events) and CLOSE. Filters: ids, authors, kinds, since, until, limit, #<tag>.
 It does not verify signatures: it is a test double for a public relay, which also can't read
-anything, since Trystero encrypts what it publishes.
+anything, since Symbolon seals what is published.
 
 It also runs a minimal STUN server (stun_serve) for WebKit: see that function.
 

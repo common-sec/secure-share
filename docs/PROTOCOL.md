@@ -1,4 +1,4 @@
-# Protocol specification (v2)
+# Protocol specification (v3)
 
 This is the protocol implemented by `SecureRoom` in `src/lib/room.ts`, with primitives from
 `src/lib/crypto.ts`. All primitives are Web Crypto. Encodings: `b64u` = base64url without padding,
@@ -32,16 +32,34 @@ authKey   = HKDF-SHA-256(ikm = base, salt = "uss/v2/" + roomId, info = "auth")  
 
 - `b64u(signaling)` is given to Trystero as its room `password`. Trystero encrypts every published
   WebRTC offer/answer with `AES-GCM(SHA-256(password ":" appId ":" roomId))`.
-- **`signaling` does not depend on the passphrase.** Anything derived from the passphrase and
+- **Relay keys (Symbolon).** `relay = Symbolon GroupKeys(context = "secure-share/<app>/v3/" + roomId,
+  secret = linkSecret)`: Symbolon derives a topic key and a seal key from it with HKDF-SHA-256.
+  They live in WebAssembly memory and seal everything published on relays (§3).
+- **`signaling` and `relay` do not depend on the passphrase.** Anything derived from the passphrase and
   visible to third parties (relays) would let them test passphrase guesses offline.
 - All derived keys are non-extractable `CryptoKey`s.
 
 ## 3. Discovery and transport
 
-- Trystero `appId` = `"user-sec-tools.<app>.v2"`, `<app>` ∈ {`chat`, `share`}. (This keeps the
-  project's original name on purpose: the `appId` decides which relays peers meet on and must match
-  on both sides, so changing it is a protocol break, kept for a future protocol version.) Strategy: Nostr,
-  `relayConfig.redundancy = 3`, `manualReconnection = true`.
+- Trystero `appId` = `"secure-share.<app>.v3"`, `<app>` ∈ {`chat`, `share`} (v2 used
+  `user-sec-tools.<app>.v2`). Only Trystero's core is used (`@trystero-p2p/core`: peers, data
+  channels, the handshake hook, offer encryption); its messages travel on public Nostr relays
+  through our Symbolon strategy (`src/lib/symbolon-nostr.ts`, `src/lib/relay-seal.ts`), not
+  Trystero's own Nostr strategy. `manualReconnection = true`.
+- **On the relays.** For each of Trystero's topic names `T` (the room's, and each peer's own):
+  ```
+  topic   = relay.topic(UTF-8(T))                                   32 bytes
+  aad     = "secure-share/relay/v1|" + hex(topic) + "|" + created_at
+  content = b64u(relay.seal(UTF-8(Trystero message), aad))          XChaCha20-Poly1305
+  event   = { kind: 21059, tags: [["t", hex(topic)], ["expiration", created_at + 120]],
+              content, created_at, pubkey, id, sig }               BIP-340, one key per page load
+  REQ filter = { kinds: [21059], "#t": [hex(topic)], since: now }
+  ```
+  A receiver drops an event unless it is of that kind, carries a subscribed topic, was made within
+  **120 s** of its own clock, and opens under its topic and time: relays can't read, forge, move
+  or replay messages. Kind 21059 is ephemeral: relays forward it and don't store it.
+- Relays: `wss://relay.damus.io`, `wss://nos.lol`, `wss://relay.primal.net`, all three (the
+  same as gum0x/bringmeback), unless the test hook replaces them.
 - WebRTC data channels (DTLS + SCTP) carry everything below. Trystero's `onPeerHandshake` hook
   runs the handshake (§4) on a dedicated channel **before** the peer becomes active. A peer whose
   handshake fails on either side is never connected.
@@ -178,7 +196,8 @@ treat a vanished host as `host-lost`, search again, and are re-admitted per §5.
 | Handshake timeout | 15 s |
 | Max file | 512 MiB |
 | Max text | 100,000 characters |
-| Relays | 3 (Trystero default list, seeded shuffle) |
+| Relays | 3 (`relay.damus.io`, `nos.lol`, `relay.primal.net`) |
+| Relay message window | ±120 s from the receiver's clock |
 
 ## 11. Known limitations (by design or not yet addressed)
 
@@ -189,6 +208,8 @@ treat a vanished host as `host-lost`, search again, and are re-admitted per §5.
   Recorded traffic is still protected by DTLS (ephemeral ECDHE), but anyone who later obtains the
   link and the passphrase **and** can see application-layer data could decrypt it.
 - **The handshake isn't bound to the DTLS channel.** Interposing on it would require decrypting
-  Trystero's signaling, which needs the link secret. A safety-code comparison detects it either way.
+  the sealed signalling, which needs the link secret. A safety-code comparison detects it either way.
+- **Clocks.** A device whose clock is more than 2 minutes off drops the others' relay messages
+  (and they drop its), so the peers don't find each other.
 - **Replay protection** is per session, using an in-memory set of message IDs. `ts` isn't validated.
 - **Anyone with the link can lock the room** by sending 5 wrong passphrases (denial of service).

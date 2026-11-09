@@ -66,6 +66,10 @@ docker compose run --rm test-unit python tests/unit/run.py chromium --filter roo
   `SecureRoom.host/join` accept a `transport` option, so a test creates several "browsers" on one
   `FakeNetwork` and runs the real protocol code between them. Adversarial tests use a real
   member's keys to craft malicious packets directly.
+- `tests/unit/relay-seal.test.js`: what goes on the relays, with the real Symbolon WebAssembly:
+  events open only with the room's keys, topics depend on the link secret, and moved, re-dated,
+  altered, stale or malformed relay messages are dropped. (The test page's CSP allows
+  `'wasm-unsafe-eval'`, as the site's does.)
 - `tests/unit/run.py`: the Playwright driver for the container and CI.
 
 ### Checking that tests catch regressions
@@ -101,12 +105,12 @@ clicks, types, uploads and downloads files exactly as a user would, and the peer
 ### Two modes
 
 - **`test-e2e` (default, CI): local relay.** `tests/e2e/server.py` serves the app and a minimal
-  Nostr relay (RFC 6455 WebSocket plus the part of NIP-01 that Trystero uses, standard library
+  Nostr relay (RFC 6455 WebSocket plus the part of NIP-01 that our Symbolon strategy uses, standard library
   only) on **the same origin**, so the app's Content Security Policy applies unchanged. The test
   injects two **test-only hooks** before the page loads: `__USS_TEST_RELAYS__` (relay URLs) and
   `__USS_TEST_ICE_SERVERS__` (empty, so host candidates only and no STUN). They can only be set
   by a script already running in the page, which has full control anyway, so links and user
-  input can't reach them. Runs are fast and deterministic. Since Trystero is bundled into the
+  input can't reach them. Runs are fast and deterministic. Since Trystero and Symbolon are bundled into the
   build, the app needs no third party at all, and the tests enforce it: each browser context
   **blocks every request (HTTP or WebSocket) that isn't to the local test server**, and a
   scenario fails if the app tried one. (A Docker `internal` network isn't used for this, because

@@ -5,8 +5,9 @@
 //                          every file is byte-identical (the reproducibility check CI runs)
 //
 // dist/ contains one pre-rendered page per tool and content page (index.html, chat/, files/, passwords/,
-// how-it-works/, faq/: see pages.mjs), app.js, chunks/ (Trystero, openpgp.js, client-zip and qrcode-generator, from the
-// lockfile: nothing is fetched from a CDN at run time), styles.css, the icons and social image,
+// how-it-works/, faq/: see pages.mjs), app.js, chunks/ (Trystero's core, openpgp.js, client-zip and qrcode-generator, from the
+// lockfile, and Symbolon's JavaScript and WebAssembly, from the release pinned by SHA-256 in
+// tools/symbolon/: nothing is fetched from a CDN at run time), styles.css, the icons and social image,
 // site.webmanifest, robots.txt, sitemap.xml, and SHA256SUMS. The build is deterministic: same commit, same
 // lockfile -> same bytes. The version shown in the footer is package.json's version plus the short
 // commit, read straight from .git (no git binary needed) or from $BUILD_COMMIT. The footer links it
@@ -19,6 +20,7 @@ import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFile
 import { tmpdir } from 'node:os';
 import { join, relative } from 'node:path';
 import { writeSite } from './pages.mjs';
+import { loadSymbolon } from './tools/symbolon/symbolon.mjs';
 
 const pkg = JSON.parse(readFileSync('package.json', 'utf8'));
 
@@ -53,7 +55,21 @@ if (!/^https:\/\/[^\s"'<>#?]+$/.test(siteUrl)) {
   process.exit(1);
 }
 
-const define = { __REPOSITORY__: JSON.stringify(repository) };
+// Symbolon's binding isn't on npm: its two files come from the pinned, checked release. The
+// JavaScript is bundled where src/vendor/symbolon.ts imports it; the .wasm file is copied next to
+// the code that loads it, under a content-hashed name.
+const symbolon = await loadSymbolon();
+const symbolonWasm = `symbolon-${createHash('sha256').update(symbolon.wasm).digest('hex').slice(0, 8)}.wasm`;
+const symbolonPlugin = {
+  name: 'symbolon',
+  setup(b) {
+    b.onResolve({ filter: /^\.\/symbolon\/symbolon_wasm\.js$/ }, ({ importer }) =>
+      (/[\\/]src[\\/]vendor[\\/]symbolon\.ts$/.test(importer) ? { path: 'symbolon_wasm.js', namespace: 'symbolon' } : undefined));
+    b.onLoad({ filter: /.*/, namespace: 'symbolon' }, () => ({ contents: symbolon.js, loader: 'js' }));
+  },
+};
+
+const define = { __REPOSITORY__: JSON.stringify(repository), __SYMBOLON_WASM__: JSON.stringify(`./${symbolonWasm}`) };
 
 const listFiles = (dir) => readdirSync(dir).flatMap((name) => {
   const p = join(dir, name);
@@ -81,8 +97,11 @@ async function buildApp(outdir) {
     charset: 'utf8',
     legalComments: 'eof',
     define,
+    plugins: [symbolonPlugin],
     logLevel: 'warning',
   });
+  // src/vendor/symbolon.ts lands in a lazy chunk and loads the module relative to itself.
+  writeFileSync(join(outdir, 'chunks', symbolonWasm), symbolon.wasm);
   writeSite(outdir, { siteUrl, version, repository });
   copyFileSync('assets/styles.css', join(outdir, 'styles.css'));
   const files = listFiles(outdir).filter((f) => !f.endsWith('SHA256SUMS'));
@@ -95,7 +114,7 @@ async function buildApp(outdir) {
 async function buildModules(outdir) {
   rmSync(outdir, { recursive: true, force: true });
   await build({
-    entryPoints: listFiles('src').filter((f) => f.endsWith('.ts')),
+    entryPoints: listFiles('src').filter((f) => f.endsWith('.ts') && !f.endsWith('.d.ts')),
     outdir,
     outbase: 'src',
     bundle: false,
@@ -105,6 +124,10 @@ async function buildModules(outdir) {
     define,
     logLevel: 'warning',
   });
+  // Unbundled: the binding goes where src/vendor/symbolon.ts imports it, the module next to that file.
+  mkdirSync(join(outdir, 'vendor', 'symbolon'), { recursive: true });
+  writeFileSync(join(outdir, 'vendor', 'symbolon', 'symbolon_wasm.js'), symbolon.js);
+  writeFileSync(join(outdir, 'vendor', symbolonWasm), symbolon.wasm);
 }
 
 const sums = await buildApp('dist');

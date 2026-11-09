@@ -13,6 +13,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         ".webmanifest": "application/manifest+json",
         ".xml": "application/xml",
         ".txt": "text/plain",
+        ".wasm": "application/wasm",
     }
 
     def end_headers(self):
