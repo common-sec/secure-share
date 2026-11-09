@@ -53,7 +53,7 @@ All notable changes, one section per version. See [docs/ROADMAP.md](docs/ROADMAP
   a key made for each page load. The relays are now `relay.damus.io`, `nos.lol` and
   `relay.primal.net`. Links made by older versions don't connect to this one. The dependency
   `trystero` becomes `@trystero-p2p/core` (no more `@noble/secp256k1`); Symbolon's binding comes
-  from its v0.2.0 release, checked against a pinned SHA-256 at build time. The CSP allows
+  from its v0.3.0 release, checked against a pinned SHA-256 at build time. The CSP allows
   WebAssembly (`'wasm-unsafe-eval'`). Devices whose clocks are more than 2 minutes apart can't find
   each other.
 - **Nothing jumps when a tool page loads.** The share, chat and password pages kept their

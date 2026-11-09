@@ -29,7 +29,7 @@ browser extensions.
 - `tests/unit/room.test.js` shows the intended security properties as executable tests. Adversarial
   peers are built with `tests/unit/fake-transport.js`.
 - The runtime dependencies are `@trystero-p2p/core@0.26.0` and `qrcode-generator@2.0.4` (both MIT),
-  Symbolon's web binding `v0.2.0` (from its GitHub release, checked against the SHA-256 in
+  Symbolon's web binding `v0.3.0` (from its GitHub release, checked against the SHA-256 in
   `tools/symbolon/symbolon-web.sha256`), and
   `openpgp@6.3.2` (LGPL-3.0-or-later) and `client-zip@2.5.1` (MIT), only on the encrypted files
   page, locked

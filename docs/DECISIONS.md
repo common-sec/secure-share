@@ -99,7 +99,7 @@ kept under "History".
   [Symbolon](https://github.com/common-sec/symbolon) (`src/lib/symbolon-nostr.ts`,
   `src/lib/relay-seal.ts`): relay topics keyed by the link secret, every message sealed
   (XChaCha20-Poly1305) and bound to its topic and time (a 2-minute window), ephemeral kind 21059
-  events signed (BIP-340) with a key per page load. The same library, release and relays as
+  events signed (BIP-340) with a key per page load. The same library and relays as
   gum0x/bringmeback, so both projects share one reviewed signalling layer.
 - **Why:** Trystero's topics are plain hashes of the app and room IDs, its announcements carry
   peer IDs in the clear, and nothing stops a relay from replaying its messages later; Symbolon fixes both, and it's the code we want reviewed

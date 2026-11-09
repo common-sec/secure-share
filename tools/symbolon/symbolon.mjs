@@ -2,7 +2,7 @@
 // that seals the WebRTC offers and answers we publish on Nostr relays and signs those events.
 //
 // It is not on npm. The build takes it from the Symbolon release named in symbolon-web.sha256 and
-// refuses it unless the tarball has exactly that SHA-256, the same pin gum0x/bringmeback uses.
+// refuses it unless the tarball has exactly that SHA-256 (the checksum published with the release).
 // The tarball is cached in build/cache/symbolon/, so later builds need no network:
 //
 //   node tools/symbolon/symbolon.mjs     download (if needed) and check the pinned release
