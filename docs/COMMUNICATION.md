@@ -267,6 +267,13 @@ Every peer uses the same 3 public relays, the ones gum0x/bringmeback uses: `rela
 `src/lib/symbolon-nostr.ts`). Any one of them is enough for two peers to meet. The end-to-end
 tests instead use a tiny local Nostr relay inside the test server (see the end of this document).
 
+A relay that pushes back is listened to, as in Trystero's own Nostr strategy
+(`src/lib/relay-health.ts`). When it rejects an event or closes a subscription with a reason
+starting `rate-limited:`, the page sends it nothing for 60 s, doubling with each further limit
+up to 15 minutes. When the reason starts `blocked:`, `restricted:`, `auth-required:` or `pow:`,
+the page closes that relay and doesn't reconnect to it, and carries on with the others. Any other
+closed subscription is requested again after about 5 s, backing off to a minute.
+
 ## Step 3: punching through the NATs (ICE, STUN)
 
 ### What ICE is

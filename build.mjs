@@ -124,6 +124,18 @@ async function buildModules(outdir) {
     define,
     logLevel: 'warning',
   });
+  // Trystero's core is an npm package, which the browser can't import by name: the one module that
+  // imports it is bundled with it.
+  await build({
+    entryPoints: ['src/vendor/trystero-core.ts'],
+    outfile: join(outdir, 'vendor', 'trystero-core.js'),
+    allowOverwrite: true,
+    bundle: true,
+    format: 'esm',
+    target: 'es2022',
+    platform: 'browser',
+    logLevel: 'warning',
+  });
   // Unbundled: the binding goes where src/vendor/symbolon.ts imports it, the module next to that file.
   mkdirSync(join(outdir, 'vendor', 'symbolon'), { recursive: true });
   writeFileSync(join(outdir, 'vendor', 'symbolon', 'symbolon_wasm.js'), symbolon.js);
