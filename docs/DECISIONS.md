@@ -106,7 +106,7 @@ kept under "History".
   once for every app. It also drops `@noble/secp256k1` and Trystero's Nostr strategy.
 - **How it's pinned:** not on npm. `build.mjs` takes Symbolon's web tarball from its GitHub release
   and refuses it unless its SHA-256 matches `tools/symbolon/symbolon-web.sha256` (cached in
-  `.cache/symbolon/`), then bundles it: nothing is fetched at run time. WebAssembly needs
+  `build/cache/symbolon/`), then bundles it: nothing is fetched at run time. WebAssembly needs
   `'wasm-unsafe-eval'` in the CSP's `script-src` (it allows compiling WebAssembly, not `eval`).
 - **Relation to D10:** Symbolon's primitives are RustCrypto's and k256's, not Web Crypto, and
   Symbolon is not externally reviewed yet. What it protects is the discovery step: the offers and

@@ -3,7 +3,7 @@
 //
 // It is not on npm. The build takes it from the Symbolon release named in symbolon-web.sha256 and
 // refuses it unless the tarball has exactly that SHA-256, the same pin gum0x/bringmeback uses.
-// The tarball is cached in .cache/symbolon/, so later builds need no network:
+// The tarball is cached in build/cache/symbolon/, so later builds need no network:
 //
 //   node tools/symbolon/symbolon.mjs     download (if needed) and check the pinned release
 //
@@ -22,7 +22,9 @@ const version = /^symbolon-web-(v\d+\.\d+\.\d+)\.tar\.gz$/.exec(file ?? '')?.[1]
 if (!/^[0-9a-f]{64}$/.test(sha256 ?? '') || !version) throw new Error('tools/symbolon/symbolon-web.sha256 is malformed');
 
 export const SYMBOLON_VERSION = version;
-const CACHE = join(here, '..', '..', '.cache', 'symbolon', file);
+// Under build/, not .cache/: CI's runner creates .cache/ subfolders itself after the build
+// container has run, and a .cache/ the container created would belong to another uid.
+const CACHE = join(here, '..', '..', 'build', 'cache', 'symbolon', file);
 const RELEASE_URL = `https://github.com/common-sec/symbolon/releases/download/${version}/${file}`;
 
 const digest = (bytes) => createHash('sha256').update(bytes).digest('hex');
