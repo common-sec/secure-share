@@ -178,7 +178,7 @@ and user input can't set them.
 
 | Store | What | Lifetime |
 |---|---|---|
-| IndexedDB `uss-hosts` | Chat host state for resuming after a reload: room ID, link secret, host identity (**non-extractable** private key), derived keys (non-extractable), approved members' public keys | Only across a reload: refreshed every 30 s while the page is open, refused and deleted 2 min after the tab closes, and at the room's time limit; deleted when the host closes the room |
+| IndexedDB `uss-hosts` | Chat host state for resuming after a reload: room ID, link secret, host identity (**non-extractable** private key), derived keys (non-extractable), approved members' public keys | Only across a reload: refreshed every 30 s while the page is open, refused and deleted 2 min after the tab closes (30 min, same tab only, if it was saved as the page went to the background), and at the room's time limit; deleted when the host closes the room |
 | sessionStorage | Chat: your nickname; host: a marker that this tab hosted the room (to say it has ended). Never the passphrase | Until the tab is closed |
 | Web Locks | `uss-host:<app>:<room>` so only one tab acts as host | While the tab is open |
 

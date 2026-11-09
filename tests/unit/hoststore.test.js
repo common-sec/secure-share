@@ -1,6 +1,6 @@
 // The saved host state only serves a reload: stale or expired records are refused and deleted.
 import { test, assert } from './harness.js';
-import { saveHost, loadHost, sweepHosts, RELOAD_GRACE_MS } from '../../build/modules/lib/hoststore.js';
+import { saveHost, loadHost, sweepHosts, RELOAD_GRACE_MS, BACKGROUND_GRACE_MS } from '../../build/modules/lib/hoststore.js';
 
 const record = (roomId, extra = {}) => ({ roomId, secret: 's', hostFp: 'fp', nick: 'A', identity: {}, keys: {}, approved: [], expiresAt: Date.now() + 60_000, ...extra });
 
@@ -30,6 +30,22 @@ test('a record from a closed tab is refused and deleted', async () => {
   assert.equal(await loadHost('t', 'closed', 'fp'), null);
   await put('t:closed', { ...record('closed'), savedAt: Date.now() });
   assert.ok(await loadHost('t', 'closed', 'fp'), 'only stale records are refused');
+});
+
+test('a phone that discarded the background host tab resumes the room in that same tab only', async () => {
+  const away = { ...record('bg'), background: true, savedAt: Date.now() - RELOAD_GRACE_MS - 60_000 };
+  await put('t:bg', away);
+  assert.equal(await loadHost('t', 'bg', 'fp'), null, 'another tab can not take over the room');
+  assert.equal((await loadHost('t', 'bg', 'fp', { sameTab: true }))?.roomId, 'bg', 'kept for the tab that hosted it');
+  await sweepHosts();
+  assert.ok(await loadHost('t', 'bg', 'fp', { sameTab: true }), 'the sweep keeps it too');
+
+  await put('t:bg', { ...away, savedAt: Date.now() - BACKGROUND_GRACE_MS - 1000 });
+  assert.equal(await loadHost('t', 'bg', 'fp', { sameTab: true }), null, 'not after BACKGROUND_GRACE_MS');
+  await put('t:bg', { ...away, background: false });
+  assert.equal(await loadHost('t', 'bg', 'fp', { sameTab: true }), null, 'a record from an unload gets the reload grace only');
+  await put('t:bg', { ...away, expiresAt: Date.now() - 1 });
+  assert.equal(await loadHost('t', 'bg', 'fp', { sameTab: true }), null, 'nor past the time limit');
 });
 
 test('a record past the room time limit is refused', async () => {

@@ -170,6 +170,11 @@ kept under "History".
 - **Why:** phones reload background tabs without warning, and losing the room then means sending
   a new link and passphrase to everyone. Keeping the state for a reload only limits the window
   in which a stolen copy is usable to about 2 minutes after the tab closes.
+- **Background tabs (phones):** a phone freezes a background tab (no refresh) and may discard
+  it, reloading it when the user comes back, so 2 minutes ended rooms whose host only switched
+  apps. A copy saved as the page goes to the background is kept for 30 minutes, and after the
+  first 2 only the tab that hosted the room can resume from it (a sessionStorage marker, which a
+  new or closed tab doesn't have). The window for a stolen copy grows to 30 minutes in that case.
 - **Alternatives:** (1) no resume at all, nothing stored, with a warning before a reload: safest
   and simplest, but the browser's "Leave site?" prompt can't be customised, doesn't tell a reload
   from a close, and never shows when a phone reloads a background tab. (2) sessionStorage: it only

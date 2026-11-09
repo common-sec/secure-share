@@ -99,7 +99,7 @@ export function mount(root: HTMLElement, params: URLSearchParams): () => void {
   if (invite) {
     // Is this our own room, reloaded? Then resume hosting instead of joining it as a guest.
     (async () => {
-      const saved = await loadHost('chat', invite.roomId, invite.hostFp);
+      const saved = await loadHost('chat', invite.roomId, invite.hostFp, { sameTab: tabStore.get(`uss-hosted:${invite.roomId}`) === '1' });
       const release = saved ? await claimHost('chat', invite.roomId) : null;
       if (disposed) return release?.();
       if (!saved && tabStore.get(`uss-hosted:${invite.roomId}`)) return showEnded();
@@ -119,7 +119,8 @@ export function mount(root: HTMLElement, params: URLSearchParams): () => void {
   function showEnded(): void {
     root.replaceChildren(h('div', { class: 'card narrow' },
       h('h2', null, 'This room has ended'),
-      h('p', null, 'A room survives a reload, but not a closed or long-suspended tab, and it closes at its time limit. '
+      h('p', null, 'A room survives a reload, and a phone keeping this tab in the background for up to 30 minutes, '
+        + 'but not a closed tab or a longer absence, and it closes at its time limit. '
         + 'The link no longer works.'),
       h('div', { class: 'row' }, h('button', { class: 'btn btn-primary', onclick: restart }, 'Start a new chat')),
     ));
@@ -147,18 +148,26 @@ async function startChat(root: HTMLElement, { invite, nick = '', passphrase = nu
 
   const link = room.link(pageUrl('chat'));
   let heartbeat: ReturnType<typeof setInterval> | undefined;
-  const persist = () => { if (!room.closed) void saveHost('chat', room.snapshot()); };
+  // `background`: the page is hidden, and a phone may freeze it (stopping these saves) and later
+  // discard it. Only an unload (reload or close) is saved as foreground.
+  const save = (background: boolean) => { if (!room.closed) void saveHost('chat', room.snapshot(), { background }); };
+  const persist = () => save(document.visibilityState === 'hidden');
+  const persistHidden = () => save(true);
+  // `persisted`: kept in the back/forward cache, not unloaded.
+  const onPageHide = (e: PageTransitionEvent) => save(e.persisted);
   if (room.isHost) {
     // Keep the room link in the address bar and make a reload resume the room. The saved state is
     // refreshed while the page lives and when it's hidden or unloaded (a reload); once refreshes
-    // stop (the tab was closed), it's no longer accepted (see hoststore.ts).
+    // stop (the tab was closed), it's no longer accepted (see hoststore.ts). A phone that freezes
+    // or discards the background tab gets longer, for this tab only.
     release ??= await claimHost('chat', room.roomId);
     history.replaceState(null, '', link.slice(link.indexOf('#')));
     persist();
     room.on('persist', persist);
     heartbeat = setInterval(persist, HEARTBEAT_MS);
-    window.addEventListener('pagehide', persist);
+    window.addEventListener('pagehide', onPageHide);
     document.addEventListener('visibilitychange', persist);
+    document.addEventListener('freeze', persistHidden);
     tabStore.set(`uss-hosted:${room.roomId}`, '1');
   }
   const objectUrls: string[] = [];
@@ -416,8 +425,9 @@ async function startChat(root: HTMLElement, { invite, nick = '', passphrase = nu
 
   function stopPersisting(): void {
     clearInterval(heartbeat);
-    window.removeEventListener('pagehide', persist);
+    window.removeEventListener('pagehide', onPageHide);
     document.removeEventListener('visibilitychange', persist);
+    document.removeEventListener('freeze', persistHidden);
     void forgetHost('chat', room.roomId);
   }
 

@@ -331,6 +331,31 @@ test('guests wait for a reloading host and are re-admitted automatically', async
   cleanup(resumed, bob);
 });
 
+test('a member whose connection is replaced (phone back from the background) is re-admitted', async () => {
+  const net = new FakeNetwork();
+  const host = await hostRoom(net);
+  const bob = await joinGuest(net, host, 'Bob');
+  const lost = once(bob, 'host-lost');
+  const back = once(bob, 'accepted');
+  const rejoined = once(host, 'joined');
+  const denied = collect(bob, 'denied');
+  await net.replace(host.transport.endpoint, bob.transport.endpoint);
+  await lost;
+  await back;
+  assert.equal((await rejoined).member.nick, 'Bob');
+  assert.equal(denied.length, 0, 'not refused as "nickname taken"');
+  assert.equal([...host.members.values()].filter((m) => m.nick === 'Bob').length, 1, 'no ghost member');
+  assert.equal(host.guests.size, 1);
+
+  const atHost = once(host, 'message');
+  await bob.send({ t: 'text', body: 'still here' });
+  assert.equal((await atHost).inner.body, 'still here');
+  const atBob = once(bob, 'message');
+  await host.send({ t: 'text', body: 'welcome back' });
+  assert.equal((await atBob).inner.body, 'welcome back');
+  cleanup(host, bob);
+});
+
 // ---- restrictive networks ----
 test('when a network blocks the direct connection, both sides are told', async () => {
   const net = new FakeNetwork();

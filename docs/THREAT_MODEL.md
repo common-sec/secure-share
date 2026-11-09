@@ -84,7 +84,9 @@
 - Share stores nothing.
 - Chat hosts keep the room state (link secret, non-extractable keys) in IndexedDB **only to
   survive a reload**: the open page refreshes it every 30 s, a record not refreshed for 2 minutes
-  (a closed tab) is refused and deleted, and so is one past the room's time limit. Closing the
+  (a closed tab) is refused and deleted, and so is one past the room's time limit. A record saved
+  as the page went to the background is kept for 30 minutes, for the same tab only (phones
+  discard background tabs), so a copy taken from a phone stays usable up to 30 minutes after it. Closing the
   room deletes it at once. The passphrase is never stored; sessionStorage holds only the nickname.
   Why not store nothing: [D22](DECISIONS.md#d22-a-chat-hosts-room-survives-a-reload-not-a-closed-tab-).
 - Every room closes on its own after a time limit (default 4 hours, at most 24, chosen by the
