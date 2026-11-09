@@ -1,6 +1,7 @@
 // SecureRoom: a star-shaped, host-controlled, end-to-end encrypted WebRTC room.
 //
-// Transport & NAT traversal: Trystero (WebRTC, discovery over public Nostr relays).
+// Transport & NAT traversal: Trystero's WebRTC core; discovery over public Nostr relays through
+// Symbolon (src/lib/symbolon-nostr.ts), which seals and signs everything published there.
 // Topology: guests connect ONLY to the host; the host relays. Guests never see each other's IPs.
 //
 // Joining (inside Trystero's onPeerHandshake, before any app data flows):
@@ -17,17 +18,14 @@
 //
 // Everything received from a peer is untrusted: it's validated (parse*) before use. The message
 // shapes below are the ones specified in docs/PROTOCOL.md.
-import type { HandshakeReceiver, HandshakeSender, JoinError, JsonValue, MessageAction, Room } from 'trystero';
+import type { HandshakeReceiver, HandshakeSender, JoinError, JsonValue, MessageAction, Room } from '@trystero-p2p/core';
 import { loadTrystero, type Trystero } from '../vendor/trystero.js';
 import * as C from './crypto.js';
-import { bytesToB64url } from './encoding.js';
+import { b64urlToBytes, bytesToB64url } from './encoding.js';
 
 export const MAX_FILE_BYTES = 512 * 1024 ** 2;
 export const MAX_TEXT = 100_000;
 const MAX_FAILURES = 5;
-// Public Nostr relays used for discovery. Fewer relays = fewer third parties seeing that a room
-// exists; 3 keeps some redundancy if one is down. Peers of the same app pick the same subset.
-const RELAY_REDUNDANCY = 3;
 // Every room closes on its own after a while, so a forgotten tab doesn't keep connections open.
 export const DEFAULT_LIFETIME_MS = 4 * 60 * 60 * 1000;
 export const MAX_LIFETIME_MS = 24 * 60 * 60 * 1000;
@@ -342,12 +340,14 @@ export class SecureRoom extends EventTarget {
     const testIceServers = Array.isArray(hooks.__USS_TEST_ICE_SERVERS__) ? hooks.__USS_TEST_ICE_SERVERS__ as RTCIceServer[] : null;
     const room = trystero.joinRoom(
       {
-        appId: `user-sec-tools.${this.app}.v2`,
+        appId: `secure-share.${this.app}.v3`,
         password: keys.signalingPassword,
+        // Symbolon's keys for the relays: from the link secret only, never the passphrase (D9).
+        signaling: { context: `secure-share/${this.app}/v3/${this.roomId}`, secret: b64urlToBytes(this.secret) },
         maxReceiveBytes: MAX_FILE_BYTES + 4096,
         // We decide when to reconnect to relays (see #syncDiscovery), not the browser's online events.
         relayConfig: {
-          ...(testRelays ? { urls: testRelays } : { redundancy: RELAY_REDUNDANCY }),
+          ...(testRelays ? { urls: testRelays } : {}),
           manualReconnection: true,
           warnOnRelayFailure: false,
         },

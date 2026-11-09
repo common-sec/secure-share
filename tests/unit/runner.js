@@ -9,6 +9,7 @@ const FILES = [
   'password.test.js',
   'passphrase.test.js',
   'room.test.js',
+  'relay-seal.test.js',
   'hoststore.test.js',
   'files.test.js',
 ];

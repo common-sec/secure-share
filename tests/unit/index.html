@@ -3,9 +3,10 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <!-- Tests never touch the network: no CDN, no relays (the transport is faked). -->
+  <!-- Tests never touch the network: no CDN, no relays (the transport is faked). Symbolon is
+       WebAssembly, which needs 'wasm-unsafe-eval', as on the site. -->
   <meta http-equiv="Content-Security-Policy"
-        content="default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'none'">
+        content="default-src 'none'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'none'">
   <title>Tests · CommonSec Share</title>
   <link rel="stylesheet" href="tests.css">
   <script type="module" src="runner.js"></script>

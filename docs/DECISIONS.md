@@ -92,6 +92,30 @@ kept under "History".
 - **Alternatives considered for later:** PAKE, Noise, MLS for group chat ([IDEAS](IDEAS.md)). The
   `age` format was considered and dropped (D23).
 
+### D26. Discovery through Symbolon; WebRTC stays with Trystero's core ✅ (2026-11-08)
+- **What:** Trystero is two layers, a core (WebRTC peers, data channels, actions, the
+  handshake hook, offer encryption) and a "strategy" that carries its signalling. We keep the core
+  (`@trystero-p2p/core@0.26.0`) and replace its Nostr strategy with ours on
+  [Symbolon](https://github.com/common-sec/symbolon) (`src/lib/symbolon-nostr.ts`,
+  `src/lib/relay-seal.ts`): relay topics keyed by the link secret, every message sealed
+  (XChaCha20-Poly1305) and bound to its topic and time (a 2-minute window), ephemeral kind 21059
+  events signed (BIP-340) with a key per page load. The same library, release and relays as
+  gum0x/bringmeback, so both projects share one reviewed signalling layer.
+- **Why:** Trystero's topics are plain hashes of the app and room IDs, its announcements carry
+  peer IDs in the clear, and nothing stops a relay from replaying its messages later; Symbolon fixes both, and it's the code we want reviewed
+  once for every app. It also drops `@noble/secp256k1` and Trystero's Nostr strategy.
+- **How it's pinned:** not on npm. `build.mjs` takes Symbolon's web tarball from its GitHub release
+  and refuses it unless its SHA-256 matches `tools/symbolon/symbolon-web.sha256` (cached in
+  `.cache/symbolon/`), then bundles it: nothing is fetched at run time. WebAssembly needs
+  `'wasm-unsafe-eval'` in the CSP's `script-src` (it allows compiling WebAssembly, not `eval`).
+- **Relation to D10:** Symbolon's primitives are RustCrypto's and k256's, not Web Crypto, and
+  Symbolon is not externally reviewed yet. What it protects is the discovery step: the offers and
+  answers inside are still encrypted by Trystero with Web Crypto, and everything after discovery
+  is unchanged.
+- **Breaking:** the relays, topics, event kind and app ID changed (protocol v3), so v2 peers
+  can't find v3 peers.
+- **Next:** Symbolon also has the Noise `IKpsk1` handshake and channel that roadmap 0.9.0 plans.
+
 ### D23. The `age` format: considered and dropped, for now ❌ (2026-10-25)
 - **What was proposed:** the roadmap (0.8.0, then 0.9.0 once guided sharing moved ahead)
   planned to encrypt Share payloads (files and text) in the [age](https://age-encryption.org)

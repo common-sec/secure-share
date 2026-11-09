@@ -22,11 +22,15 @@ browser extensions.
 ## For auditors
 
 - Start with [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), then [docs/PROTOCOL.md](docs/PROTOCOL.md).
-- All cryptographic primitives are Web Crypto. The code to review is the composition in
-  `src/lib/crypto.ts` and `src/lib/room.ts` (strict TypeScript).
+- All cryptographic primitives are Web Crypto, except on the discovery relays, where Symbolon
+  (Rust compiled to WebAssembly) seals and signs what is published (decision D26). The code to
+  review is the composition in `src/lib/crypto.ts`, `src/lib/room.ts` and `src/lib/relay-seal.ts`
+  (strict TypeScript).
 - `tests/unit/room.test.js` shows the intended security properties as executable tests. Adversarial
   peers are built with `tests/unit/fake-transport.js`.
-- The runtime dependencies are `trystero@0.26.0` and `qrcode-generator@2.0.4` (both MIT), and
+- The runtime dependencies are `@trystero-p2p/core@0.26.0` and `qrcode-generator@2.0.4` (both MIT),
+  Symbolon's web binding `v0.2.0` (from its GitHub release, checked against the SHA-256 in
+  `tools/symbolon/symbolon-web.sha256`), and
   `openpgp@6.3.2` (LGPL-3.0-or-later) and `client-zip@2.5.1` (MIT), only on the encrypted files
   page, locked
   in `package-lock.json`, bundled at build time and imported only from `src/vendor/`. Builds are reproducible: see

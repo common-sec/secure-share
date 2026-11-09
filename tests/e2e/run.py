@@ -2,7 +2,7 @@
 
 Each person (sender, recipient, host, guests) is a separate, isolated browser context. Playwright
 clicks and types through the app exactly as a user would. Peers connect with WebRTC, using
-Trystero and a Nostr relay for discovery, as on the live site.
+Trystero's core, and a Nostr relay through Symbolon for discovery, as on the live site.
 
     docker compose run --rm test-e2e            # local relay, host-only ICE (default, CI)
     docker compose run --rm test-e2e-public     # online: the real public relays and STUN servers

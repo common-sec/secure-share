@@ -44,7 +44,7 @@ Sources are TypeScript in `src/` (strict mode). `build.mjs` uses esbuild to prod
 
 - `dist/`: the site as served: one pre-rendered page per tool and content page (`index.html`,
   `chat/`, `files/`, `passwords/`, `how-it-works/`, `faq/`, from `src/pages/` by `pages.mjs`), `styles.css`,
-  `app.js` and lazily loaded chunks (Trystero, openpgp.js, client-zip and qrcode-generator are bundled in, so nothing is
+  `app.js` and lazily loaded chunks (Trystero's core, Symbolon, openpgp.js, client-zip and qrcode-generator are bundled in, so nothing is
   fetched from a CDN), the icons and social image (`assets/site/`), `site.webmanifest`,
   `robots.txt`, `sitemap.xml`, plus `SHA256SUMS`. GitHub Pages serves this folder.
 - `build/modules/`: every source module transpiled one-to-one, for the unit tests.
@@ -102,7 +102,8 @@ to itself with no change.
 | Tool images | Tag + digest in `compose.yaml` | Non-root, no caps, read-only | Dependabot (`docker-compose`) |
 | `gpg-agent`, `7zip`, `libarchive-tools` and `unzip` in the test image (for the interoperability tests) | Ubuntu archive snapshot date in `Dockerfile` (`apt-get --snapshot`) | apt's archive signatures | By hand, with the test base image |
 | Python test packages | Exact version + SHA-256 of every file, the whole tree (`tests/requirements.txt`), installed when the `test` image is built | `pip.conf`: `require-hashes`, wheels only (no build code runs), uploaded ≥ 7 days ago | Dependabot (`pip`) |
-| npm packages (Trystero, qrcode-generator, openpgp.js, client-zip, esbuild, TypeScript) | `package.json` exact versions + `package-lock.json` integrity hashes, installed with `npm ci` | `.npmrc`: `ignore-scripts`, `min-release-age=7`, `save-exact`, `engine-strict` | Dependabot (`npm`) |
+| npm packages (Trystero's core, qrcode-generator, openpgp.js, client-zip, esbuild, TypeScript) | `package.json` exact versions + `package-lock.json` integrity hashes, installed with `npm ci` | `.npmrc`: `ignore-scripts`, `min-release-age=7`, `save-exact`, `engine-strict` | Dependabot (`npm`) |
+| Symbolon's web binding (not on npm) | Release version + SHA-256 of its tarball in `tools/symbolon/symbolon-web.sha256`, the same pin as gum0x/bringmeback | `build.mjs` refuses a tarball whose SHA-256 differs; cached in `.cache/symbolon/` | By hand, with the checksum published on the release |
 | GitHub Actions | Commit SHA | `persist-credentials: false`, read-only token | Dependabot (`github-actions`) |
 
 All of these use a **7-day minimum age**: npm `min-release-age=7`, pip

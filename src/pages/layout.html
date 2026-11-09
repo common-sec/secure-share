@@ -3,10 +3,11 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <!-- Scripts only from this site: the whole app, Trystero included, is bundled at build time.
+  <!-- Scripts only from this site: the whole app, Trystero and Symbolon included, is bundled at build time.
+       'wasm-unsafe-eval' lets Symbolon's WebAssembly compile; it doesn't allow eval.
        The JSON-LD below is data (type application/ld+json): it never executes. -->
   <meta http-equiv="Content-Security-Policy"
-        content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' blob: data:; connect-src 'self' wss:; manifest-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
+        content="default-src 'none'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self'; img-src 'self' blob: data:; connect-src 'self' wss:; manifest-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
   <meta name="referrer" content="no-referrer">
   <title>{{title}}</title>
   <meta name="description" content="{{description}}">

@@ -13,7 +13,7 @@
 ## Trust assumptions
 
 - The user's **device, OS and browser** are not compromised. Malicious browser extensions are out of scope.
-- The **code served** is the code in this repository plus the pinned Trystero version (see supply chain below).
+- The **code served** is the code in this repository plus the pinned Trystero core and Symbolon versions (see supply chain below).
 - The **out-of-band channel** used to share the passphrase is different from the one used for the link.
 - **Web Crypto** implementations are correct.
 
@@ -25,8 +25,8 @@
 - **Residual:** traffic analysis. File sizes are approximately visible.
 
 ### 2. Nostr relay operators (third parties used for discovery)
-- **See:** your IP, connection times, an opaque topic derived from the app and room ID, and offers encrypted under the link-derived key.
-- **Cannot:** read offers without the link secret, read data (it never passes through them), or test passphrase guesses offline, because nothing on the relay depends on the passphrase.
+- **See:** your IP, connection times, an opaque topic keyed by the link secret (Symbolon), and ephemeral events sealed under a link-derived key, signed by a key made for this page load only.
+- **Cannot:** compute a room's topic from its ID, link a room's topic to another room, read, forge, move to another topic or replay (outside 2 minutes) any message without the link secret, read data (it never passes through them), or test passphrase guesses offline, because nothing on the relay depends on the passphrase.
 - **Mitigation:** only 3 relays, and they are disconnected as soon as the room doesn't need discovery (guest accepted, room locked or full).
 - **Residual:** they can correlate the peers that use the same topic at the same time, i.e. *who talked to whom*. They can also refuse service (denial of service).
 
@@ -45,7 +45,7 @@
 - **Cannot** impersonate the host: that requires the host's private key, which never leaves the host's browser.
 
 ### 6. Man-in-the-middle on the connection
-- Would need to decrypt Trystero's signaling (needs the link secret) and then terminate DTLS with each side.
+- Would need to open the sealed signalling (needs the link secret) and then terminate DTLS with each side.
 - **Detected** by comparing the safety code (derived from both DTLS certificates) out of band.
 - **Residual:** users who don't compare codes rely on the secrecy of the link.
 
@@ -61,8 +61,10 @@
 ### 9. Supply chain: the static host, the npm packages, the build
 - **This is the most important residual risk.** Whoever controls the served JavaScript controls the app.
 - **Mitigations:**
-  - four runtime dependencies (Trystero, with two small dependencies of its own,
-    qrcode-generator, openpgp.js and client-zip, with none), each loaded only on the pages that use it, and two build tools
+  - five runtime dependencies (Trystero's core, qrcode-generator, openpgp.js and client-zip, with
+    no dependencies of their own, and Symbolon's WebAssembly binding, not on npm: taken from its
+    GitHub release and refused unless its SHA-256 matches `tools/symbolon/symbolon-web.sha256`),
+    each loaded only on the pages that use it, and two build tools
     (TypeScript, esbuild), at exact versions locked with integrity hashes in `package-lock.json`,
     installed with `npm ci`, no install scripts, and only releases at least 7 days old;
   - everything is **bundled at build time**: no CDN, and the CSP lets scripts load only from `'self'`;

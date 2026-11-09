@@ -44,6 +44,18 @@ All notable changes, one section per version. See [docs/ROADMAP.md](docs/ROADMAP
   tests can simulate both networks.
 
 ### Changed
+- **Discovery through Symbolon (breaking, protocol v3; decision D26).** Share and Chat still
+  connect with Trystero's WebRTC core, but find each other through our own Nostr strategy on
+  [Symbolon](https://github.com/common-sec/symbolon), the Rust/WebAssembly library gum0x/bringmeback
+  uses: relay topics are keyed by the link secret (a relay can no longer compute a room's topic
+  from its ID), every relay message is sealed and bound to its topic and time (it can't be read,
+  forged, moved or replayed after 2 minutes), and events are ephemeral (kind 21059) and signed with
+  a key made for each page load. The relays are now `relay.damus.io`, `nos.lol` and
+  `relay.primal.net`. Links made by older versions don't connect to this one. The dependency
+  `trystero` becomes `@trystero-p2p/core` (no more `@noble/secp256k1`); Symbolon's binding comes
+  from its v0.2.0 release, checked against a pinned SHA-256 at build time. The CSP allows
+  WebAssembly (`'wasm-unsafe-eval'`). Devices whose clocks are more than 2 minutes apart can't find
+  each other.
 - **Nothing jumps when a tool page loads.** The share, chat and password pages kept their
   introduction on screen until the tool appeared above it and pushed it down (a layout shift that
   cost about 20 points of Lighthouse performance on a phone). The tool's space is now reserved,
