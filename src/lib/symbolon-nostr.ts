@@ -66,11 +66,9 @@ export function createSymbolonStrategy(sym: Symbolon, connect: typeof makeSocket
   const announcements = new Map<string, Map<string, string>>();
   const seen = new Set<string>();
 
-  const keysFor = (appId: string, roomId: string): GroupKeys => {
-    const entry = roomKeys.get(`${appId}|${roomId}`);
-    if (!entry) throw new Error('no signalling keys for this room');
-    return entry.keys;
-  };
+  // Undefined once the room is left: Trystero can still finish a subscribe or an announce that
+  // was waiting on a relay, and those must do nothing rather than throw.
+  const keysFor = (appId: string, roomId: string): GroupKeys | undefined => roomKeys.get(`${appId}|${roomId}`)?.keys;
 
   const subscribe = (client: SocketClient, sub: Subscription & { subId: string }) => {
     client.send(`["REQ",${JSON.stringify(sub.subId)},${sym.signalFilter(sub.bytes, unixNow())}]`);
@@ -108,6 +106,7 @@ export function createSymbolonStrategy(sym: Symbolon, connect: typeof makeSocket
     }),
     subscribeTopic: (client, topic, onMessage, ctx) => {
       const keys = keysFor(ctx.appId, ctx.roomId);
+      if (!keys) return () => {};
       const { bytes, hex: topicHex } = relayTopic(keys, topic);
       const sub = { topic, keys, bytes, handler: (t: string, m: StrategyMessage) => void onMessage(t, m), subId: toHex(crypto.getRandomValues(new Uint8Array(16))) };
       let forRelay = subs.get(client.url);
@@ -121,13 +120,15 @@ export function createSymbolonStrategy(sym: Symbolon, connect: typeof makeSocket
       };
     },
     publishTopic: (client, topic, msg, ctx) => {
+      const keys = keysFor(ctx.appId, ctx.roomId);
+      if (!keys) return;
       const payload = typeof msg === 'string' ? msg : JSON.stringify(msg);
       if (ctx.kind === 'announce') {
         let forRelay = announcements.get(client.url);
         if (!forRelay) announcements.set(client.url, forRelay = new Map());
         forRelay.set(topic, payload);
       }
-      publish(client, keysFor(ctx.appId, ctx.roomId), topic, payload);
+      publish(client, keys, topic, payload);
     },
     unpublishTopic: (client, topic) => {
       announcements.get(client.url)?.delete(topic);
