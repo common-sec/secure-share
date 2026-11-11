@@ -35,7 +35,7 @@ CMD ["python", "tests/unit/run.py", "chromium", "firefox", "webkit"]
 # Microsoft's Playwright image again (same version as `test`), for its Node and Chromium.
 # Lighthouse is installed from its own lockfile under the root .npmrc rules (no install scripts,
 # >= 7 days old), into /opt/lighthouse; run.mjs finds it through LIGHTHOUSE_MODULES.
-FROM mcr.microsoft.com/playwright:v1.64.1-noble@sha256:47b510dd9230bf0b9bfc9b20102241e577ea7a99334ab4c3ca19f19770e9b8ea AS lighthouse
+FROM mcr.microsoft.com/playwright:v1.65.0-noble@sha256:6e3fb709361521eb27161606e6da6d2674e5e89fa16516cb37d6fdd91372273d AS lighthouse
 COPY .npmrc tools/lighthouse/package.json tools/lighthouse/package-lock.json /opt/lighthouse/
 RUN cd /opt/lighthouse && npm ci --no-audit --no-fund && npm cache clean --force
 ENV LIGHTHOUSE_MODULES=/opt/lighthouse
