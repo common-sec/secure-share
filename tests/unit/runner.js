@@ -11,6 +11,7 @@ const FILES = [
   'room.test.js',
   'relay-seal.test.js',
   'relay-health.test.js',
+  'practices.test.js',
   'hoststore.test.js',
   'files.test.js',
 ];
@@ -29,11 +30,11 @@ const results = await run({
   filter,
   onResult(r) {
     const li = document.createElement('li');
-    li.className = r.ok ? 'pass' : 'fail';
+    li.className = r.todo ? 'todo' : r.ok ? 'pass' : 'fail';
     const file = document.createElement('span');
     file.className = 'file';
     file.textContent = `${r.file} › `;
-    li.append(file, `${r.ok ? '✓' : '✗'} ${r.name} (${r.ms} ms)`);
+    li.append(file, r.todo ? `○ ${r.name}${r.note ? `: ${r.note}` : ''}` : `${r.ok ? '✓' : '✗'} ${r.name} (${r.ms} ms)`);
     if (!r.ok) {
       const pre = document.createElement('pre');
       pre.textContent = r.error;
@@ -44,7 +45,8 @@ const results = await run({
 });
 
 const failed = results.filter((r) => !r.ok).length;
-summary.textContent = `${results.length - failed} passed, ${failed} failed`;
+const todo = results.filter((r) => r.todo).length;
+summary.textContent = `${results.length - failed - todo} passed, ${failed} failed${todo ? `, ${todo} to do` : ''}`;
 summary.className = failed ? 'fail' : 'pass';
 document.title = `${failed ? 'FAIL' : 'PASS'} · tests`;
-window.__TEST_RESULTS__ = { done: true, passed: results.length - failed, failed, results };
+window.__TEST_RESULTS__ = { done: true, passed: results.length - failed - todo, failed, todo, results };

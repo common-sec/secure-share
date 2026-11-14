@@ -62,11 +62,12 @@ def run_browser(playwright, name, url):
         browser.close()
 
     for r in results["results"]:
-        mark = "✓" if r["ok"] else "✗"
+        mark = "○" if r.get("todo") else "✓" if r["ok"] else "✗"
         print(f"  {mark} [{name}] {r['file']} › {r['name']} ({r['ms']} ms)")
         if not r["ok"]:
             print("\n".join("      " + line for line in r["error"].splitlines()))
-    print(f"[{name}] {results['passed']} passed, {results['failed']} failed\n")
+    todo = f", {results['todo']} to do" if results.get("todo") else ""
+    print(f"[{name}] {results['passed']} passed, {results['failed']} failed{todo}\n")
     return results["failed"] == 0 and results["passed"] > 0
 
 
