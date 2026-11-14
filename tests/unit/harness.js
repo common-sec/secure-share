@@ -8,6 +8,16 @@ export function test(name, fn, { timeout = 30000 } = {}) {
   registry.push({ file: currentFile, name, fn, timeout });
 }
 
+/**
+ * A test that is planned but not written yet: a guarantee the code doesn't give today, tracked as
+ * a backlog item. It is listed with every run (marked ○) and never fails, so the gap stays
+ * visible without turning the suite red. Replace it with a real test() in the change that
+ * provides the guarantee.
+ */
+test.todo = (name, note = '') => {
+  registry.push({ file: currentFile, name, todo: true, note });
+};
+
 class AssertionError extends Error {}
 
 function fail(msg) { throw new AssertionError(msg); }
@@ -34,6 +44,12 @@ export async function run({ filter = '', onResult = () => {} } = {}) {
   const results = [];
   for (const t of registry) {
     if (filter && !`${t.file} ${t.name}`.includes(filter)) continue;
+    if (t.todo) {
+      const result = { file: t.file, name: `TODO ${t.name}`, ok: true, todo: true, note: t.note, error: null, ms: 0 };
+      results.push(result);
+      onResult(result);
+      continue;
+    }
     const start = performance.now();
     let error = null;
     try {

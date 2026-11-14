@@ -52,6 +52,7 @@ docker compose run --rm test-unit python tests/unit/run.py chromium --filter roo
 | `password.test.js` | Length, required sets, exclusions, entropy, impossible settings |
 | `passphrase.test.js` | Never only dictionary words, structure, minimum strength, entropy monotonicity, syllable capitals, spelling rules |
 | `room.test.js` | The protocol between host and guests, including attacks: wrong passphrase, **auto-lock**, declined and pending guests, unique nicknames, **impostor host with link + passphrase**, star topology, **forged and tampered messages**, **replays**, wrong-key data, **files that don't match their signed hash**, removal, **relay disconnection**, host reload, **room time limit** (host and stranded guests close, cap, not extended by a reload) |
+| `practices.test.js` | Cryptographic good practice as properties of the real code: keys **non-extractable and single-purpose**, the key derivation **re-derived independently from PROTOCOL.md §2** (so a changed iteration count, hash, salt or label fails), NFKC only, strict link secrets, **a fresh IV for each of 2,000 messages**, **every byte and every truncation of a sealed message detected**, proofs bound to their fields and room, malformed proofs, signatures and public keys refused without exceptions, identifier sizes and uniqueness, safety-code symmetry, nothing reused between rooms, **no passphrase in the link or in the stored host record**, the host fingerprint in the link enforced, and what Symbolon publishes (fresh nonces, 32-byte secrets only, separate contexts, size limit, minimal events). Ends with the **pending tests** (`test.todo`) for the guarantees the protocol doesn't give yet |
 | `hoststore.test.js` | Host resume only across a reload: closed-tab and expired records are refused, the sweep deletes them |
 | `files.test.js` | Encrypted files, with the lockfile's openpgp.js: **the GnuPG profile** (SKESK v4, AES-256, highest S2K count, SEIPD v1), round trips of one file and of a ZIP package, **wrong password, flipped byte and cut-off file refused**, not-OpenPGP and **public-key files told apart**, armored and compressed messages (as gpg writes them), size limit, safe download names; ZIP packages from the lockfile's client-zip: paths, contents and CRCs read back from the central directory, UTF-8 names, **paths that can't climb out**, duplicate names |
 
@@ -71,6 +72,14 @@ docker compose run --rm test-unit python tests/unit/run.py chromium --filter roo
   altered, stale or malformed relay messages are dropped. (The test page's CSP allows
   `'wasm-unsafe-eval'`, as the site's does.)
 - `tests/unit/run.py`: the Playwright driver for the container and CI.
+
+### Pending tests
+
+`test.todo('what should hold', 'where and how')` in `harness.js` records a guarantee the code
+doesn't give yet. It runs nothing and never fails: every run lists it with a ○ and counts it as
+"to do", so a known gap stays in sight without turning CI red. The ones in `practices.test.js`
+carry the ids of the 2026-11-14 security analysis (SS-1 to SS-8). The change that provides a
+guarantee replaces its `test.todo` with a real `test`.
 
 ### Checking that tests catch regressions
 
