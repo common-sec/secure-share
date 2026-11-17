@@ -1,5 +1,5 @@
 import { h, formatBytes, safeFileName, clockTime, closesAt, type Child } from '../lib/dom.js';
-import { passphraseField, copyRow, field } from './widgets.js';
+import { passphraseField, copyRow, field, liveNotice } from './widgets.js';
 import { SecureRoom, DENY_REASONS, MAX_TEXT, MAX_FILE_BYTES, DEFAULT_LIFETIME_MS, cleanNick, type Inner, type Member } from '../lib/room.js';
 import { pageUrl, restart } from '../lib/nav.js';
 import { saveHost, loadHost, forgetHost, claimHost, sweepHosts, HEARTBEAT_MS, type HostRecord } from '../lib/hoststore.js';
@@ -66,6 +66,9 @@ export function mount(root: HTMLElement, params: URLSearchParams): () => void {
       }
     } },
     h('h2', null, invite ? 'You’re invited to a secure chat' : 'Start a secure chat'),
+    liveNotice(invite
+      ? 'The host has to have the room open right now, at the same time as you, and approves you when you join. Nothing is stored for later.'
+      : 'Your guests join while you have this room open, at the same time as you, and you approve each of them. Nothing is stored for later.'),
     field('Your nickname', nick),
     field('Room passphrase', pass.el,
       h('p', { class: 'hint' }, invite

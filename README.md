@@ -21,6 +21,11 @@ The aim is to make secure sharing easy for anyone: **privacy by default, not ano
 | **Encrypted files** (`/files/`) | Encrypt files or a whole folder with a password into one OpenPGP file, to keep in the cloud or on a USB stick and open on any system, and decrypt it again. To give files to someone, Secure Share is the way. In the browser and offline: nothing is uploaded. GnuPG, Kleopatra and GPG Suite open the file too. |
 | **Password Generator** (`/passwords/`) | Memorable passphrases that are not just dictionary words (`Stone~Behind~Karrotish~Pencils42~Over~Quail`), or random-character passwords. |
 
+> **It's live, not a message.** Both people have to be on their screens **at the same time**:
+> the recipient opens the link while the sender's page is still open, and nothing waits on a
+> server for later. Ideally you're on a call together, so you can say the words and compare the
+> safety code. If they aren't available now, send the link when they are.
+
 ## How it works, in short
 
 1. The sender opens a room. The link carries a random 256-bit secret **after the `#`**, the part of

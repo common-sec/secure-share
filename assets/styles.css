@@ -295,3 +295,6 @@ main.container:has(.chat-layout) { max-width: 1100px; }
 .notice { color: var(--text); }
 .footer-links { display: flex; justify-content: center; flex-wrap: wrap; gap: 4px 16px; margin-bottom: 8px; }
 .footer-links a { color: var(--muted); }
+/* "Live, not a message": both people on their screens at the same time. */
+.live-notice { margin: 0 0 16px; padding: 10px 12px; border-radius: 10px; border-left: 4px solid var(--accent); background: var(--code-bg); color: var(--text); }
+.live-notice p { margin: 0; }

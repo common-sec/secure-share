@@ -5,6 +5,11 @@ All notable changes, one section per version. See [docs/ROADMAP.md](docs/ROADMAP
 ## [Unreleased]
 
 ### Added
+- **"Live, not a message" notice.** Share and Chat connect the two browsers directly and store
+  nothing in between, so both people have to be on their screens at the same time, and the
+  safety code is compared while both are there. People expected a link they could open later, so a short notice now says it
+  where a session starts or is joined: the Share form and waiting screen, the recipient's form,
+  the Chat create and join form, and both "How it works" boxes.
 - **Relays that push back are listened to.** A relay that answers `rate-limited:` gets nothing
   from the page for 60 s, doubling up to 15 minutes. One that answers `blocked:`, `restricted:`,
   `auth-required:` or `pow:` is closed and not used again on that page. Before, the Symbolon
