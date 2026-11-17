@@ -133,3 +133,14 @@ export function field(label: string, control: HTMLElement, ...rest: Child[]): HT
   }
   return h('div', { class: 'field' }, lbl, control, ...rest);
 }
+
+/**
+ * The "this is live" notice: Share and Chat connect two browsers directly, with nothing stored in
+ * between, so both people have to be on their screens at the same time, and the safety code is
+ * compared while both are there. Said where a session starts or is joined, because people expect a
+ * link to work like a message they can open later.
+ */
+export function liveNotice(...text: Child[]): HTMLElement {
+  return h('div', { class: 'live-notice', role: 'note' },
+    h('p', null, h('strong', null, 'Live, not a message. '), ...text));
+}

@@ -1,7 +1,7 @@
 import { h, copyText, formatBytes, safeFileName, closesAt } from '../lib/dom.js';
 import { SecureRoom, DENY_REASONS, MAX_TEXT, MAX_FILE_BYTES } from '../lib/room.js';
 import { readInvite, type Invite, type Session } from './chat.js';
-import { passphraseField, field } from './widgets.js';
+import { passphraseField, field, liveNotice } from './widgets.js';
 import { icon } from './icons.js';
 import { roomPassphrase } from '../lib/passphrase.js';
 import { qrSvg } from '../vendor/qrcode.js';
@@ -10,6 +10,13 @@ import { pageUrl, restart } from '../lib/nav.js';
 
 type SetSession = (s: Session) => void;
 const errorText = (e: unknown): string => (e instanceof Error ? e.message : String(e));
+
+// Both people on their screens at the same time: nothing waits on a server for later.
+const SENDER_LIVE = 'They receive it while you keep this page open, at the same time as you: nothing waits for them on a server. '
+  + 'Best on a call or side by side, so you can tell them the words and, if needed, compare the safety code.';
+const SENDER_LIVE_WAITING = 'Stay on this page while they open the link: they receive it from your screen, now, not later.';
+const RECIPIENT_LIVE = 'The sender has to have their page open right now, at the same time as you: nothing waits for you on a server. '
+  + 'Best on a call with them, so they can tell you the words and you can compare the safety code.';
 
 export function mount(root: HTMLElement, params: URLSearchParams): () => void {
   let session: Session | null = null;
@@ -48,12 +55,13 @@ function howItWorks(recipient: boolean): HTMLElement {
       ? [
         h('p', null, 'Someone used ', APP_NAME, ' to send you something privately: a password, a note or a file. It’s encrypted end to end and comes straight from their browser to yours. Nothing is uploaded or stored anywhere, and no account is needed.'),
         h('p', null, 'The link alone isn’t enough: you also need the words they tell you, typed exactly as they say them. Once you’ve received it, the link stops working.'),
+        h('p', null, 'It’s live: the sender’s page has to be open at the same time as yours, because nothing is stored for later. If it isn’t open any more, ask them to send a new link while you’re both there.'),
         h('p', null, 'This app is open source: you can ', h('a', { href: REPOSITORY, rel: 'noopener' }, 'read its code'), '.'),
       ]
       : [
         h('p', null, 'The delivery is encrypted end to end and goes straight from your browser to the recipient’s, from computer to computer or phone. No special software is needed, and nothing is uploaded or stored anywhere.'),
         h('p', null, 'The recipient needs the link ', h('em', null, 'and'), ' the words. On a call, paste the link in the chat and say the words aloud: they’re never written anywhere. If the calling app itself is the concern, send the link another way.'),
-        h('p', null, 'Keep this page open until the delivery completes: it comes from your browser, so closing the page cancels it. The link works once, and stops working after a time limit if nobody uses it.'),
+        h('p', null, 'It’s live, not a message they read later: the recipient has to open the link while you’re both on your screens, at the same time. Keep this page open until the delivery completes: it comes from your browser, so closing the page cancels it. The link works once, and stops working after a time limit if nobody uses it.'),
         h('h3', null, 'Which one should I use?'),
         h('ul', null,
           h('li', null, h('strong', null, 'Secure Share'), ' (this page): send something ', h('em', null, 'once'),
@@ -200,6 +208,7 @@ function sendForm(body: HTMLElement, setSession: SetSession): void {
       submit.textContent = 'Create link';
     }
   } },
+  liveNotice(SENDER_LIVE),
   field('What do you want to send?', text),
   h('div', { class: 'row' }, addButton, fileInput, h('span', { class: 'hint inline' }, 'or drop them here')),
   fileList,
@@ -407,6 +416,7 @@ function senderView(body: HTMLElement, room: SecureRoom, { text, files, passphra
     h('p', { class: 'hint' }, 'Keep this page open until they’ve got it.'), awakeOption, awakeNote, extra);
 
   body.replaceChildren(h('div', { class: 'card narrow' },
+    liveNotice(SENDER_LIVE_WAITING),
     steps,
     keepOpen,
     room.expiresAt ? h('p', { class: 'hint' }, `⏱ If nobody receives it, the link stops working at ${closesAt(room.expiresAt)}.`) : null,
@@ -497,6 +507,7 @@ function receiveForm(body: HTMLElement, invite: Invite, setSession: SetSession):
       submit.textContent = 'Open';
     }
   } },
+  liveNotice(RECIPIENT_LIVE),
   h('ol', { class: 'guide-steps' },
     h('li', { class: 'active' },
       field('Type the words they tell you', pass.el,
