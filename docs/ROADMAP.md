@@ -23,7 +23,7 @@ CI/CD, testing infrastructure and security process work is tracked separately, i
 [Semantic versioning](https://semver.org/):
 
 | Change | Before 1.0 | From 1.0 |
-|---|---|---|
+|--:|---|---|---|
 | A roadmap feature | minor (`0.X.0`) | minor (`X.Y.0`) |
 | Fixes, internal work, docs, refactors with no visible change | patch (`0.X.Y`) | patch |
 | Incompatible change to the link format or protocol (old links/peers stop working) | minor, noted as breaking | **major** |
@@ -32,24 +32,62 @@ CI/CD, testing infrastructure and security process work is tracked separately, i
 
 ## Features
 
-| Version | Feature | Status |
-|---|---|---|
-| 0.1.0 | **Baseline**: password/passphrase generator, Secure Chat, Secure Share, docs, browser test suite | ✅ Done |
-| 0.4.0 | **First real-world test feedback**: Secure Share as the home page, clearer naming, stronger and masked room passphrases with a strength meter | ✅ Done |
-| 0.7.0 | **Names, organisation and domain**: CommonSec organisation, CommonSec Share app, served at `share.common-sec.org` | ✅ Done |
-| 0.8.0 | **Guided sharing**: sender and recipient guided step by step, designed first for use on a call: speakable passphrases, a one-question creation page, the link copied automatically, guided waiting and recipient screens | ✅ Done (G1–G5), to be released |
-| 0.9.0 | **Standard secure channel**: our own handshake and message encryption replaced by a published protocol (Noise `IKpsk1` on the snow library, under study), with forward secrecy (breaking) | Planned (study) |
-| 0.10.0 | **Connectivity on restrictive networks**: users behind symmetric NAT or UDP-blocking firewalls can still connect, through an end-to-end encrypted relay fallback | Planned |
-| 0.11.0 | **Static pages and SEO**: pre-rendered static pages, metadata and social previews, How it works and FAQ, sitemap, Search Console | ✅ Done, except the Search Console and Bing verification: waiting on the owner's accounts |
-| 0.12.0 | **Encrypted files**: package files, encrypt them with a password in a standard format and download the encrypted file; upload one, decrypt it and download the contents | In progress (started early, 2026-10-29) |
-| 1.0.0 | **Public launch**: release checklist and announcement, once the [pre-launch internal work](TODO.md#before-launch) is done | Planned |
-| 1.1.0 | **Share a generated password**: a button on the password generator opens a one-way Secure Share with it, passphrase and link ready | Planned |
-| 1.2.0 | **Local version of the app**, including a **portable desktop executable** that runs without installing (architecture to define: Tauri or Electron, PWA, Docker image, single file) | Planned |
-| 1.3.0 | **AI-assisted memorable passphrases** (on-device model, entropy kept by the CSPRNG) | Planned |
-| 1.4.0 | **Encrypted files for a public key**: load someone's public key, encrypt for it; only their private key opens the file | Planned |
-| 1.5.0 | **Key pair wizard**: generate a key pair, send the public key over a secure channel, instructions to decrypt on another computer | Planned |
-| 1.6.0 | **Encrypted file viewer and Secure Share hand-off**: view decrypted files without saving them, send encrypted files with Secure Share | Planned |
-| — | **Logo and visual identity**: no version and no deadline (see below) | Unscheduled |
+| <sub>Starts</sub> | Version | Feature | Status |
+|--:|---|---|---|
+|  | 0.1.0 | **Baseline**: password/passphrase generator, Secure Chat, Secure Share, docs, browser test suite | ✅ Done |
+|  | 0.4.0 | **First real-world test feedback**: Secure Share as the home page, clearer naming, stronger and masked room passphrases with a strength meter | ✅ Done |
+|  | 0.7.0 | **Names, organisation and domain**: CommonSec organisation, CommonSec Share app, served at `share.common-sec.org` | ✅ Done |
+|  | 0.8.0 | **Guided sharing**: sender and recipient guided step by step, designed first for use on a call: speakable passphrases, a one-question creation page, the link copied automatically, guided waiting and recipient screens | ✅ Done (G1–G5), to be released |
+| <sub>wk 7</sub> | 0.9.0 | **Standard secure channel**: our own handshake and message encryption replaced by a published protocol (Noise `IKpsk1` on the snow library, under study), with forward secrecy (breaking) | Planned (study) |
+| <sub>wk 11</sub> | 0.10.0 | **Connectivity on restrictive networks**: users behind symmetric NAT or UDP-blocking firewalls can still connect, through an end-to-end encrypted relay fallback | Planned |
+| <sub>wk 1</sub> | 0.11.0 | **Static pages and SEO**: pre-rendered static pages, metadata and social previews, How it works and FAQ, sitemap, Search Console | ✅ Done, except the Search Console and Bing verification: waiting on the owner's accounts |
+| <sub>wk 1</sub> | 0.12.0 | **Encrypted files**: package files, encrypt them with a password in a standard format and download the encrypted file; upload one, decrypt it and download the contents | In progress (started early, 2026-10-29) |
+| <sub>wk 18</sub> | 1.0.0 | **Public launch**: release checklist and announcement, once the [pre-launch internal work](TODO.md#before-launch) is done | Planned |
+| <sub>wk 23</sub> | 1.1.0 | **Share a generated password**: a button on the password generator opens a one-way Secure Share with it, passphrase and link ready | Planned |
+| <sub>wk 24</sub> | 1.2.0 | **Local version of the app**, including a **portable desktop executable** that runs without installing (architecture to define: Tauri or Electron, PWA, Docker image, single file) | Planned |
+| <sub>wk 28</sub> | 1.3.0 | **AI-assisted memorable passphrases** (on-device model, entropy kept by the CSPRNG) | Planned |
+| <sub>wk 31</sub> | 1.4.0 | **Encrypted files for a public key**: load someone's public key, encrypt for it; only their private key opens the file | Planned |
+| <sub>wk 33</sub> | 1.5.0 | **Key pair wizard**: generate a key pair, send the public key over a secure channel, instructions to decrypt on another computer | Planned |
+| <sub>wk 35</sub> | 1.6.0 | **Encrypted file viewer and Secure Share hand-off**: view decrypted files without saving them, send encrypted files with Secure Share | Planned |
+|  | — | **Logo and visual identity**: no version and no deadline (see below) | Unscheduled |
+
+**Starts** is a rough estimate of the week each pending item starts, counting week 1 as the week
+of 2026-11-17, from the effort of everything ahead of it, here and in [TODO.md](TODO.md) (which
+uses the same marks). Done items show nothing. In all, about **37 weeks** of work is pending, with
+the public launch starting around week 18 (mid-March 2027). The efforts are guesses for one
+maintainer working full time with AI help, not commitments; update the marks when the order or an
+estimate changes.
+
+<details>
+<summary>Order and effort behind the estimates</summary>
+
+| Starts | Item | Effort |
+|--:|---|--:|
+| wk 1 | 0.12.0 Encrypted files: the phone check left | 1 wk |
+| wk 1 | 0.11.0 Search Console, TODO I3 Safari and Edge: close with the next release (owner's accounts, no build work) | — |
+| wk 2 | TODO I1 GitHub hardening basics | 1 wk |
+| wk 3 | TODO I2 Staging and tagged production | 2 wk |
+| wk 5 | Fix K4 (trial dropping host resume) | 1 wk |
+| wk 6 | Fixes S6, P1, A2 (password page wording, tap targets) | 1 wk |
+| wk 7 | Fix A4 (focus and contrast) | 2 d |
+| wk 7 | 0.9.0 Standard secure channel | 4 wk |
+| wk 11 | 0.10.0 Connectivity on restrictive networks | 3 wk |
+| wk 14 | TODO I5 Production hosting and headers | 3 d |
+| wk 15 | TODO I6 Pre-launch security review (mostly waiting on the reviewer) | 3 wk |
+| wk 18 | 1.0.0 Public launch | 1 wk |
+| wk 19 | Fixes L1–L3 (support and feedback links) | 4 d |
+| wk 19 | TODO I7 DAST and fuzzing | 2 wk |
+| wk 21 | TODO I8 Security posture management | 2 wk |
+| wk 23 | 1.1.0 Share a generated password | 3 d |
+| wk 24 | 1.2.0 Local version of the app | 4 wk |
+| wk 28 | 1.3.0 AI-assisted memorable passphrases | 3 wk |
+| wk 31 | 1.4.0 Encrypted files for a public key | 2 wk |
+| wk 33 | 1.5.0 Key pair wizard | 2 wk |
+| wk 35 | 1.6.0 Encrypted file viewer and Secure Share hand-off | 3 wk |
+
+Fixes S2, S3, R1, R4 and R5 are left open but are covered by guided sharing (G2 to G5, done), so
+they have no estimate. The logo is unscheduled and has none either.
+</details>
 
 The versions skipped above (0.2.0, 0.3.0, 0.3.1, 0.5.0, 0.6.0) were internal work, released
 before internal work moved to [TODO.md](TODO.md) on 2026-10-19; [CHANGELOG.md](../CHANGELOG.md)
@@ -343,7 +381,8 @@ features, **highest priority first**. Each one ends with a commit, and a release
 of them is a patch version (`0.X.Y`). Larger work goes through [IDEAS.md](IDEAS.md) and the
 features above.
 
-Legend: `[ ]` to do · `[x]` done (keep for one release, then remove).
+Legend: `[ ]` to do · `[x]` done (keep for one release, then remove). The small `wk N` before an open item is
+its estimated start week (see [Features](#features)).
 
 ### High priority: restrictive networks
 
@@ -374,7 +413,7 @@ From [code scanning alert #1](https://github.com/common-sec/secure-share/securit
       24 h under "Advanced options" in Chat; Share uses the default). The host sees the closing
       time on creation and in the Invite panel, guests when they're admitted and the Share sender
       under the link; everyone is warned 10 minutes before.
-- [ ] **K4. Trial dropping host resume.** Build a variant that stores nothing (a reload or a
+- [ ] <sub>wk 5</sub> **K4. Trial dropping host resume.** Build a variant that stores nothing (a reload or a
       background-tab reload ends the room) and try it on phones and computers: how often rooms
       are lost in normal use, and whether clearer warnings (before reloading, when the tab goes to
       the background, on mobile) keep it usable. Then choose between it and the current
@@ -399,7 +438,7 @@ happening, trusts it, and succeeds.
       the status.
 - [x] **S5. Delivery signal when the tab isn't visible.** Update the tab title ("✓ Delivered");
       optionally a notification, if the user allows it.
-- [ ] **S6. Plain-language strength** (Share → G1; the password page stays here). "Strong enough for this room ✓" in place of "Fair · ≈57
+- [ ] <sub>wk 6</sub> **S6. Plain-language strength** (Share → G1; the password page stays here). "Strong enough for this room ✓" in place of "Fair · ≈57
       bits", with the bits as detail on demand. Same on the password page.
 - [x] **S7. Clearer approval option.** "Let me check who's receiving before sending (compare a
       code by phone)" in place of "Ask me before delivering".
@@ -416,11 +455,11 @@ happening, trusts it, and succeeds.
 
 #### Everywhere
 - [x] **A1. Labels.** Associate every visible label with its field (the message text area isn't).
-- [ ] **A2. Tap targets ≥ 44 px.** Navigation, "choose files", inline links, the logo link.
+- [ ] <sub>wk 6</sub> **A2. Tap targets ≥ 44 px.** Navigation, "choose files", inline links, the logo link.
 - [x] **A3. Status announcements.** `aria-live` on every status change (Share only partly has it).
-- [ ] **A4. Focus and contrast.** Visible keyboard focus everywhere; check muted-text contrast in
+- [ ] <sub>wk 7</sub> **A4. Focus and contrast.** Visible keyboard focus everywhere; check muted-text contrast in
       both themes.
-- [ ] **P1. Plain language on the password page.** "Generated on your device. Nothing is sent
+- [ ] <sub>wk 6</sub> **P1. Plain language on the password page.** "Generated on your device. Nothing is sent
       anywhere." in place of "Generated locally with `crypto.getRandomValues`", with technical
       detail in a disclosure.
 
@@ -433,7 +472,7 @@ Plain links only: no embedded widget, button script, badge or counter
 loaded from a third party ([IDEAS.md](IDEAS.md#support--feedback-links)). The privacy note it
 included moves into the FAQ (0.11.0).
 
-- [ ] **L1. Star on GitHub.** A plain link to the repository in the footer.
-- [ ] **L2. Donations.** Patreon and/or Buy Me a Coffee links in the footer.
-- [ ] **L3. Rating.** A "+1 / rate us" link to a public rating page (to be chosen), in the footer
+- [ ] <sub>wk 19</sub> **L1. Star on GitHub.** A plain link to the repository in the footer.
+- [ ] <sub>wk 19</sub> **L2. Donations.** Patreon and/or Buy Me a Coffee links in the footer.
+- [ ] <sub>wk 19</sub> **L3. Rating.** A "+1 / rate us" link to a public rating page (to be chosen), in the footer
       and once after a successful share or delivery ("Did this help?"), never as a popup.

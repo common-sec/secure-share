@@ -31,6 +31,8 @@ I3 0.10.0, I4 part of 0.13.0, I5 part of 1.0.0, I6 0.14.0, I7 1.1.0 and I8 1.2.0
 and changelog entries use those numbers.
 
 Legend: `[ ]` to do · `[~]` in progress · `[x]` done (keep for one release, then remove).
+The small `wk N` before an item is the estimated week it starts; see
+[the roadmap](ROADMAP.md#features) for how it is worked out. Done items show none.
 
 ## Before launch
 
@@ -38,7 +40,7 @@ I1 and I2 come before roadmap 0.9.0 (guided sharing, 0.8.0, ships first): the si
 public, and whoever can push to `main` or change a workflow controls what every user runs.
 
 ### I1. GitHub hardening basics
-`[ ]`
+<sub>wk 2</sub> `[ ]`
 **Goal:** the repository and organisation that produce the site are protected, because whoever
 can push to `main` or change a workflow controls what every user runs. Settings and existing,
 pinned tools only; the continuous tracking of all of it comes in
@@ -59,7 +61,7 @@ pinned tools only; the continuous tracking of all of it comes in
 - docs/DEVELOPMENT.md lists the settings, so they can be re-checked after any change.
 
 ### I2. Staging and tagged production
-`[ ]`
+<sub>wk 3</sub> `[ ]`
 **Goal:** nothing reaches users without being tried on a real, public URL first, and what
 production serves is always a tagged, reproducible release whose checksums are published.
 **Why a separate repository:** GitHub Pages serves one site per repository, so staging can't be a
@@ -85,7 +87,7 @@ subdomain of this one.
   release checklist runs against staging; a decision entry records it.
 
 ### I3. Safari and Edge coverage
-`[~]` The WebKit runs landed in #17 (see the changelog's *Unreleased*
+<sub>wk 1</sub> `[~]` The WebKit runs landed in #17 (see the changelog's *Unreleased*
 section); the item closes with the next release.
 **Goal:** the app is tested on the engines people actually use, notably iPhones: every iOS
 browser runs on WebKit, Safari's engine.
@@ -108,13 +110,13 @@ roadmap fix A4); see [TESTING.md](TESTING.md#lighthouse-budgets). It found the t
 layout shift when the form appears (performance 77 to 80), fixed in the same change.
 
 ### I5. Production hosting and headers
-`[ ]` Split out of the public launch (roadmap 1.0.0).
+<sub>wk 14</sub> `[ ]` Split out of the public launch (roadmap 1.0.0).
 Production hosting is decided (see [IDEAS.md](IDEAS.md#hosting-github-pages-and-alternatives)):
 HSTS, CSP and `nosniff` as headers where the host allows it, or the documented compensations
 (CSP `<meta>`, frame-busting) where it doesn't.
 
 ### I6. Pre-launch security review
-`[ ]` The last item before 1.0.0, so it reviews what actually ships.
+<sub>wk 15</sub> `[ ]` The last item before 1.0.0, so it reviews what actually ships.
 **Goal:** what ships at 1.0 has been reviewed as a whole, by someone outside the project, and
 nothing known is left open.
 **Done when:**
@@ -132,7 +134,7 @@ DAST and fuzzing add depth after launch; they aren't the main controls in the
 [threat model](THREAT_MODEL.md).
 
 ### I7. DAST and fuzzing
-`[ ]`
+<sub>wk 19</sub> `[ ]`
 **Goal:** attack the running app the way an outsider would, on both sides of a connection.
 **Done when:**
 - **DAST:** a pinned OWASP ZAP container scans the served app (baseline, plus an active scan
@@ -147,7 +149,7 @@ DAST and fuzzing add depth after launch; they aren't the main controls in the
 - a time-boxed fuzz run in CI, longer runs on demand, and every crash reproduced as a regression test.
 
 ### I8. Security posture management
-`[ ]`
+<sub>wk 21</sub> `[ ]`
 **Goal:** know at any time which security checks run, which pass, and which repository settings
 protect the project, without re-checking hardening by hand on every commit. Builds on the basics
 of [I1](#i1-github-hardening-basics).
